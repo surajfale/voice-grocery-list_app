@@ -37,6 +37,9 @@ import {
   Alert,
   Divider,
   ListSubheader,
+  CircularProgress,
+  Menu,
+  Avatar,
 } from '@mui/material';
 import {
   Mic,
@@ -50,14 +53,52 @@ import {
   ExpandMore,
   Edit,
   Clear,
+  Logout,
+  AccountCircle,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 import theme from './theme';
+import { AuthProvider, useAuth } from './AuthContext';
+import LoginPage from './LoginPage';
+import RegisterPage from './RegisterPage';
+import apiStorage from './services/apiStorage.js';
 
-const VoiceGroceryList = () => {
+const VoiceGroceryListApp = () => {
+  const { isAuthenticated, user, logout, loading } = useAuth();
+  const [showRegister, setShowRegister] = useState(false);
+
+  if (loading) {
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          <CircularProgress size={60} />
+        </Box>
+      </ThemeProvider>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        {showRegister ? (
+          <RegisterPage onSwitchToLogin={() => setShowRegister(false)} />
+        ) : (
+          <LoginPage onSwitchToRegister={() => setShowRegister(true)} />
+        )}
+      </ThemeProvider>
+    );
+  }
+
+  return <VoiceGroceryList user={user} logout={logout} />;
+};
+
+const VoiceGroceryList = ({ user, logout }) => {
+  const { validateUserOperation } = useAuth();
   const [allLists, setAllLists] = useState({});
   const [currentDate, setCurrentDate] = useState(dayjs());
   const [isListening, setIsListening] = useState(false);
@@ -68,10 +109,26 @@ const VoiceGroceryList = () => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState({});
+  const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
   const recognitionRef = useRef(null);
   
   const muiTheme = useTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
+
+  const handleUserMenuOpen = (event) => {
+    setUserMenuAnchor(event.currentTarget);
+  };
+
+  const handleUserMenuClose = () => {
+    setUserMenuAnchor(null);
+  };
+
+  const handleLogout = () => {
+    handleUserMenuClose();
+    logout();
+  };
 
   // Grocery categories for auto-categorization
   const categories = {
@@ -115,19 +172,43 @@ const VoiceGroceryList = () => {
     return items;
   };
 
-  const addItemsToList = useCallback((newItems) => {
-    const itemsWithData = newItems.map(item => ({
-      id: Date.now() + Math.random(),
-      text: item,
-      category: categorizeItem(item),
-      completed: false
-    }));
+  const addItemsToList = useCallback(async (newItems) => {
+    if (!user?._id) return;
     
-    setAllLists(prev => ({
-      ...prev,
-      [currentDateString]: [...(prev[currentDateString] || []), ...itemsWithData]
-    }));
-  }, [currentDateString, categorizeItem]);
+    try {
+      // Validate user permission
+      validateUserOperation(user._id);
+    } catch (error) {
+      setError(error.message);
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      for (const item of newItems) {
+        const itemData = {
+          text: item,
+          category: categorizeItem(item),
+          completed: false
+        };
+        
+        const result = await apiStorage.addGroceryItem(user._id, currentDateString, itemData);
+        if (result.success) {
+          setAllLists(prev => ({
+            ...prev,
+            [currentDateString]: result.list.items
+          }));
+        } else {
+          setError(result.error || 'Failed to add item');
+        }
+      }
+    } catch (error) {
+      console.error('Error adding items:', error);
+      setError('Failed to add items. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentDateString, categorizeItem, user, validateUserOperation]);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -165,13 +246,55 @@ const VoiceGroceryList = () => {
     }
   }, [addItemsToList]);
 
-  // Initialize today's list if it doesn't exist
+  // Load user's grocery lists on component mount and when user changes
   useEffect(() => {
-    const today = dayjs().format('YYYY-MM-DD');
-    if (!allLists[today]) {
-      setAllLists(prev => ({ ...prev, [today]: [] }));
-    }
-  }, [allLists]);
+    const loadUserLists = async () => {
+      if (!user?._id) return;
+      
+      setDataLoading(true);
+      try {
+        // Load all user lists
+        const result = await apiStorage.getUserGroceryLists(user._id);
+        if (result.success) {
+          const listsMap = {};
+          result.lists.forEach(list => {
+            listsMap[list.date] = list.items;
+          });
+          setAllLists(listsMap);
+        } else {
+          setError(result.error || 'Failed to load grocery lists');
+        }
+      } catch (error) {
+        console.error('Error loading lists:', error);
+        setError('Failed to load grocery lists. Please try again.');
+      } finally {
+        setDataLoading(false);
+      }
+    };
+    
+    loadUserLists();
+  }, [user]);
+  
+  // Load current date list if it doesn't exist
+  useEffect(() => {
+    const loadCurrentList = async () => {
+      if (!user?._id || allLists[currentDateString]) return;
+      
+      try {
+        const result = await apiStorage.getGroceryListByDate(user._id, currentDateString);
+        if (result.success) {
+          setAllLists(prev => ({
+            ...prev,
+            [currentDateString]: result.list.items
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading current list:', error);
+      }
+    };
+    
+    loadCurrentList();
+  }, [currentDateString, user, allLists]);
 
   const startListening = () => {
     if (recognitionRef.current) {
@@ -189,30 +312,88 @@ const VoiceGroceryList = () => {
     }
   };
 
-  const toggleItem = (id) => {
-    setAllLists(prev => ({
-      ...prev,
-      [currentDateString]: prev[currentDateString].map(item => 
-        item.id === id ? { ...item, completed: !item.completed } : item
-      )
-    }));
+  const toggleItem = async (id) => {
+    if (!user?._id) return;
+    
+    const currentItems = allLists[currentDateString] || [];
+    const item = currentItems.find(item => item.id === id);
+    if (!item) return;
+    
+    setLoading(true);
+    try {
+      const result = await apiStorage.updateGroceryItem(
+        user._id, 
+        currentDateString, 
+        id, 
+        { completed: !item.completed }
+      );
+      
+      if (result.success) {
+        setAllLists(prev => ({
+          ...prev,
+          [currentDateString]: result.list.items
+        }));
+      } else {
+        setError(result.error || 'Failed to update item');
+      }
+    } catch (error) {
+      console.error('Error toggling item:', error);
+      setError('Failed to update item. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const removeItem = (id) => {
-    setAllLists(prev => ({
-      ...prev,
-      [currentDateString]: prev[currentDateString].filter(item => item.id !== id)
-    }));
+  const removeItem = async (id) => {
+    if (!user?._id) return;
+    
+    setLoading(true);
+    try {
+      const result = await apiStorage.removeGroceryItem(user._id, currentDateString, id);
+      
+      if (result.success) {
+        setAllLists(prev => ({
+          ...prev,
+          [currentDateString]: result.list.items
+        }));
+      } else {
+        setError(result.error || 'Failed to remove item');
+      }
+    } catch (error) {
+      console.error('Error removing item:', error);
+      setError('Failed to remove item. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const updateItemCategory = (id, newCategory) => {
-    setAllLists(prev => ({
-      ...prev,
-      [currentDateString]: prev[currentDateString].map(item => 
-        item.id === id ? { ...item, category: newCategory } : item
-      )
-    }));
-    setEditingCategory(null);
+  const updateItemCategory = async (id, newCategory) => {
+    if (!user?._id) return;
+    
+    setLoading(true);
+    try {
+      const result = await apiStorage.updateGroceryItem(
+        user._id, 
+        currentDateString, 
+        id, 
+        { category: newCategory }
+      );
+      
+      if (result.success) {
+        setAllLists(prev => ({
+          ...prev,
+          [currentDateString]: result.list.items
+        }));
+        setEditingCategory(null);
+      } else {
+        setError(result.error || 'Failed to update category');
+      }
+    } catch (error) {
+      console.error('Error updating category:', error);
+      setError('Failed to update category. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const addManualItem = () => {
@@ -223,23 +404,55 @@ const VoiceGroceryList = () => {
     }
   };
 
-  const clearCurrentList = () => {
-    setAllLists(prev => ({
-      ...prev,
-      [currentDateString]: []
-    }));
+  const clearCurrentList = async () => {
+    if (!user?._id) return;
+    
+    setLoading(true);
+    try {
+      const result = await apiStorage.clearGroceryList(user._id, currentDateString);
+      
+      if (result.success) {
+        setAllLists(prev => ({
+          ...prev,
+          [currentDateString]: []
+        }));
+      } else {
+        setError(result.error || 'Failed to clear list');
+      }
+    } catch (error) {
+      console.error('Error clearing list:', error);
+      setError('Failed to clear list. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const deleteList = (date) => {
-    setAllLists(prev => {
-      const newLists = { ...prev };
-      delete newLists[date];
-      return newLists;
-    });
+  const deleteList = async (date) => {
+    if (!user?._id) return;
     
-    // If we deleted the current list, switch to today
-    if (date === currentDateString) {
-      setCurrentDate(dayjs());
+    setLoading(true);
+    try {
+      const result = await apiStorage.deleteGroceryList(user._id, date);
+      
+      if (result.success) {
+        setAllLists(prev => {
+          const newLists = { ...prev };
+          delete newLists[date];
+          return newLists;
+        });
+        
+        // If we deleted the current list, switch to today
+        if (date === currentDateString) {
+          setCurrentDate(dayjs());
+        }
+      } else {
+        setError(result.error || 'Failed to delete list');
+      }
+    } catch (error) {
+      console.error('Error deleting list:', error);
+      setError('Failed to delete list. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -256,12 +469,24 @@ const VoiceGroceryList = () => {
     return date.format('ddd, MMM D, YYYY');
   };
 
-  const createNewListForDate = (date) => {
+  const createNewListForDate = async (date) => {
     const dateString = dayjs(date).format('YYYY-MM-DD');
     setCurrentDate(dayjs(date));
-    if (!allLists[dateString]) {
-      setAllLists(prev => ({ ...prev, [dateString]: [] }));
+    
+    if (!allLists[dateString] && user?._id) {
+      try {
+        const result = await apiStorage.getGroceryListByDate(user._id, dateString);
+        if (result.success) {
+          setAllLists(prev => ({
+            ...prev,
+            [dateString]: result.list.items
+          }));
+        }
+      } catch (error) {
+        console.error('Error creating/loading list:', error);
+      }
     }
+    
     setShowDatePicker(false);
     setMobileDrawerOpen(false);
   };
@@ -366,9 +591,46 @@ const VoiceGroceryList = () => {
             <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
               Voice Grocery List
             </Typography>
-            <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' } }}>
+            <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' }, mr: 2 }}>
               {formatDateDisplay(currentDateString)}
             </Typography>
+            
+            {/* User Menu */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" sx={{ display: { xs: 'none', sm: 'block' } }}>
+                {user.firstName} {user.lastName}
+              </Typography>
+              <IconButton
+                onClick={handleUserMenuOpen}
+                color="inherit"
+                sx={{ p: 0.5 }}
+              >
+                <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
+                  <AccountCircle />
+                </Avatar>
+              </IconButton>
+            </Box>
+            
+            <Menu
+              anchorEl={userMenuAnchor}
+              open={Boolean(userMenuAnchor)}
+              onClose={handleUserMenuClose}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            >
+              <Box sx={{ px: 2, py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="body2" color="text.secondary">
+                  Signed in as
+                </Typography>
+                <Typography variant="body1" fontWeight="bold">
+                  {user.firstName} {user.lastName}
+                </Typography>
+              </Box>
+              <MenuItem onClick={handleLogout} sx={{ gap: 1, mt: 1 }}>
+                <Logout fontSize="small" />
+                Sign Out
+              </MenuItem>
+            </Menu>
           </Toolbar>
         </AppBar>
 
@@ -406,9 +668,20 @@ const VoiceGroceryList = () => {
           <Toolbar />
           
           <Container maxWidth="md">
+            {/* Loading Indicator */}
+            {dataLoading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            )}
+            
             {/* Error Display */}
             {error && (
-              <Alert severity="error" sx={{ mb: 2 }}>
+              <Alert 
+                severity="error" 
+                sx={{ mb: 2 }}
+                onClose={() => setError('')}
+              >
                 {error}
               </Alert>
             )}
@@ -443,9 +716,9 @@ const VoiceGroceryList = () => {
                   variant="contained"
                   onClick={addManualItem}
                   startIcon={<Add />}
-                  disabled={!manualInput.trim()}
+                  disabled={!manualInput.trim() || loading}
                 >
-                  Add
+                  {loading ? 'Adding...' : 'Add'}
                 </Button>
               </Box>
             </Paper>
@@ -462,8 +735,9 @@ const VoiceGroceryList = () => {
                     onClick={clearCurrentList}
                     color="error"
                     size="small"
+                    disabled={loading}
                   >
-                    Clear List
+                    {loading ? 'Clearing...' : 'Clear List'}
                   </Button>
                 </Box>
               </Paper>
@@ -615,4 +889,12 @@ const VoiceGroceryList = () => {
   );
 };
 
-export default VoiceGroceryList;
+const App = () => {
+  return (
+    <AuthProvider>
+      <VoiceGroceryListApp />
+    </AuthProvider>
+  );
+};
+
+export default App;

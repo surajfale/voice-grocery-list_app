@@ -11,7 +11,8 @@
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.0",
     "@mui/x-date-pickers": "^6.19.4",
-    "dayjs": "^1.11.10"
+    "dayjs": "^1.11.10",
+    "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.3",
