@@ -72,3 +72,6 @@ A modern voice-enabled grocery list application with cloud synchronization.
 ## Development
 
 This codebase was primarily generated using AI-assisted development (Claude Code) for rapid prototyping and implementation.
+
+
+[![Netlify Status](https://api.netlify.com/api/v1/badges/3538ac16-d6ff-4b5b-9c8c-e76335f8cadc/deploy-status)](https://app.netlify.com/projects/voice-grocery-list/deploys)
