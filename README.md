@@ -40,35 +40,27 @@ A modern voice-enabled grocery list application with cloud synchronization.
    cd voice-grocery-list_app
    ```
 
-2. **Install frontend dependencies**
+2. **Install all dependencies (frontend and backend)**
    ```bash
-   npm install
+   pnpm install
    ```
 
-3. **Install backend dependencies**
-   ```bash
-   cd backend
-   npm install
-   cd ..
-   ```
+3. **Set up MongoDB** (follow `MONGODB_SETUP.md`)
 
-4. **Set up MongoDB** (follow `MONGODB_SETUP.md`)
-
-5. **Configure environment variables**
+4. **Configure environment variables**
    ```bash
    cp .env.example .env
    cp backend/.env.example backend/.env
    ```
    Edit both `.env` files with your MongoDB connection string and API URLs.
 
-6. **Start the application**
+5. **Start the application**
    ```bash
    # Terminal 1 - Backend
-   cd backend
-   npm run dev
-   
-   # Terminal 2 - Frontend  
-   npm run dev
+   pnpm --filter backend dev
+
+   # Terminal 2 - Frontend
+   pnpm dev
    ```
 
 ## Deployment

@@ -43,14 +43,22 @@ class ApiStorageService {
     try {
       const response = await fetch(url, defaultOptions);
       const data = await response.json();
-      
+
       if (!response.ok) {
+        // For 404 errors, return the error data instead of throwing
+        if (response.status === 404) {
+          return { success: false, error: data.error || `HTTP ${response.status}` };
+        }
         throw new Error(data.error || `HTTP ${response.status}`);
       }
-      
+
       return data;
     } catch (error) {
-      console.error(`API request failed for ${endpoint}:`, error);
+      // Only log and throw if it's a network error or other unexpected error
+      if (error.name === 'TypeError' || !error.message.includes('HTTP')) {
+        console.error(`API request failed for ${endpoint}:`, error);
+        throw error;
+      }
       throw error;
     }
   }
@@ -234,6 +242,10 @@ class ApiStorageService {
       return { success: false, error: result.error };
     } catch (error) {
       console.error('❌ Error removing grocery item:', error);
+      // Handle specific error cases more gracefully
+      if (error.message.includes('Item not found')) {
+        return { success: false, error: 'This item has already been removed or does not exist.' };
+      }
       return { success: false, error: error.message };
     }
   }

@@ -126,7 +126,7 @@ router.put('/user/:userId/date/:date/items/:itemId', async (req, res) => {
       });
     }
 
-    const item = list.items.id(itemId);
+    const item = list.items.find(item => item.id === itemId);
     if (!item) {
       return res.status(404).json({
         success: false,
@@ -174,7 +174,15 @@ router.delete('/user/:userId/date/:date/items/:itemId', async (req, res) => {
       });
     }
 
-    list.items.id(itemId).remove();
+    const itemIndex = list.items.findIndex(item => item.id === itemId);
+    if (itemIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        error: 'Item not found in grocery list'
+      });
+    }
+
+    list.items.splice(itemIndex, 1);
     await list.save();
 
     res.json({

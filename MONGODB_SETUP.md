@@ -55,21 +55,20 @@ This guide will help you set up MongoDB Atlas and configure the backend for your
    CORS_ORIGIN=http://localhost:5173
    ```
 
-## Step 7: Install Backend Dependencies
+## Step 7: Install All Dependencies
 
 ```bash
-cd backend
-npm install
+pnpm install
 ```
 
 ## Step 8: Start the Backend Server
 
 ```bash
 # Development mode (with auto-restart)
-npm run dev
+pnpm --filter backend dev
 
 # Or production mode
-npm start
+pnpm --filter backend start
 ```
 
 ## Step 9: Configure Frontend Environment
@@ -86,8 +85,8 @@ npm start
 
 ## Step 10: Test the Setup
 
-1. Start the backend server: `cd backend && npm run dev`
-2. Start the frontend: `npm run dev`
+1. Start the backend server: `pnpm --filter backend dev`
+2. Start the frontend: `pnpm dev`
 3. Navigate to your app in the browser
 4. Try registering a new account
 5. Try logging in and creating grocery lists
