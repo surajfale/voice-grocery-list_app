@@ -1,13 +1,48 @@
 [build]
-  publish = "dist"
+  base = ""
   command = "pnpm install --no-frozen-lockfile && pnpm build"
+  publish = "dist"
 
 [build.environment]
   NODE_VERSION = "18.18.0"
   NPM_FLAGS = "--no-frozen-lockfile"
   PNPM_FLAGS = "--no-frozen-lockfile"
 
+# Redirect all routes to index.html for SPA
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Production environment
+[context.production.environment]
+  NODE_ENV = "production"
+
+# Deploy preview environment
+[context.deploy-preview.environment]
+  NODE_ENV = "development"
+
+# Branch deploy environment
+[context.branch-deploy.environment]
+  NODE_ENV = "development"
+
+# Headers for security and performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Cache static assets
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Cache fonts
+[[headers]]
+  for = "/*.woff2"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

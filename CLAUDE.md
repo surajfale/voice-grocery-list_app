@@ -7,7 +7,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Frontend (React + Vite)
 - `pnpm dev` - Start development server (runs on localhost:5173 with --host flag)
 - `pnpm build` - Build production bundle
+- `pnpm build:prod` - Build with production NODE_ENV
+- `pnpm build:analyze` - Build with analyze mode
 - `pnpm preview` - Preview production build locally
+- `pnpm serve` - Serve build on host with port 4173
+- `pnpm deploy:netlify` - Build and deploy to Netlify
+- `pnpm clean` - Remove dist directory
 
 ### Backend (Node.js + Express)
 - `pnpm --filter backend dev` - Start backend in development mode with nodemon (port 3001)
@@ -79,3 +84,10 @@ Frontend uses `.env` with:
 
 ### Migration Notes
 This app was migrated from JSONBin to MongoDB backend. See `MIGRATION_NOTES.md` for details about user data migration implications.
+
+### Development Notes
+- This is a pnpm workspace with frontend (root) and backend packages
+- No linting or testing setup currently configured
+- Uses Emotion for CSS-in-JS with Material-UI
+- Voice recognition requires HTTPS in production
+- Frontend runs on port 5173, backend on port 3001
