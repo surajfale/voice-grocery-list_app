@@ -14,11 +14,17 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.3",
-    "vite": "^4.4.5"
+    "vite": "^4.4.5",
+    "terser": "^5.19.2"
   },
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:prod": "NODE_ENV=production vite build",
+    "build:analyze": "vite build --mode analyze",
+    "clean": "rm -rf dist",
+    "deploy:netlify": "npm run build && netlify deploy --prod",
+    "serve": "vite preview --host --port 4173"
   }
 }
