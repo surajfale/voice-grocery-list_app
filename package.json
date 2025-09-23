@@ -5,6 +5,7 @@
   "dependencies": {
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.0",
+    "@emotion/cache": "^11.11.0",
     "@mui/icons-material": "^5.15.10",
     "@mui/material": "^5.15.10",
     "@mui/x-date-pickers": "^6.19.4",
@@ -15,7 +16,8 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.3",
     "vite": "^4.4.5",
-    "terser": "^5.19.2"
+    "terser": "^5.19.2",
+    "@emotion/babel-plugin": "^11.11.0"
   },
   "scripts": {
     "dev": "vite --host",
