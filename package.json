@@ -24,7 +24,7 @@
     "build:prod": "NODE_ENV=production vite build",
     "build:analyze": "vite build --mode analyze",
     "clean": "rm -rf dist",
-    "deploy:netlify": "npm run build && netlify deploy --prod",
+    "deploy:netlify": "pnpm build && netlify deploy --prod --dir=dist",
     "serve": "vite preview --host --port 4173"
   }
 }
