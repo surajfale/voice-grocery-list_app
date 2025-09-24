@@ -133,3 +133,27 @@ This app was migrated from JSONBin to MongoDB backend. See `MIGRATION_NOTES.md` 
 - **Backend**: Deployed on Railway with MongoDB Atlas
 - **Configuration**: Uses netlify.toml for build optimization and security headers
 - **Environment**: Production-ready with CORS configuration and rate limiting
+
+## Commit Message Guidelines
+
+When making changes to this codebase, always generate conventional commit messages that:
+
+1. **Follow conventional commit format**: `type(scope): description`
+2. **Keep messages concise**: Maximum 2 lines, short and to the point
+3. **Understand project context**: This is a React + Material-UI voice-powered grocery list app with MongoDB backend
+4. **Use appropriate types**:
+   - `feat`: New features (components, API endpoints, UI enhancements)
+   - `fix`: Bug fixes (UI issues, API errors, voice recognition problems)
+   - `style`: UI/styling changes (Material-UI components, responsive design)
+   - `refactor`: Code restructuring without functionality changes
+   - `docs`: Documentation updates (README, CLAUDE.md, comments)
+   - `chore`: Build tools, dependencies, configuration changes
+
+**Examples**:
+- `feat(ui): add footer with copyright and GitHub link`
+- `fix(layout): improve responsive design for mobile devices`
+- `style(footer): position footer at bottom of screen`
+- `refactor(components): extract Footer component from App.jsx`
+
+Always consider the app's core features (voice recognition, grocery categorization, user authentication, theme customization) when crafting commit messages.
+

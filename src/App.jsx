@@ -54,6 +54,7 @@ import ManualInput from './components/ManualInput';
 import StatusAlerts from './components/StatusAlerts';
 import EmptyState from './components/EmptyState';
 import ErrorBoundary from './components/ErrorBoundary';
+import Footer from './components/Footer';
 import { useGroceryList } from './hooks/useGroceryList';
 import groceryIntelligence from './services/groceryIntelligence.js';
 
@@ -680,6 +681,8 @@ const VoiceGroceryList = ({ user, logout }) => {
           component="main"
           sx={{
             flexGrow: 1,
+            display: 'flex',
+            flexDirection: 'column',
             p: { xs: 2, sm: 3, md: 4 },
             minHeight: '100vh',
             background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
@@ -687,68 +690,71 @@ const VoiceGroceryList = ({ user, logout }) => {
         >
           <Toolbar sx={{ minHeight: '72px' }} />
 
-          <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3, md: 4 } }}>
-            {/* Loading Indicator */}
-            {dataLoading && (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                <CircularProgress />
-              </Box>
-            )}
-            
-            {/* Status Alerts */}
-            <StatusAlerts
-              isListening={isListening}
-              transcript={transcript}
-              skippedDuplicates={skippedDuplicates}
-              error={error}
-              onClearError={() => setError('')}
-            />
-
-            {/* Manual Input Section */}
-            <ManualInput
-              onAddItems={handleManualItems}
-              loading={loading}
-            />
-
-            {/* List Stats and Controls */}
-            {currentItems.length > 0 && (
-              <Paper sx={{ p: 2, mb: 3 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    {currentItems.filter(item => !item.completed).length} of {currentItems.length} items remaining
-                  </Typography>
-                  <Button
-                    startIcon={<Clear />}
-                    onClick={clearCurrentList}
-                    color="error"
-                    size="small"
-                    disabled={loading}
-                  >
-                    {loading ? 'Clearing...' : 'Clear List'}
-                  </Button>
+          <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3, md: 4 }, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ flexGrow: 1 }}>
+              {/* Loading Indicator */}
+              {dataLoading && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress />
                 </Box>
-              </Paper>
-            )}
+              )}
 
-            {/* Grocery List Display */}
-            {currentItems.length > 0 ? (
-              <GroceryListDisplay
-                groupedItems={groupedItems}
-                expandedCategories={expandedCategories}
-                onToggleCategory={toggleCategoryExpansion}
-                onToggleItem={handleItemToggle}
-                onRemoveItem={handleItemRemove}
-                onUpdateCategory={handleCategoryChange}
-                categoryList={categoryList}
+              {/* Status Alerts */}
+              <StatusAlerts
+                isListening={isListening}
+                transcript={transcript}
+                skippedDuplicates={skippedDuplicates}
+                error={error}
+                onClearError={() => setError('')}
               />
-            ) : (
-              <EmptyState
-                currentDateString={currentDateString}
-                formatDateDisplay={formatDateDisplay}
+
+              {/* Manual Input Section */}
+              <ManualInput
+                onAddItems={handleManualItems}
+                loading={loading}
               />
-            )}
 
+              {/* List Stats and Controls */}
+              {currentItems.length > 0 && (
+                <Paper sx={{ p: 2, mb: 3 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      {currentItems.filter(item => !item.completed).length} of {currentItems.length} items remaining
+                    </Typography>
+                    <Button
+                      startIcon={<Clear />}
+                      onClick={clearCurrentList}
+                      color="error"
+                      size="small"
+                      disabled={loading}
+                    >
+                      {loading ? 'Clearing...' : 'Clear List'}
+                    </Button>
+                  </Box>
+                </Paper>
+              )}
 
+              {/* Grocery List Display */}
+              {currentItems.length > 0 ? (
+                <GroceryListDisplay
+                  groupedItems={groupedItems}
+                  expandedCategories={expandedCategories}
+                  onToggleCategory={toggleCategoryExpansion}
+                  onToggleItem={handleItemToggle}
+                  onRemoveItem={handleItemRemove}
+                  onUpdateCategory={handleCategoryChange}
+                  categoryList={categoryList}
+                />
+              ) : (
+                <EmptyState
+                  currentDateString={currentDateString}
+                  formatDateDisplay={formatDateDisplay}
+                />
+              )}
+            </Box>
+
+            {/* Footer */}
+            <Footer />
           </Container>
         </Box>
 
