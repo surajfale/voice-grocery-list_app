@@ -208,7 +208,14 @@ const GroceryListDisplay = memo(({
                       >
                         <Checkbox
                           checked={item.completed}
-                          onChange={() => onToggleItem(item.id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            console.log('Checkbox clicked for item:', item.id, 'current completed:', item.completed);
+                            onToggleItem(item.id);
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
                           size="small"
                           disabled={loading}
                           sx={{

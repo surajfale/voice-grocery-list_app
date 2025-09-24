@@ -113,24 +113,30 @@ export class GroceryListService extends BaseService {
    */
   async updateGroceryItem(userId, date, itemId, updates) {
     return this.executeWithRetry(async () => {
-      logger.groceryList('Updating grocery item:', itemId);
-      
-      const result = await this.apiService.makeRequest(`/grocery-lists/user/${userId}/date/${date}/items/${itemId}`, {
+      logger.groceryList('Updating grocery item:', { itemId, updates });
+
+      const endpoint = `/grocery-lists/user/${userId}/date/${date}/items/${itemId}`;
+      logger.groceryList('PUT request to:', endpoint);
+
+      const result = await this.apiService.makeRequest(endpoint, {
         method: 'PUT',
         body: JSON.stringify(updates)
       });
-      
+
+      logger.groceryList('Update item API response:', result);
+
       if (result.success) {
         // Update cache
         this.cache.set(`list_${userId}_${date}`, {
           data: result.list,
           timestamp: Date.now()
         });
-        
+
         logger.groceryList('Item updated successfully');
         return this.createSuccessResponse(result.list, 'Item updated successfully');
       }
-      
+
+      logger.error('Update item failed:', result);
       throw new Error(result.error || 'Failed to update item');
     }, { context: { userId, date, itemId } });
   }

@@ -188,26 +188,47 @@ export const useGroceryList = (user) => {
 
   // Toggle item completion
   const toggleItem = useCallback(async (id) => {
-    if (!user?._id) return;
-    
+    logger.groceryList('Toggle item requested:', id);
+
+    if (!user?._id) {
+      logger.error('Toggle item: User not authenticated');
+      setError('User not authenticated. Please log in again.');
+      return;
+    }
+
     const item = currentItems.find(item => item.id === id);
-    if (!item) return;
-    
+    if (!item) {
+      logger.error('Toggle item: Item not found:', id);
+      setError('Item not found. Please refresh the page.');
+      return;
+    }
+
+    logger.groceryList('Toggling item:', {
+      id,
+      text: item.text,
+      currentCompleted: item.completed,
+      willBeCompleted: !item.completed
+    });
+
     setLoading(true);
     try {
       const result = await apiStorage.updateGroceryItem(
-        user._id, 
-        currentDateString, 
-        id, 
+        user._id,
+        currentDateString,
+        id,
         { completed: !item.completed }
       );
-      
+
+      logger.groceryList('Toggle item API response:', result);
+
       if (result.success) {
         setAllLists(prev => ({
           ...prev,
           [currentDateString]: result.list.items
         }));
+        logger.groceryList('Item toggled successfully:', id);
       } else {
+        logger.error('Toggle item API error:', result.error);
         setError(result.error || 'Failed to update item');
       }
     } catch (error) {
@@ -216,7 +237,7 @@ export const useGroceryList = (user) => {
     } finally {
       setLoading(false);
     }
-  }, [user, currentDateString]);
+  }, [user, currentDateString, currentItems]);
 
   // Remove item
   const removeItem = useCallback(async (id) => {
