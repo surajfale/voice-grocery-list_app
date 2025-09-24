@@ -1,5 +1,8 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import apiStorage from './services/apiStorage.js';
+import logger from './utils/logger.js';
+import useErrorHandler from './hooks/useErrorHandler.js';
 
 const AuthContext = createContext();
 
@@ -15,6 +18,11 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // Use centralized error handling for auth operations
+  const { error: authError, setError: setAuthError, clearError: clearAuthError } = useErrorHandler({
+    autoClearDelay: 10000 // Auto-clear auth errors after 10 seconds
+  });
 
   // Check if user is already logged in on app start
   useEffect(() => {
@@ -36,12 +44,12 @@ export const AuthProvider = ({ children }) => {
               localStorage.removeItem('groceryListUser');
             }
           } catch (error) {
-            console.error('Auth check error:', error);
+            logger.error('Auth check error:', error);
             localStorage.removeItem('groceryListUser');
           }
         }
       } catch (error) {
-        console.error('API storage initialization error:', error);
+        logger.error('API storage initialization error:', error);
       }
       setLoading(false);
     };
@@ -51,27 +59,27 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      console.log('🔐 AuthContext login called with:', email);
+      logger.auth('AuthContext login called with:', email);
       
-      console.log('🔐 Calling apiStorage.loginUser...');
+      logger.auth('Calling apiStorage.loginUser...');
       const result = await apiStorage.loginUser(email, password);
-      console.log('🔐 AuthContext received result:', result);
+      logger.auth('AuthContext received result:', result);
       
       if (result.success) {
-        console.log('🔐 Login successful, setting user data');
+        logger.auth('Login successful, setting user data');
         localStorage.setItem('groceryListUser', JSON.stringify(result.user));
         setUser(result.user);
         setIsAuthenticated(true);
         return { success: true };
       }
       
-      console.log('🔐 Login failed, returning error:', result.error);
+      logger.auth('Login failed, returning error:', result.error);
       return { 
         success: false, 
         error: result.error || 'Login failed'
       };
     } catch (error) {
-      console.error('🔐 AuthContext login error:', error);
+      logger.error('AuthContext login error:', error);
       return {
         success: false,
         error: 'Network error. Please check your connection.'
@@ -102,7 +110,7 @@ export const AuthProvider = ({ children }) => {
         error: result.error || 'Registration failed'
       };
     } catch (error) {
-      console.error('Registration error:', error);
+      logger.error('Registration error:', error);
       return {
         success: false,
         error: 'Network error. Please check your connection.'
@@ -114,13 +122,15 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
+      logger.auth('User logging out');
       localStorage.removeItem('groceryListUser');
       setUser(null);
       setIsAuthenticated(false);
       // Clear any cached data on logout for security
       await apiStorage.clearCache();
+      logger.auth('Logout completed');
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
     }
   };
 
@@ -143,6 +153,8 @@ export const AuthProvider = ({ children }) => {
     logout,
     loading,
     validateUserOperation,
+    authError,
+    clearAuthError,
   };
 
   return (
@@ -150,4 +162,9 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
+};
+
+// PropTypes validation
+AuthProvider.propTypes = {
+  children: PropTypes.node.isRequired
 };

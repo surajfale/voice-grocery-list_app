@@ -12,7 +12,9 @@
       "Bash(pnpm:*)",
       "Bash(netstat:*)",
       "Bash(findstr:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }

@@ -301,6 +301,75 @@ class GroceryIntelligenceService {
   }
 
   /**
+   * Check if a word/phrase is likely a grocery item
+   */
+  isLikelyGroceryItem(text) {
+    const lowerText = text.toLowerCase().trim();
+
+    // Check if it's in our database
+    for (const items of Object.values(this.groceryDatabase)) {
+      if (items.some(item => item.toLowerCase() === lowerText)) {
+        return true;
+      }
+    }
+
+    // Check common corrections
+    if (this.commonCorrections[lowerText]) {
+      return true;
+    }
+
+    // Check if it's similar to known items
+    const bestMatch = this.findBestMatch(lowerText);
+    return bestMatch.similarity > 0.8;
+  }
+
+  /**
+   * Enhanced item processing for voice recognition
+   */
+  processMultipleItems(itemTexts) {
+    return itemTexts.map(text => this.processGroceryItem(text));
+  }
+
+  /**
+   * Smart parsing for space-separated items
+   */
+  parseSpaceSeparatedItems(text) {
+    const words = text.split(/\s+/).filter(w => w.length > 0);
+    if (words.length <= 1) return [text];
+
+    const items = [];
+    let i = 0;
+
+    while (i < words.length) {
+      let bestPhrase = words[i];
+      let bestScore = this.isLikelyGroceryItem(words[i]) ? 0.8 : 0.3;
+
+      // Try 2-word combinations
+      if (i < words.length - 1) {
+        const twoWordPhrase = `${words[i]} ${words[i + 1]}`;
+        if (this.isLikelyGroceryItem(twoWordPhrase)) {
+          bestPhrase = twoWordPhrase;
+          bestScore = 0.9;
+        }
+      }
+
+      // Try 3-word combinations
+      if (i < words.length - 2 && bestScore < 0.9) {
+        const threeWordPhrase = `${words[i]} ${words[i + 1]} ${words[i + 2]}`;
+        if (this.isLikelyGroceryItem(threeWordPhrase)) {
+          bestPhrase = threeWordPhrase;
+          bestScore = 0.95;
+        }
+      }
+
+      items.push(bestPhrase);
+      i += bestPhrase.split(' ').length;
+    }
+
+    return items;
+  }
+
+  /**
    * Get suggestions for similar items
    */
   getSuggestions(input, limit = 5) {
