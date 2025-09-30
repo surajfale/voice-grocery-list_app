@@ -35,6 +35,8 @@ import {
   Palette,
   LightMode,
   DarkMode,
+  FilterList,
+  FilterListOff,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -113,7 +115,8 @@ const VoiceGroceryList = ({ user, logout }) => {
   const [showCongratulations, setShowCongratulations] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
-  
+  const [showOnlyRemaining, setShowOnlyRemaining] = useState(false);
+
   // Responsive design helpers
   const muiTheme = useTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
@@ -137,6 +140,7 @@ const VoiceGroceryList = ({ user, logout }) => {
     toggleItem,
     removeItem,
     updateItemCategory,
+    updateItemText,
     clearCurrentList,
     deleteList,
   } = useGroceryList(user);
@@ -288,20 +292,33 @@ const VoiceGroceryList = ({ user, logout }) => {
   };
 
   /**
+   * Memoized calculation for filtering items based on completion status
+   * Filters items to show only remaining (uncompleted) items when filter is active
+   *
+   * @returns {Array} Array of filtered items
+   */
+  const filteredItems = useMemo(() => {
+    if (showOnlyRemaining) {
+      return currentItems.filter(item => !item.completed);
+    }
+    return currentItems;
+  }, [currentItems, showOnlyRemaining]);
+
+  /**
    * Memoized calculation for grouping items by category
    * Groups current items by their category for display
-   * 
+   *
    * @returns {Object} Object with categories as keys and item arrays as values
    */
   const groupedItems = useMemo(() => {
-    return currentItems.reduce((acc, item) => {
+    return filteredItems.reduce((acc, item) => {
       if (!acc[item.category]) {
         acc[item.category] = [];
       }
       acc[item.category].push(item);
       return acc;
     }, {});
-  }, [currentItems]);
+  }, [filteredItems]);
 
   /**
    * Memoized calculation for sorting dates
@@ -717,34 +734,68 @@ const VoiceGroceryList = ({ user, logout }) => {
               {/* List Stats and Controls */}
               {currentItems.length > 0 && (
                 <Paper sx={{ p: 2, mb: 3 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
                     <Typography variant="body2" color="text.secondary">
                       {currentItems.filter(item => !item.completed).length} of {currentItems.length} items remaining
                     </Typography>
-                    <Button
-                      startIcon={<Clear />}
-                      onClick={clearCurrentList}
-                      color="error"
-                      size="small"
-                      disabled={loading}
-                    >
-                      {loading ? 'Clearing...' : 'Clear List'}
-                    </Button>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        startIcon={showOnlyRemaining ? <FilterListOff /> : <FilterList />}
+                        onClick={() => setShowOnlyRemaining(!showOnlyRemaining)}
+                        variant={showOnlyRemaining ? "contained" : "outlined"}
+                        size="small"
+                        disabled={loading}
+                        sx={{
+                          borderRadius: '8px',
+                          textTransform: 'none',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {showOnlyRemaining ? 'Show All' : 'Remaining Only'}
+                      </Button>
+                      <Button
+                        startIcon={<Clear />}
+                        onClick={clearCurrentList}
+                        color="error"
+                        size="small"
+                        disabled={loading}
+                        sx={{
+                          borderRadius: '8px',
+                          textTransform: 'none',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {loading ? 'Clearing...' : 'Clear List'}
+                      </Button>
+                    </Box>
                   </Box>
                 </Paper>
               )}
 
               {/* Grocery List Display */}
               {currentItems.length > 0 ? (
-                <GroceryListDisplay
-                  groupedItems={groupedItems}
-                  expandedCategories={expandedCategories}
-                  onToggleCategory={toggleCategoryExpansion}
-                  onToggleItem={handleItemToggle}
-                  onRemoveItem={handleItemRemove}
-                  onUpdateCategory={handleCategoryChange}
-                  categoryList={categoryList}
-                />
+                filteredItems.length > 0 ? (
+                  <GroceryListDisplay
+                    groupedItems={groupedItems}
+                    expandedCategories={expandedCategories}
+                    onToggleCategory={toggleCategoryExpansion}
+                    onToggleItem={handleItemToggle}
+                    onRemoveItem={handleItemRemove}
+                    onUpdateCategory={handleCategoryChange}
+                    onUpdateText={updateItemText}
+                    categoryList={categoryList}
+                    loading={loading}
+                  />
+                ) : (
+                  <Paper sx={{ p: 4, textAlign: 'center', borderRadius: '20px' }}>
+                    <Typography variant="h6" color="text.secondary" gutterBottom>
+                      🎉 All items completed!
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      You've checked off all items. Toggle "Show All" to see completed items.
+                    </Typography>
+                  </Paper>
+                )
               ) : (
                 <EmptyState
                   currentDateString={currentDateString}

@@ -266,16 +266,16 @@ export const useGroceryList = (user) => {
   // Update item category
   const updateItemCategory = useCallback(async (id, newCategory) => {
     if (!user?._id) return;
-    
+
     setLoading(true);
     try {
       const result = await apiStorage.updateGroceryItem(
-        user._id, 
-        currentDateString, 
-        id, 
+        user._id,
+        currentDateString,
+        id,
         { category: newCategory }
       );
-      
+
       if (result.success) {
         setAllLists(prev => ({
           ...prev,
@@ -291,6 +291,49 @@ export const useGroceryList = (user) => {
       setLoading(false);
     }
   }, [user, currentDateString]);
+
+  // Update item text
+  const updateItemText = useCallback(async (id, newText) => {
+    if (!user?._id) return;
+
+    // Validate new text
+    if (!newText || newText.trim().length === 0) {
+      setError('Item text cannot be empty');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Process the new text to get the correct category
+      const processed = processGroceryItem(newText.trim());
+
+      // Update both text and category
+      const result = await apiStorage.updateGroceryItem(
+        user._id,
+        currentDateString,
+        id,
+        {
+          text: newText.trim(),
+          category: processed.category
+        }
+      );
+
+      if (result.success) {
+        setAllLists(prev => ({
+          ...prev,
+          [currentDateString]: result.list.items
+        }));
+        logger.groceryList(`Item updated and re-categorized to: ${processed.category}`);
+      } else {
+        setError(result.error || 'Failed to update item');
+      }
+    } catch (error) {
+      logger.error('Error updating item text:', error);
+      setError('Failed to update item. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [user, currentDateString, processGroceryItem]);
 
   // Clear current list
   const clearCurrentList = useCallback(async () => {
@@ -351,17 +394,46 @@ export const useGroceryList = (user) => {
   useEffect(() => {
     const loadUserLists = async () => {
       if (!user?._id) return;
-      
+
       setDataLoading(true);
       try {
         // Load all user lists
         const result = await apiStorage.getUserGroceryLists(user._id);
         if (result.success) {
           const listsMap = {};
+          const today = dayjs().startOf('day');
+          const emptyPastLists = []; // Track empty lists from past dates to delete
+
           result.lists.forEach(list => {
-            listsMap[list.date] = list.items;
+            const listDate = dayjs(list.date);
+            const isEmpty = !list.items || list.items.length === 0;
+            const isPastDate = listDate.isBefore(today, 'day');
+
+            // If the list is empty and from a past date, mark it for deletion
+            if (isEmpty && isPastDate) {
+              emptyPastLists.push(list.date);
+              logger.groceryList(`Marking empty past list for cleanup: ${list.date}`);
+            } else {
+              // Only keep non-empty lists or lists for today/future
+              listsMap[list.date] = list.items;
+            }
           });
+
           setAllLists(listsMap);
+
+          // Auto-cleanup empty past lists
+          if (emptyPastLists.length > 0) {
+            logger.groceryList(`Auto-cleaning ${emptyPastLists.length} empty past list(s)`);
+            // Delete empty past lists in the background
+            emptyPastLists.forEach(async (date) => {
+              try {
+                await apiStorage.deleteGroceryList(user._id, date);
+                logger.groceryList(`Successfully cleaned up empty list: ${date}`);
+              } catch (error) {
+                logger.error(`Failed to cleanup empty list ${date}:`, error);
+              }
+            });
+          }
         } else {
           setError(result.error || 'Failed to load grocery lists');
         }
@@ -372,7 +444,7 @@ export const useGroceryList = (user) => {
         setDataLoading(false);
       }
     };
-    
+
     loadUserLists();
   }, [user]);
   
@@ -417,6 +489,7 @@ export const useGroceryList = (user) => {
     toggleItem,
     removeItem,
     updateItemCategory,
+    updateItemText,
     clearCurrentList,
     deleteList,
   };

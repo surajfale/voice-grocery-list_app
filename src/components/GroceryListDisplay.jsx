@@ -13,24 +13,46 @@ import {
   FormControl,
   Select,
   MenuItem,
+  TextField,
 } from '@mui/material';
-import { ExpandLess, ExpandMore, Edit, Delete } from '@mui/icons-material';
+import { ExpandLess, ExpandMore, Edit, Delete, Check, Close } from '@mui/icons-material';
 
-const GroceryListDisplay = memo(({ 
-  groupedItems, 
-  expandedCategories, 
-  onToggleCategory, 
-  onToggleItem, 
-  onRemoveItem, 
+const GroceryListDisplay = memo(({
+  groupedItems,
+  expandedCategories,
+  onToggleCategory,
+  onToggleItem,
+  onRemoveItem,
   onUpdateCategory,
+  onUpdateText,
   categoryList,
-  loading = false 
+  loading = false
 }) => {
   const [editingCategory, setEditingCategory] = useState(null);
+  const [editingText, setEditingText] = useState(null);
+  const [editedTextValue, setEditedTextValue] = useState('');
 
   const handleUpdateCategory = async (id, newCategory) => {
     await onUpdateCategory(id, newCategory);
     setEditingCategory(null);
+  };
+
+  const handleStartEditText = (item) => {
+    setEditingText(item.id);
+    setEditedTextValue(item.text);
+  };
+
+  const handleSaveText = async (id, originalText) => {
+    if (editedTextValue.trim() && editedTextValue.trim() !== originalText.trim()) {
+      await onUpdateText(id, editedTextValue);
+    }
+    setEditingText(null);
+    setEditedTextValue('');
+  };
+
+  const handleCancelEditText = () => {
+    setEditingText(null);
+    setEditedTextValue('');
   };
 
   // Memoize the grouped items processing
@@ -217,7 +239,7 @@ const GroceryListDisplay = memo(({
                             e.stopPropagation();
                           }}
                           size="small"
-                          disabled={loading}
+                          disabled={loading || editingText === item.id}
                           sx={{
                             '&.Mui-checked': {
                               color: 'success.main',
@@ -228,84 +250,155 @@ const GroceryListDisplay = memo(({
                           }}
                         />
 
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            flex: 1,
-                            fontSize: '0.875rem',
-                            fontWeight: 500,
-                            textDecoration: item.completed ? 'line-through' : 'none',
-                            opacity: item.completed ? 0.7 : 1,
-                            color: item.completed ? 'text.secondary' : 'text.primary',
-                            transition: 'all 0.2s ease',
-                          }}
-                        >
-                          {item.text}
-                        </Typography>
-
-                        {/* Action Buttons */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          {editingCategory === item.id ? (
-                            <FormControl size="small" sx={{ minWidth: 90 }}>
-                              <Select
-                                value={item.category}
-                                onChange={(e) => handleUpdateCategory(item.id, e.target.value)}
-                                disabled={loading}
-                                sx={{
-                                  borderRadius: '8px',
-                                  '& .MuiOutlinedInput-notchedOutline': {
-                                    borderColor: 'divider',
-                                  },
-                                }}
-                              >
-                                {categoryList.map(cat => (
-                                  <MenuItem key={cat} value={cat}>
-                                    <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-                                      {cat}
-                                    </Typography>
-                                  </MenuItem>
-                                ))}
-                              </Select>
-                            </FormControl>
-                          ) : (
-                            <IconButton
-                              size="small"
-                              onClick={() => setEditingCategory(item.id)}
-                              disabled={loading}
-                              sx={{
-                                width: 28,
-                                height: 28,
-                                borderRadius: '8px',
-                                color: item.category === 'Other' ? 'warning.main' : 'text.secondary',
-                                '&:hover': {
-                                  backgroundColor: item.category === 'Other'
-                                    ? 'rgba(245, 158, 11, 0.1)'
-                                    : 'rgba(99, 102, 241, 0.08)',
-                                  color: item.category === 'Other' ? 'warning.dark' : 'primary.main',
-                                },
-                              }}
-                            >
-                              <Edit sx={{ fontSize: '1rem' }} />
-                            </IconButton>
-                          )}
-
-                          <IconButton
+                        {editingText === item.id ? (
+                          <TextField
+                            value={editedTextValue}
+                            onChange={(e) => setEditedTextValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleSaveText(item.id, item.text);
+                              } else if (e.key === 'Escape') {
+                                handleCancelEditText();
+                              }
+                            }}
+                            autoFocus
                             size="small"
-                            onClick={() => onRemoveItem(item.id)}
+                            fullWidth
                             disabled={loading}
                             sx={{
-                              width: 28,
-                              height: 28,
-                              borderRadius: '8px',
-                              color: 'text.secondary',
-                              '&:hover': {
-                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                color: 'error.main',
+                              flex: 1,
+                              '& .MuiInputBase-root': {
+                                fontSize: '0.875rem',
+                                fontWeight: 500,
+                              },
+                            }}
+                          />
+                        ) : (
+                          <Typography
+                            variant="body2"
+                            onClick={() => !loading && handleStartEditText(item)}
+                            sx={{
+                              flex: 1,
+                              fontSize: '0.875rem',
+                              fontWeight: 500,
+                              textDecoration: item.completed ? 'line-through' : 'none',
+                              opacity: item.completed ? 0.7 : 1,
+                              color: item.completed ? 'text.secondary' : 'text.primary',
+                              transition: 'all 0.2s ease',
+                              cursor: loading ? 'default' : 'pointer',
+                              '&:hover': loading ? {} : {
+                                color: 'primary.main',
+                                textDecoration: 'underline',
                               },
                             }}
                           >
-                            <Delete sx={{ fontSize: '1rem' }} />
-                          </IconButton>
+                            {item.text}
+                          </Typography>
+                        )}
+
+                        {/* Action Buttons */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          {editingText === item.id ? (
+                            <>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleSaveText(item.id, item.text)}
+                                disabled={loading || !editedTextValue.trim()}
+                                sx={{
+                                  width: 28,
+                                  height: 28,
+                                  borderRadius: '8px',
+                                  color: 'success.main',
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                  },
+                                }}
+                              >
+                                <Check sx={{ fontSize: '1rem' }} />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                onClick={handleCancelEditText}
+                                disabled={loading}
+                                sx={{
+                                  width: 28,
+                                  height: 28,
+                                  borderRadius: '8px',
+                                  color: 'text.secondary',
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                    color: 'error.main',
+                                  },
+                                }}
+                              >
+                                <Close sx={{ fontSize: '1rem' }} />
+                              </IconButton>
+                            </>
+                          ) : (
+                            <>
+                              {editingCategory === item.id ? (
+                                <FormControl size="small" sx={{ minWidth: 90 }}>
+                                  <Select
+                                    value={item.category}
+                                    onChange={(e) => handleUpdateCategory(item.id, e.target.value)}
+                                    disabled={loading}
+                                    sx={{
+                                      borderRadius: '8px',
+                                      '& .MuiOutlinedInput-notchedOutline': {
+                                        borderColor: 'divider',
+                                      },
+                                    }}
+                                  >
+                                    {categoryList.map(cat => (
+                                      <MenuItem key={cat} value={cat}>
+                                        <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                                          {cat}
+                                        </Typography>
+                                      </MenuItem>
+                                    ))}
+                                  </Select>
+                                </FormControl>
+                              ) : (
+                                <IconButton
+                                  size="small"
+                                  onClick={() => setEditingCategory(item.id)}
+                                  disabled={loading}
+                                  sx={{
+                                    width: 28,
+                                    height: 28,
+                                    borderRadius: '8px',
+                                    color: item.category === 'Other' ? 'warning.main' : 'text.secondary',
+                                    '&:hover': {
+                                      backgroundColor: item.category === 'Other'
+                                        ? 'rgba(245, 158, 11, 0.1)'
+                                        : 'rgba(99, 102, 241, 0.08)',
+                                      color: item.category === 'Other' ? 'warning.dark' : 'primary.main',
+                                    },
+                                  }}
+                                >
+                                  <Edit sx={{ fontSize: '1rem' }} />
+                                </IconButton>
+                              )}
+
+                              <IconButton
+                                size="small"
+                                onClick={() => onRemoveItem(item.id)}
+                                disabled={loading}
+                                sx={{
+                                  width: 28,
+                                  height: 28,
+                                  borderRadius: '8px',
+                                  color: 'text.secondary',
+                                  '&:hover': {
+                                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                    color: 'error.main',
+                                  },
+                                }}
+                              >
+                                <Delete sx={{ fontSize: '1rem' }} />
+                              </IconButton>
+                            </>
+                          )}
                         </Box>
                       </Box>
                     ))}
@@ -330,6 +423,7 @@ GroceryListDisplay.propTypes = {
   onToggleItem: PropTypes.func.isRequired,
   onRemoveItem: PropTypes.func.isRequired,
   onUpdateCategory: PropTypes.func.isRequired,
+  onUpdateText: PropTypes.func.isRequired,
   categoryList: PropTypes.array.isRequired,
   loading: PropTypes.bool
 };
