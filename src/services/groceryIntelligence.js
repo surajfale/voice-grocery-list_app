@@ -95,6 +95,76 @@ class GroceryIntelligenceService {
       this.allItems.push(...items);
     });
 
+    // Asian/Indian pantry item conversions (local names to English)
+    this.asianPantryConversions = {
+      // Hindi/Indian local names
+      'mirchi': 'green chilies',
+      'hari mirchi': 'green chilies',
+      'lal mirchi': 'red chili powder',
+      'jeera': 'cumin',
+      'jira': 'cumin',
+      'haldi': 'turmeric',
+      'dhania': 'coriander',
+      'dhaniya': 'coriander',
+      'methi': 'fenugreek leaves',
+      'hing': 'asafoetida',
+      'heeng': 'asafoetida',
+      'kalonji': 'nigella seeds',
+      'ajwain': 'carom seeds',
+      'saunf': 'fennel seeds',
+      'elaichi': 'cardamom',
+      'dalchini': 'cinnamon',
+      'laung': 'cloves',
+      'tej patta': 'bay leaves',
+      'kali mirch': 'black pepper',
+      'imli': 'tamarind',
+      'gud': 'jaggery',
+      'gur': 'jaggery',
+      'besan': 'gram flour',
+      'atta': 'chapati flour',
+      'suji': 'semolina',
+      'rava': 'semolina',
+      'chana': 'chickpeas',
+      'channa': 'chickpeas',
+      'rajma': 'kidney beans',
+      'rajmah': 'kidney beans',
+      'moong': 'mung beans',
+      'masoor': 'red lentils',
+      'toor': 'pigeon peas',
+      'urad': 'black lentils',
+      'dal': 'lentils',
+      'daal': 'lentils',
+      'dahi': 'yogurt',
+      'panir': 'paneer',
+      'ghee': 'clarified butter',
+      'ghii': 'ghee',
+      'aloo': 'potato',
+      'pyaz': 'onion',
+      'tamatar': 'tomato',
+      'adrak': 'ginger',
+      'lehsun': 'garlic',
+      'pudina': 'mint',
+      'palak': 'spinach',
+      'gobi': 'cauliflower',
+      'phool gobi': 'cauliflower',
+      'band gobi': 'cabbage',
+      'bhindi': 'okra',
+      'baingan': 'eggplant',
+      'brinjal': 'eggplant',
+      'karela': 'bitter melon',
+      'lauki': 'bottle gourd',
+      'tori': 'zucchini',
+      'kaddu': 'pumpkin',
+      'shimla mirch': 'bell pepper',
+      // Chinese/Asian local names
+      'bok choy': 'chinese cabbage',
+      'pak choi': 'chinese cabbage',
+      'yu choy': 'chinese broccoli',
+      'gai lan': 'chinese broccoli',
+      'daikon': 'white radish',
+      'mooli': 'white radish'
+    };
+
     // Common misspellings and their corrections
     this.commonCorrections = {
       // Common spelling mistakes
@@ -109,9 +179,8 @@ class GroceryIntelligenceService {
       'onions': 'onion',
       'garlick': 'garlic',
 
-      // Asian/Indian items
+      // Asian/Indian spelling mistakes
       'basmatti': 'basmati rice',
-      'basmati': 'basmati rice',
       'jasmin rice': 'jasmine rice',
       'tumeric': 'turmeric',
       'cummin': 'cumin',
@@ -120,17 +189,6 @@ class GroceryIntelligenceService {
       'corriander': 'coriander',
       'cilentro': 'cilantro',
       'fenugrek': 'fenugreek',
-      'methi': 'fenugreek leaves',
-      'dal': 'lentils',
-      'daal': 'lentils',
-      'channa': 'chickpeas',
-      'rajmah': 'rajma',
-      'panir': 'paneer',
-      'ghii': 'ghee',
-      'hing': 'asafoetida',
-      'jeera': 'cumin',
-      'haldi': 'turmeric',
-      'dhania': 'coriander',
       'chili': 'chilies',
       'chilli': 'chilies',
       'green chili': 'green chilies',
@@ -188,34 +246,94 @@ class GroceryIntelligenceService {
   }
 
   /**
+   * Check if an item is already correctly spelled and exists in database
+   */
+  isValidGroceryItem(itemText) {
+    const lowerText = itemText.toLowerCase().trim();
+
+    // Check if it's exactly in our database
+    for (const items of Object.values(this.groceryDatabase)) {
+      if (items.some(item => item.toLowerCase() === lowerText)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * Auto-correct item name and suggest category
+   * Only suggests corrections for misspelled or local-named items
    */
   processGroceryItem(itemText) {
     const originalText = itemText.trim();
     const lowerText = originalText.toLowerCase();
 
-    // First check for exact common corrections
-    let correctedText = this.commonCorrections[lowerText] || originalText;
-    let wasCorreted = correctedText !== originalText;
-
-    // If no exact correction found, try fuzzy matching
-    if (!wasCorreted) {
-      const bestMatch = this.findBestMatch(lowerText);
-      if (bestMatch.similarity > 0.8) { // 80% similarity threshold
-        correctedText = bestMatch.item;
-        wasCorreted = true;
-      }
+    // Step 1: Check if it's already a valid item (correctly spelled)
+    if (this.isValidGroceryItem(lowerText)) {
+      // No correction needed - it's already correct
+      const category = this.categorizeItem(lowerText);
+      return {
+        originalText,
+        correctedText: originalText,
+        wasCorreted: false,
+        category,
+        confidence: 'high'
+      };
     }
 
-    // Determine category
-    const category = this.categorizeItem(correctedText.toLowerCase());
+    // Step 2: Check for Asian/Indian pantry item conversions
+    if (this.asianPantryConversions[lowerText]) {
+      const correctedText = this.asianPantryConversions[lowerText];
+      const category = this.categorizeItem(correctedText.toLowerCase());
+      return {
+        originalText,
+        correctedText,
+        wasCorreted: true,
+        category,
+        confidence: 'high',
+        conversionType: 'asian_pantry'
+      };
+    }
 
+    // Step 3: Check for common misspellings
+    if (this.commonCorrections[lowerText]) {
+      const correctedText = this.commonCorrections[lowerText];
+      const category = this.categorizeItem(correctedText.toLowerCase());
+      return {
+        originalText,
+        correctedText,
+        wasCorreted: true,
+        category,
+        confidence: 'high',
+        conversionType: 'spelling'
+      };
+    }
+
+    // Step 4: Try fuzzy matching only for potentially misspelled words
+    const bestMatch = this.findBestMatch(lowerText);
+    // Higher threshold (85%) and ensure it's not already the same word
+    if (bestMatch.similarity > 0.85 && bestMatch.similarity < 1.0) {
+      const category = this.categorizeItem(bestMatch.item.toLowerCase());
+      return {
+        originalText,
+        correctedText: bestMatch.item,
+        wasCorreted: true,
+        category,
+        confidence: 'medium',
+        conversionType: 'fuzzy',
+        similarity: bestMatch.similarity
+      };
+    }
+
+    // Step 5: No correction found - use as-is
+    const category = this.categorizeItem(lowerText);
     return {
       originalText,
-      correctedText,
-      wasCorreted,
+      correctedText: originalText,
+      wasCorreted: false,
       category,
-      confidence: wasCorreted ? 'high' : 'medium'
+      confidence: 'low'
     };
   }
 
@@ -306,11 +424,14 @@ class GroceryIntelligenceService {
   isLikelyGroceryItem(text) {
     const lowerText = text.toLowerCase().trim();
 
-    // Check if it's in our database
-    for (const items of Object.values(this.groceryDatabase)) {
-      if (items.some(item => item.toLowerCase() === lowerText)) {
-        return true;
-      }
+    // Check if it's a valid item in database
+    if (this.isValidGroceryItem(lowerText)) {
+      return true;
+    }
+
+    // Check if it's an Asian/Indian pantry conversion
+    if (this.asianPantryConversions[lowerText]) {
+      return true;
     }
 
     // Check common corrections
@@ -318,9 +439,9 @@ class GroceryIntelligenceService {
       return true;
     }
 
-    // Check if it's similar to known items
+    // Check if it's similar to known items (higher threshold)
     const bestMatch = this.findBestMatch(lowerText);
-    return bestMatch.similarity > 0.8;
+    return bestMatch.similarity > 0.85;
   }
 
   /**

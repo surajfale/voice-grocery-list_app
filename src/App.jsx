@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   ThemeProvider,
   CssBaseline,
@@ -37,6 +37,12 @@ import {
   DarkMode,
   FilterList,
   FilterListOff,
+  Download,
+  Share,
+  Image,
+  PictureAsPdf,
+  TextSnippet,
+  ArrowDropDown,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -57,8 +63,10 @@ import StatusAlerts from './components/StatusAlerts';
 import EmptyState from './components/EmptyState';
 import ErrorBoundary from './components/ErrorBoundary';
 import Footer from './components/Footer';
+import PrintableList from './components/PrintableList';
 import { useGroceryList } from './hooks/useGroceryList';
 import groceryIntelligence from './services/groceryIntelligence.js';
+import { shareList, downloadListAsImage, downloadListAsPDF } from './utils/downloadList';
 
 /**
  * Main Voice Grocery List Application Component
@@ -116,6 +124,10 @@ const VoiceGroceryList = ({ user, logout }) => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [showOnlyRemaining, setShowOnlyRemaining] = useState(false);
+  const [downloadMenuAnchor, setDownloadMenuAnchor] = useState(null);
+
+  // Ref for the printable list component
+  const printableListRef = useRef(null);
 
   // Responsive design helpers
   const muiTheme = useTheme();
@@ -184,6 +196,62 @@ const VoiceGroceryList = ({ user, logout }) => {
   const handleLogout = () => {
     handleUserMenuClose();
     logout();
+  };
+
+  /**
+   * Handle download menu opening
+   */
+  const handleDownloadMenuOpen = (event) => {
+    setDownloadMenuAnchor(event.currentTarget);
+  };
+
+  /**
+   * Handle download menu closing
+   */
+  const handleDownloadMenuClose = () => {
+    setDownloadMenuAnchor(null);
+  };
+
+  /**
+   * Handle share action (Web Share API on mobile, download on desktop)
+   */
+  const handleShare = async () => {
+    handleDownloadMenuClose();
+    if (printableListRef.current) {
+      try {
+        await shareList(printableListRef.current, currentDateString, formatDateDisplay);
+      } catch (error) {
+        setError('Failed to share list. Please try downloading instead.');
+      }
+    }
+  };
+
+  /**
+   * Handle download as image
+   */
+  const handleDownloadImage = async () => {
+    handleDownloadMenuClose();
+    if (printableListRef.current) {
+      try {
+        await downloadListAsImage(printableListRef.current, currentDateString);
+      } catch (error) {
+        setError('Failed to download image. Please try again.');
+      }
+    }
+  };
+
+  /**
+   * Handle download as PDF
+   */
+  const handleDownloadPDF = async () => {
+    handleDownloadMenuClose();
+    if (printableListRef.current) {
+      try {
+        await downloadListAsPDF(printableListRef.current, currentDateString);
+      } catch (error) {
+        setError('Failed to download PDF. Please try again.');
+      }
+    }
   };
 
   // Get categories from intelligent service
@@ -738,7 +806,7 @@ const VoiceGroceryList = ({ user, logout }) => {
                     <Typography variant="body2" color="text.secondary">
                       {currentItems.filter(item => !item.completed).length} of {currentItems.length} items remaining
                     </Typography>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                       <Button
                         startIcon={showOnlyRemaining ? <FilterListOff /> : <FilterList />}
                         onClick={() => setShowOnlyRemaining(!showOnlyRemaining)}
@@ -753,6 +821,63 @@ const VoiceGroceryList = ({ user, logout }) => {
                       >
                         {showOnlyRemaining ? 'Show All' : 'Remaining Only'}
                       </Button>
+                      <Button
+                        startIcon={<Download />}
+                        endIcon={<ArrowDropDown />}
+                        onClick={handleDownloadMenuOpen}
+                        variant="outlined"
+                        size="small"
+                        disabled={loading}
+                        sx={{
+                          borderRadius: '8px',
+                          textTransform: 'none',
+                          fontWeight: 600,
+                        }}
+                      >
+                        Download
+                      </Button>
+                      <Menu
+                        anchorEl={downloadMenuAnchor}
+                        open={Boolean(downloadMenuAnchor)}
+                        onClose={handleDownloadMenuClose}
+                        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                        PaperProps={{
+                          sx: {
+                            mt: 1,
+                            borderRadius: '12px',
+                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+                          }
+                        }}
+                      >
+                        <MenuItem onClick={handleShare} sx={{ gap: 2, px: 2, py: 1.5 }}>
+                          <Share fontSize="small" />
+                          <Box>
+                            <Typography variant="body2" fontWeight={600}>Share Image</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Best for mobile sharing
+                            </Typography>
+                          </Box>
+                        </MenuItem>
+                        <MenuItem onClick={handleDownloadImage} sx={{ gap: 2, px: 2, py: 1.5 }}>
+                          <Image fontSize="small" />
+                          <Box>
+                            <Typography variant="body2" fontWeight={600}>Download Image</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              PNG format
+                            </Typography>
+                          </Box>
+                        </MenuItem>
+                        <MenuItem onClick={handleDownloadPDF} sx={{ gap: 2, px: 2, py: 1.5 }}>
+                          <PictureAsPdf fontSize="small" />
+                          <Box>
+                            <Typography variant="body2" fontWeight={600}>Download PDF</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Professional format
+                            </Typography>
+                          </Box>
+                        </MenuItem>
+                      </Menu>
                       <Button
                         startIcon={<Clear />}
                         onClick={clearCurrentList}
@@ -807,6 +932,17 @@ const VoiceGroceryList = ({ user, logout }) => {
             {/* Footer */}
             <Footer />
           </Container>
+        </Box>
+
+        {/* Hidden Printable List Component for Export */}
+        <Box sx={{ position: 'absolute', left: '-9999px', top: 0 }}>
+          <PrintableList
+            ref={printableListRef}
+            items={currentItems}
+            dateString={currentDateString}
+            formatDateDisplay={formatDateDisplay}
+            theme={theme}
+          />
         </Box>
 
         {/* Voice Recognition Component */}

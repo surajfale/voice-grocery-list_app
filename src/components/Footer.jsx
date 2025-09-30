@@ -14,7 +14,7 @@ const Footer = () => {
       }}
     >
       <Typography variant="body2" color="text.secondary">
-        © 2025 Developer Tools. Built by{' '}
+        © 2025 Grocery List App. Built by{' '}
         <Link
           href="https://github.com/surajfale"
           target="_blank"
