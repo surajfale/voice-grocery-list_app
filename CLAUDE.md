@@ -72,6 +72,13 @@ pnpm dev
 - **apiStorage.js** / **LegacyApiStorage.js** - API client services (legacy and current)
 - **groceryIntelligence.js** - Enhanced grocery intelligence with smart item parsing, categorization, spell correction, and space-separated item detection
 
+### Share / Export utilities
+
+- `shareList` - Uses the Web Share API when available to share a rendered list (image/pdf) from the client on supported devices/browsers.
+- `downloadListAsImage` - Renders the printable list area and downloads it as a PNG/JPEG image.
+- `downloadListAsPDF` - Renders the printable list area and downloads it as a PDF file.
+- `PrintableList` - A component wired to a `printableListRef` that provides the formatted list layout used by the export utilities.
+
 ### Custom Hooks (src/hooks/)
 - **useGroceryList.js** - Grocery list state management and operations
 - **useErrorHandler.js** - Centralized error handling and user notifications
@@ -127,6 +134,8 @@ This app was migrated from JSONBin to MongoDB backend. See `MIGRATION_NOTES.md` 
 - Dependencies are optimized (removed unused prop-types)
 - Includes netlify.toml for optimized Netlify deployment
 - Comprehensive deployment documentation available (DEPLOYMENT.md)
+
+
 
 ### Deployment
 - **Frontend**: Deployed on Netlify with automatic builds

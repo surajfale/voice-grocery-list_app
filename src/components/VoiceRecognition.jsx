@@ -61,7 +61,7 @@ const VoiceRecognition = memo(({ onItemsDetected, disabled = false }) => {
   }, []);
 
   // Intelligent word splitting for space-separated grocery items
-  function intelligentWordSplit(text) {
+  const intelligentWordSplit = useCallback((text) => {
     // Use the enhanced parsing from grocery intelligence
     const items = groceryIntelligence.parseSpaceSeparatedItems(text);
 
@@ -76,7 +76,7 @@ const VoiceRecognition = memo(({ onItemsDetected, disabled = false }) => {
     }
 
     return items;
-  }
+  }, []);
 
   // speech initialization moved later (after helpers and refs are declared)
 
@@ -201,7 +201,9 @@ const VoiceRecognition = memo(({ onItemsDetected, disabled = false }) => {
       recognitionRef.current.onend = () => {
         setIsListening(false);
         // Process items when recognition ends naturally
-        if (processAccumulatedItemsRef.current) processAccumulatedItemsRef.current();
+        if (processAccumulatedItemsRef.current) {
+          processAccumulatedItemsRef.current();
+        }
       };
     }
   }, [fullTranscript]);
@@ -222,8 +224,10 @@ const VoiceRecognition = memo(({ onItemsDetected, disabled = false }) => {
       isManualStopRef.current = true;
 
       // Process items immediately when user stops manually
-  logger.voice('User stopped listening manually, processing immediately');
-  if (processAccumulatedItemsRef.current) processAccumulatedItemsRef.current();
+      logger.voice('User stopped listening manually, processing immediately');
+      if (processAccumulatedItemsRef.current) {
+        processAccumulatedItemsRef.current();
+      }
 
       recognitionRef.current.stop();
       setIsListening(false);

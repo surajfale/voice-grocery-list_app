@@ -28,6 +28,7 @@ Say your grocery items naturally and the app intelligently separates them:
 - 🔍 **Duplicate Detection** - Prevents adding the same items twice
 - 📱 **Responsive Design** - Optimized for desktop and mobile devices
 - 🎨 **Dynamic Theming** - Dark/light mode with customizable color schemes
+ - 📤 **Share & Export** - Share lists via the Web Share API on supported devices and download lists as an image or PDF using built-in utilities (`shareList`, `downloadListAsImage`, `downloadListAsPDF`). A printable list component (`PrintableList`) is available and wired to a `printableListRef` for easy export/print workflows.
 
 ### User Experience
 - 🔐 **Secure Authentication** - Protected user accounts with validation
@@ -149,7 +150,8 @@ pnpm --filter backend start  # Production server
 - **[CLAUDE.md](./CLAUDE.md)** - Developer guidance for Claude Code
 - **[MONGODB_SETUP.md](./MONGODB_SETUP.md)** - Database setup instructions
 
-## 🛠️ Development
+
+## �🛠️ Development
 
 ### Available Scripts
 ```bash
