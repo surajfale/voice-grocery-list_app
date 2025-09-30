@@ -6,17 +6,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Frontend (React + Vite)
 - `pnpm dev` - Start development server (runs on localhost:5173 with --host flag)
-- `pnpm build` - Build production bundle
-- `pnpm build:prod` - Build with production NODE_ENV
+- `pnpm build` - Build production bundle with linting (max 10 warnings)
+- `pnpm build:ci` - Build without linting (for CI/CD)
+- `pnpm build:prod` - Build with production NODE_ENV and linting
 - `pnpm build:analyze` - Build with analyze mode
 - `pnpm preview` - Preview production build locally
 - `pnpm serve` - Serve build on host with port 4173
 - `pnpm deploy:netlify` - Build and deploy to Netlify
 - `pnpm clean` - Remove dist directory
+- `pnpm lint` - Run ESLint on src/ (max 10 warnings)
+- `pnpm lint:fix` - Auto-fix ESLint issues in src/
+- `pnpm lint:backend` - Run ESLint on backend code
+- `pnpm lint:backend:fix` - Auto-fix backend ESLint issues
 
 ### Backend (Node.js + Express)
 - `pnpm --filter backend dev` - Start backend in development mode with nodemon (port 3001)
 - `pnpm --filter backend start` - Start backend in production mode
+- `pnpm --filter backend lint` - Run ESLint on backend (max 5 warnings)
+- `pnpm --filter backend lint:fix` - Auto-fix backend ESLint issues
 - `pnpm install` - Install all dependencies (frontend and backend)
 
 ### Full Development Setup
@@ -72,12 +79,11 @@ pnpm dev
 - **apiStorage.js** / **LegacyApiStorage.js** - API client services (legacy and current)
 - **groceryIntelligence.js** - Enhanced grocery intelligence with smart item parsing, categorization, spell correction, and space-separated item detection
 
-### Share / Export utilities
-
-- `shareList` - Uses the Web Share API when available to share a rendered list (image/pdf) from the client on supported devices/browsers.
-- `downloadListAsImage` - Renders the printable list area and downloads it as a PNG/JPEG image.
-- `downloadListAsPDF` - Renders the printable list area and downloads it as a PDF file.
-- `PrintableList` - A component wired to a `printableListRef` that provides the formatted list layout used by the export utilities.
+### Share / Export Utilities (src/utils/downloadList.js)
+- **shareList** - Uses the Web Share API when available to share a rendered list (image/pdf) from the client on supported devices/browsers
+- **downloadListAsImage** - Renders the printable list area and downloads it as a PNG/JPEG image using html2canvas
+- **downloadListAsPDF** - Renders the printable list area and downloads it as a PDF file using jsPDF
+- **PrintableList.jsx** - A component wired to a `printableListRef` that provides the formatted list layout used by the export utilities
 
 ### Custom Hooks (src/hooks/)
 - **useGroceryList.js** - Grocery list state management and operations
@@ -127,13 +133,15 @@ This app was migrated from JSONBin to MongoDB backend. See `MIGRATION_NOTES.md` 
 
 ### Development Notes
 - This is a pnpm workspace with frontend (root) and backend packages
-- No linting or testing setup currently configured
+- ESLint configured: frontend (max 10 warnings), backend (max 5 warnings)
+- No testing setup currently configured
 - Uses Emotion for CSS-in-JS with Material-UI
-- Voice recognition requires HTTPS in production
+- Voice recognition requires HTTPS in production (uses Web Speech API)
 - Frontend runs on port 5173, backend on port 3001
 - Dependencies are optimized (removed unused prop-types)
 - Includes netlify.toml for optimized Netlify deployment
 - Comprehensive deployment documentation available (DEPLOYMENT.md)
+- Both frontend and backend use ESM (type: "module" in package.json)
 
 
 
@@ -165,4 +173,14 @@ When making changes to this codebase, always generate conventional commit messag
 - `refactor(components): extract Footer component from App.jsx`
 
 Always consider the app's core features (voice recognition, grocery categorization, user authentication, theme customization) when crafting commit messages.
+
+## Important Behavioral Guidelines
+
+When working in this codebase:
+1. **Always prefer editing existing files** over creating new ones
+2. **Never proactively create documentation files** (*.md) unless explicitly requested
+3. **Use ESLint before committing**: Run `pnpm lint` (frontend) or `pnpm --filter backend lint` (backend)
+4. **Follow the existing service architecture**: Use ServiceManager for orchestration, extend BaseService for new services
+5. **Test voice features in HTTPS**: Voice recognition only works in secure contexts (localhost or HTTPS)
+6. **Maintain the grocery intelligence database**: When adding items, ensure proper categorization in groceryIntelligence.js
 

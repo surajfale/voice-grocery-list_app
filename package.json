@@ -34,6 +34,7 @@
   "scripts": {
     "dev": "vite --host",
     "build": "pnpm lint && vite build",
+  "build:ci": "vite build",
     "preview": "vite preview",
     "build:prod": "NODE_ENV=production pnpm lint && vite build",
     "build:analyze": "vite build --mode analyze",

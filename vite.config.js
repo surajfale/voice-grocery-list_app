@@ -7,11 +7,15 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: false,
     target: 'es2020',
-    minify: false,
+    minify: 'terser',
+    commonjsOptions: {
+      transformMixedEsModules: true,
+      include: [/node_modules/],
+      defaultIsModuleExports: 'auto'
+    },
     rollupOptions: {
       output: {
-        // Put everything in one chunk to avoid module loading order issues
-        manualChunks: () => 'index'
+        manualChunks: undefined
       }
     }
   },
@@ -28,11 +32,14 @@ export default defineConfig({
       '@emotion/cache',
       '@mui/material',
       '@mui/icons-material',
-      '@mui/x-date-pickers'
-    ]
-  },
-  define: {
-    global: 'globalThis',
+      '@mui/x-date-pickers',
+      'validator'
+    ],
+    esbuildOptions: {
+      define: {
+        global: 'globalThis'
+      }
+    }
   },
   envPrefix: 'VITE_'
 })
