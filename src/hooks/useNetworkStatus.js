@@ -88,7 +88,7 @@ export const useNetworkStatus = () => {
    * @returns {string} Quality assessment ('slow', 'medium', 'fast')
    */
   const getConnectionQuality = useCallback(() => {
-    if (!isOnline) return 'offline';
+    if (!isOnline) {return 'offline';}
     
     // Use effective type if available
     if (effectiveType !== 'unknown') {
@@ -107,8 +107,8 @@ export const useNetworkStatus = () => {
 
     // Fallback to downlink speed
     if (downlink > 0) {
-      if (downlink < 1) return 'slow';
-      if (downlink < 3) return 'medium';
+      if (downlink < 1) {return 'slow';}
+      if (downlink < 3) {return 'medium';}
       return 'fast';
     }
 
@@ -122,7 +122,7 @@ export const useNetworkStatus = () => {
    * @returns {boolean} Whether connection is suitable for voice features
    */
   const isSuitableForVoice = useCallback(() => {
-    if (!isOnline) return false;
+    if (!isOnline) {return false;}
     
     const quality = getConnectionQuality();
     return quality === 'fast' || quality === 'medium';
@@ -134,7 +134,7 @@ export const useNetworkStatus = () => {
    * @returns {string} Human-readable connection status
    */
   const getStatusMessage = useCallback(() => {
-    if (!isOnline) return 'You\'re offline';
+    if (!isOnline) {return 'You\'re offline';}
     
     const quality = getConnectionQuality();
     switch (quality) {

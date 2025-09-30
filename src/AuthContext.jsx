@@ -20,7 +20,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   
   // Use centralized error handling for auth operations
-  const { error: authError, setError: setAuthError, clearError: clearAuthError } = useErrorHandler({
+  const { error: authError, setError: _setAuthError, clearError: clearAuthError } = useErrorHandler({
     autoClearDelay: 10000 // Auto-clear auth errors after 10 seconds
   });
 

@@ -7,7 +7,7 @@ import { Box, Typography } from '@mui/material';
  * Renders a styled grocery list suitable for export as image or PDF
  * This component is rendered off-screen for capturing
  */
-const PrintableList = React.forwardRef(({ items, dateString, formatDateDisplay, theme }, ref) => {
+const PrintableList = React.forwardRef(({ items, dateString, formatDateDisplay, theme: _theme }, ref) => {
   // Group items by category
   const groupedItems = items.reduce((acc, item) => {
     if (!acc[item.category]) {
@@ -105,7 +105,7 @@ const PrintableList = React.forwardRef(({ items, dateString, formatDateDisplay, 
       </Box>
 
       {/* Items by Category */}
-      {Object.entries(groupedItems).map(([category, categoryItems], categoryIndex) => (
+  {Object.entries(groupedItems).map(([category, categoryItems], _categoryIndex) => (
         <Box key={category} sx={{ mb: 4 }}>
           <Box
             sx={{
@@ -175,6 +175,30 @@ const PrintableList = React.forwardRef(({ items, dateString, formatDateDisplay, 
                     <Typography sx={{ fontSize: '16px', color: '#ffffff' }}>✓</Typography>
                   )}
                 </Box>
+                {item.count && item.count > 1 && (
+                  <Box
+                    sx={{
+                      minWidth: '32px',
+                      height: '24px',
+                      px: 1,
+                      backgroundColor: '#eff6ff',
+                      borderRadius: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: '14px',
+                        fontWeight: 700,
+                        color: '#3B82F6',
+                      }}
+                    >
+                      ×{item.count}
+                    </Typography>
+                  </Box>
+                )}
                 <Typography
                   sx={{
                     fontSize: '16px',

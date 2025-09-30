@@ -20,26 +20,26 @@ class ErrorBoundary extends React.Component {
     };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError(_error) {
     // Update state so the next render will show the fallback UI
     return { hasError: true };
   }
 
-  componentDidCatch(error, errorInfo) {
+  componentDidCatch(_error, errorInfo) {
     // Generate unique error ID for tracking
     const errorId = `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     // Log error details
     logger.error('Error Boundary caught an error:', {
-      error: error.message,
-      stack: error.stack,
+      error: _error?.message,
+      stack: _error?.stack,
       componentStack: errorInfo.componentStack,
       errorId
     });
 
     // Update state with error details
     this.setState({
-      error,
+      error: _error,
       errorInfo,
       errorId
     });
@@ -47,7 +47,7 @@ class ErrorBoundary extends React.Component {
     // Report to external error tracking service if available
     if (window.gtag) {
       window.gtag('event', 'exception', {
-        description: error.message,
+        description: _error?.message,
         fatal: false,
         custom_map: {
           error_id: errorId
@@ -121,7 +121,7 @@ class ErrorBoundary extends React.Component {
               </Alert>
             )}
 
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {import.meta.env && import.meta.env.DEV && this.state.error && (
               <Alert severity="error" sx={{ mb: 3, textAlign: 'left' }}>
                 <Typography variant="subtitle2" gutterBottom>
                   Development Error Details:

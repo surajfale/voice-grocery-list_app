@@ -1,12 +1,12 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-require('dotenv').config();
+import express from 'express';
+import mongoose from 'mongoose';
+import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import 'dotenv/config';
 
-const authRoutes = require('./routes/auth');
-const groceryListRoutes = require('./routes/groceryLists');
+import authRoutes from './routes/auth.js';
+import groceryListRoutes from './routes/groceryLists.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -62,7 +62,7 @@ mongoose.connect(process.env.MONGODB_URI)
 })
 .catch((error) => {
   console.error('❌ MongoDB connection error:', error);
-  process.exit(1);
+  throw error;
 });
 
 // Routes
@@ -79,12 +79,12 @@ app.get('/api/health', (req, res) => {
 });
 
 // Error handling middleware
-app.use((error, req, res, next) => {
+app.use((error, req, res, _next) => {
   console.error('Server error:', error);
   res.status(500).json({
     success: false,
-    error: process.env.NODE_ENV === 'production' 
-      ? 'Internal server error' 
+    error: process.env.NODE_ENV === 'production'
+      ? 'Internal server error'
       : error.message
   });
 });

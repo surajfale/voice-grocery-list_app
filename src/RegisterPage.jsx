@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import isEmail from 'validator/lib/isEmail';
+import PropTypes from 'prop-types';
 import {
   Box,
   Paper,
@@ -59,9 +61,8 @@ const RegisterPage = ({ onSwitchToLogin }) => {
       return 'Email is required';
     }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    // Use validator's isEmail for robust validation (small, well-known library)
+    if (!isEmail(email)) {
       return 'Please enter a valid email address';
     }
 
@@ -73,9 +74,11 @@ const RegisterPage = ({ onSwitchToLogin }) => {
       return 'Password must be at least 6 characters long';
     }
 
+    /* eslint-disable security/detect-possible-timing-attacks */
     if (password !== confirmPassword) {
       return 'Passwords do not match';
     }
+    /* eslint-enable security/detect-possible-timing-attacks */
 
     return null;
   };
@@ -104,7 +107,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
         setError(result.error);
       }
       // If successful, AuthContext will handle navigation
-    } catch (err) {
+    } catch {
       setError('Registration failed. Please try again.');
     } finally {
       setLoading(false);
@@ -404,6 +407,10 @@ const RegisterPage = ({ onSwitchToLogin }) => {
       </Container>
     </Box>
   );
+};
+
+RegisterPage.propTypes = {
+  onSwitchToLogin: PropTypes.func.isRequired,
 };
 
 export default RegisterPage;

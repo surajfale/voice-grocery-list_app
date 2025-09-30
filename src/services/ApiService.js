@@ -37,16 +37,20 @@ export class ApiService extends BaseService {
       ...options
     };
 
-    // Add timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-    requestOptions.signal = controller.signal;
+    // Add timeout if AbortController is available (browser environments)
+    let controller;
+    let timeoutId;
+    if (typeof globalThis !== 'undefined' && typeof globalThis.AbortController !== 'undefined') {
+      controller = new globalThis.AbortController();
+      timeoutId = setTimeout(() => controller.abort(), this.timeout);
+      requestOptions.signal = controller.signal;
+    }
 
     try {
       logger.debug(`API Request: ${requestOptions.method} ${url}`);
       
-      const response = await fetch(url, requestOptions);
-      clearTimeout(timeoutId);
+    const response = await fetch(url, requestOptions);
+    if (timeoutId) { clearTimeout(timeoutId); }
       
       const data = await response.json();
       
@@ -59,7 +63,7 @@ export class ApiService extends BaseService {
       return data;
       
     } catch (error) {
-      clearTimeout(timeoutId);
+      if (timeoutId) { clearTimeout(timeoutId); }
       
       if (error.name === 'AbortError') {
         throw new Error(`Request timeout for ${endpoint}`);

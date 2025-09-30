@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import dayjs from 'dayjs';
 import apiStorage from '../services/apiStorage.js';
 import groceryIntelligence from '../services/groceryIntelligence.js';
@@ -16,13 +16,14 @@ export const useGroceryList = (user) => {
   const [skippedDuplicates, setSkippedDuplicates] = useState([]);
   
   // Use centralized error handling
-  const { error, setError, clearError, handleAsyncOperation } = useErrorHandler({
+  const { error, setError, clearError, handleAsyncOperation: _handleAsyncOperation } = useErrorHandler({
     autoClearDelay: 8000 // Auto-clear errors after 8 seconds
   });
 
   // Get current list items
   const currentDateString = currentDate.format('YYYY-MM-DD');
-  const currentItems = allLists[currentDateString] || [];
+  // Memoize currentItems so its reference is stable for callbacks
+  const currentItems = useMemo(() => allLists[currentDateString] || [], [allLists, currentDateString]);
 
   // Process items with intelligent system
   const processGroceryItem = useCallback((itemText) => {
@@ -38,7 +39,7 @@ export const useGroceryList = (user) => {
 
   // Add items to list
   const addItemsToList = useCallback(async (newItems, skipCorrection = false) => {
-    if (!user?._id) return;
+    if (!user?._id) {return;}
 
     try {
       // Validate user permission
@@ -79,7 +80,8 @@ export const useGroceryList = (user) => {
         const itemData = {
           text: finalText,
           category: processed.category,
-          completed: false
+          completed: false,
+          count: 1
         };
 
         const result = await apiStorage.addGroceryItem(user._id, currentDateString, itemData);
@@ -110,7 +112,7 @@ export const useGroceryList = (user) => {
     } finally {
       setLoading(false);
     }
-  }, [currentDateString, processGroceryItem, user, isDuplicate]);
+  }, [currentDateString, processGroceryItem, user, isDuplicate, setError]);
 
   // Handle correction acceptance
   const acceptCorrections = useCallback(async () => {
@@ -146,7 +148,7 @@ export const useGroceryList = (user) => {
       setLoading(false);
       setPendingCorrections([]);
     }
-  }, [pendingCorrections, user, currentDateString, isDuplicate]);
+  }, [pendingCorrections, user, currentDateString, isDuplicate, setError]);
 
   // Handle correction rejection (use original)
   const rejectCorrections = useCallback(async () => {
@@ -184,7 +186,7 @@ export const useGroceryList = (user) => {
       setLoading(false);
       setPendingCorrections([]);
     }
-  }, [pendingCorrections, user, currentDateString, isDuplicate, processGroceryItem]);
+  }, [pendingCorrections, user, currentDateString, isDuplicate, processGroceryItem, setError]);
 
   // Toggle item completion
   const toggleItem = useCallback(async (id) => {
@@ -237,11 +239,11 @@ export const useGroceryList = (user) => {
     } finally {
       setLoading(false);
     }
-  }, [user, currentDateString, currentItems]);
+  }, [user, currentDateString, currentItems, setError]);
 
   // Remove item
   const removeItem = useCallback(async (id) => {
-    if (!user?._id) return;
+    if (!user?._id) {return;}
     
     setLoading(true);
     try {
@@ -261,11 +263,11 @@ export const useGroceryList = (user) => {
     } finally {
       setLoading(false);
     }
-  }, [user, currentDateString]);
+  }, [user, currentDateString, setError]);
 
   // Update item category
   const updateItemCategory = useCallback(async (id, newCategory) => {
-    if (!user?._id) return;
+    if (!user?._id) {return;}
 
     setLoading(true);
     try {
@@ -290,11 +292,11 @@ export const useGroceryList = (user) => {
     } finally {
       setLoading(false);
     }
-  }, [user, currentDateString]);
+  }, [user, currentDateString, setError]);
 
   // Update item text
   const updateItemText = useCallback(async (id, newText) => {
-    if (!user?._id) return;
+    if (!user?._id) {return;}
 
     // Validate new text
     if (!newText || newText.trim().length === 0) {
@@ -333,11 +335,48 @@ export const useGroceryList = (user) => {
     } finally {
       setLoading(false);
     }
-  }, [user, currentDateString, processGroceryItem]);
+  }, [user, currentDateString, processGroceryItem, setError]);
+
+  // Update item count
+  const updateItemCount = useCallback(async (id, newCount) => {
+    if (!user?._id) {return;}
+
+    // Validate new count
+    const countNum = parseInt(newCount, 10);
+    if (isNaN(countNum) || countNum < 1) {
+      setError('Count must be at least 1');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await apiStorage.updateGroceryItem(
+        user._id,
+        currentDateString,
+        id,
+        { count: countNum }
+      );
+
+      if (result.success) {
+        setAllLists(prev => ({
+          ...prev,
+          [currentDateString]: result.list.items
+        }));
+        logger.groceryList(`Item count updated to: ${countNum}`);
+      } else {
+        setError(result.error || 'Failed to update count');
+      }
+    } catch (error) {
+      logger.error('Error updating item count:', error);
+      setError('Failed to update count. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [user, currentDateString, setError]);
 
   // Clear current list
   const clearCurrentList = useCallback(async () => {
-    if (!user?._id) return;
+    if (!user?._id) {return;}
     
     setLoading(true);
     try {
@@ -357,11 +396,11 @@ export const useGroceryList = (user) => {
     } finally {
       setLoading(false);
     }
-  }, [user, currentDateString]);
+  }, [user, currentDateString, setError]);
 
   // Delete list
   const deleteList = useCallback(async (date) => {
-    if (!user?._id) return;
+    if (!user?._id) {return;}
     
     setLoading(true);
     try {
@@ -388,12 +427,13 @@ export const useGroceryList = (user) => {
     } finally {
       setLoading(false);
     }
-  }, [user, currentDateString]);
+  }, [user, currentDateString, setError]);
+  // include setError for stable reference
 
   // Load user's grocery lists on component mount and when user changes
   useEffect(() => {
     const loadUserLists = async () => {
-      if (!user?._id) return;
+      if (!user?._id) {return;}
 
       setDataLoading(true);
       try {
@@ -446,12 +486,12 @@ export const useGroceryList = (user) => {
     };
 
     loadUserLists();
-  }, [user]);
+  }, [user, setError]);
   
   // Load current date list if it doesn't exist
   useEffect(() => {
     const loadCurrentList = async () => {
-      if (!user?._id || allLists[currentDateString]) return;
+      if (!user?._id || allLists[currentDateString]) {return;}
       
       try {
         const result = await apiStorage.getGroceryListByDate(user._id, currentDateString);
@@ -490,6 +530,7 @@ export const useGroceryList = (user) => {
     removeItem,
     updateItemCategory,
     updateItemText,
+    updateItemCount,
     clearCurrentList,
     deleteList,
   };

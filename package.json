@@ -2,6 +2,7 @@
   "name": "voice-grocery-list",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "dependencies": {
     "@emotion/cache": "^11.11.0",
     "@emotion/react": "^11.11.4",
@@ -14,22 +15,35 @@
     "jspdf": "^3.0.3",
     "prop-types": "^15.8.1",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "validator": "^13.15.15"
   },
   "devDependencies": {
     "@emotion/babel-plugin": "^11.11.0",
+    "@eslint/js": "^9.36.0",
     "@vitejs/plugin-react": "^4.0.3",
+    "eslint": "^9.36.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-security": "^3.0.1",
     "terser": "^5.19.2",
     "vite": "^4.4.5"
   },
   "scripts": {
     "dev": "vite --host",
-    "build": "vite build",
+    "build": "pnpm lint && vite build",
     "preview": "vite preview",
-    "build:prod": "NODE_ENV=production vite build",
+    "build:prod": "NODE_ENV=production pnpm lint && vite build",
     "build:analyze": "vite build --mode analyze",
     "clean": "rm -rf dist",
     "deploy:netlify": "pnpm build && netlify deploy --prod --dir=dist",
-    "serve": "vite preview --host --port 4173"
+    "serve": "vite preview --host --port 4173",
+    "lint": "eslint src --max-warnings 10",
+    "lint:fix": "eslint src --fix",
+    "lint:backend": "cd backend && eslint .",
+    "lint:backend:fix": "cd backend && eslint . --fix",
+    "postinstall": "echo 'Run pnpm lint to check for issues'"
   }
 }

@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const groceryItemSchema = new mongoose.Schema({
   id: {
@@ -18,6 +18,11 @@ const groceryItemSchema = new mongoose.Schema({
   completed: {
     type: Boolean,
     default: false
+  },
+  count: {
+    type: Number,
+    default: 1,
+    min: 1
   },
   addedAt: {
     type: Date,
@@ -43,4 +48,4 @@ const groceryListSchema = new mongoose.Schema({
 // Compound index for efficient user + date queries
 groceryListSchema.index({ userId: 1, date: 1 }, { unique: true });
 
-module.exports = mongoose.model('GroceryList', groceryListSchema);
+export default mongoose.model('GroceryList', groceryListSchema);

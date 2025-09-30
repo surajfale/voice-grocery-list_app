@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import {
   Box,
   Container,
@@ -7,12 +8,10 @@ import {
   Card,
   CardContent,
   Grid,
-  Divider,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
-  Chip,
   IconButton,
   AppBar,
   Toolbar,
@@ -26,9 +25,7 @@ import {
   CheckCircle,
   VoiceChat,
   AutoFixHigh,
-  Storage,
-  Smartphone,
-  Timeline,
+  // ...existing imports
 } from '@mui/icons-material';
 
 const HelpPage = ({ onBack }) => {
@@ -437,6 +434,10 @@ const HelpPage = ({ onBack }) => {
       </Container>
     </Box>
   );
+};
+
+HelpPage.propTypes = {
+  onBack: PropTypes.func.isRequired,
 };
 
 export default HelpPage;

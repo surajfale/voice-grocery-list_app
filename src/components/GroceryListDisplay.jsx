@@ -13,6 +13,7 @@ import {
   FormControl,
   Select,
   MenuItem,
+  Menu,
   TextField,
 } from '@mui/material';
 import { ExpandLess, ExpandMore, Edit, Delete, Check, Close } from '@mui/icons-material';
@@ -25,12 +26,15 @@ const GroceryListDisplay = memo(({
   onRemoveItem,
   onUpdateCategory,
   onUpdateText,
+  onUpdateCount,
   categoryList,
   loading = false
 }) => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [editingText, setEditingText] = useState(null);
   const [editedTextValue, setEditedTextValue] = useState('');
+  const [countMenuAnchor, setCountMenuAnchor] = useState(null);
+  const [countMenuItemId, setCountMenuItemId] = useState(null);
 
   const handleUpdateCategory = async (id, newCategory) => {
     await onUpdateCategory(id, newCategory);
@@ -55,6 +59,26 @@ const GroceryListDisplay = memo(({
     setEditedTextValue('');
   };
 
+  const handleOpenCountMenu = (event, itemId) => {
+    setCountMenuAnchor(event.currentTarget);
+    setCountMenuItemId(itemId);
+  };
+
+  const handleCloseCountMenu = () => {
+    setCountMenuAnchor(null);
+    setCountMenuItemId(null);
+  };
+
+  const handleCountChange = async (newCount) => {
+    if (newCount === 0) {
+      // Remove item when count is 0
+      await onRemoveItem(countMenuItemId);
+    } else {
+      await onUpdateCount(countMenuItemId, newCount);
+    }
+    handleCloseCountMenu();
+  };
+
   // Memoize the grouped items processing
   const processedGroupedItems = useMemo(() => {
     return Object.entries(groupedItems).map(([category, categoryItems]) => {
@@ -73,10 +97,11 @@ const GroceryListDisplay = memo(({
   }, [groupedItems, expandedCategories]);
 
   return (
+    <>
     <Grid container spacing={3}>
       {processedGroupedItems.map(({ category, categoryItems, isExpanded, completedCount, progress }) => {
         return (
-          <Grid item xs={12} sm={6} lg={4} key={category}>
+          <Grid item xs={12} md={6} key={category}>
             <Card
               sx={{
                 height: 'fit-content',
@@ -199,14 +224,14 @@ const GroceryListDisplay = memo(({
                 {/* Items List */}
                 <Collapse in={isExpanded}>
                   <Box sx={{ mt: 2 }}>
-                    {categoryItems.map((item, index) => (
+                    {categoryItems.map((item, _index) => (
                       <Box
                         key={item.id}
                         sx={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 1.5,
-                          p: 1.5,
+                          gap: 0.75,
+                          p: 1.25,
                           mb: 1,
                           borderRadius: '12px',
                           background: item.completed
@@ -241,6 +266,7 @@ const GroceryListDisplay = memo(({
                           size="small"
                           disabled={loading || editingText === item.id}
                           sx={{
+                            flexShrink: 0,
                             '&.Mui-checked': {
                               color: 'success.main',
                             },
@@ -250,54 +276,84 @@ const GroceryListDisplay = memo(({
                           }}
                         />
 
-                        {editingText === item.id ? (
-                          <TextField
-                            value={editedTextValue}
-                            onChange={(e) => setEditedTextValue(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                handleSaveText(item.id, item.text);
-                              } else if (e.key === 'Escape') {
-                                handleCancelEditText();
-                              }
-                            }}
-                            autoFocus
-                            size="small"
-                            fullWidth
-                            disabled={loading}
-                            sx={{
-                              flex: 1,
-                              '& .MuiInputBase-root': {
+                        {/* Count Chip */}
+                        <Box
+                          onClick={(e) => !loading && handleOpenCountMenu(e, item.id)}
+                          sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            height: '28px',
+                            minWidth: '42px',
+                            px: 1.5,
+                            borderRadius: '14px',
+                            cursor: loading || editingText === item.id ? 'default' : 'pointer',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            color: 'primary.main',
+                            flexShrink: 0,
+                            transition: 'background-color 0.2s ease',
+                            userSelect: 'none',
+                            opacity: loading || editingText === item.id ? 0.5 : 1,
+                            pointerEvents: loading || editingText === item.id ? 'none' : 'auto',
+                            '&:hover': loading || editingText === item.id ? {} : {
+                              backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                            },
+                          }}
+                        >
+                          ×{item.count || 1}
+                        </Box>
+
+                        <Box sx={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                          {editingText === item.id ? (
+                            <TextField
+                              value={editedTextValue}
+                              onChange={(e) => setEditedTextValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleSaveText(item.id, item.text);
+                                } else if (e.key === 'Escape') {
+                                  handleCancelEditText();
+                                }
+                              }}
+                              autoFocus
+                              size="small"
+                              fullWidth
+                              disabled={loading}
+                              sx={{
+                                '& .MuiInputBase-root': {
+                                  fontSize: '0.875rem',
+                                  fontWeight: 500,
+                                },
+                              }}
+                            />
+                          ) : (
+                            <Typography
+                              variant="body2"
+                              onClick={() => !loading && handleStartEditText(item)}
+                              sx={{
                                 fontSize: '0.875rem',
                                 fontWeight: 500,
-                              },
-                            }}
-                          />
-                        ) : (
-                          <Typography
-                            variant="body2"
-                            onClick={() => !loading && handleStartEditText(item)}
-                            sx={{
-                              flex: 1,
-                              fontSize: '0.875rem',
-                              fontWeight: 500,
-                              textDecoration: item.completed ? 'line-through' : 'none',
-                              opacity: item.completed ? 0.7 : 1,
-                              color: item.completed ? 'text.secondary' : 'text.primary',
-                              transition: 'all 0.2s ease',
-                              cursor: loading ? 'default' : 'pointer',
-                              '&:hover': loading ? {} : {
-                                color: 'primary.main',
-                                textDecoration: 'underline',
-                              },
-                            }}
-                          >
-                            {item.text}
-                          </Typography>
-                        )}
+                                textDecoration: item.completed ? 'line-through' : 'none',
+                                opacity: item.completed ? 0.7 : 1,
+                                color: item.completed ? 'text.secondary' : 'text.primary',
+                                transition: 'all 0.2s ease',
+                                cursor: loading ? 'default' : 'pointer',
+                                wordBreak: 'break-word',
+                                '&:hover': loading ? {} : {
+                                  color: 'primary.main',
+                                  textDecoration: 'underline',
+                                },
+                              }}
+                            >
+                              {item.text}
+                            </Typography>
+                          )}
+                        </Box>
 
                         {/* Action Buttons */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, flexShrink: 0, ml: 0.5 }}>
                           {editingText === item.id ? (
                             <>
                               <IconButton
@@ -410,6 +466,36 @@ const GroceryListDisplay = memo(({
         );
       })}
     </Grid>
+
+    {/* Count Selection Menu */}
+    <Menu
+      anchorEl={countMenuAnchor}
+      open={Boolean(countMenuAnchor)}
+      onClose={handleCloseCountMenu}
+      PaperProps={{
+        sx: {
+          mt: 1,
+          borderRadius: '12px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+        }
+      }}
+    >
+      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
+        <MenuItem
+          key={num}
+          onClick={() => handleCountChange(num)}
+          sx={{
+            fontSize: '0.875rem',
+            fontWeight: num === 0 ? 600 : 500,
+            color: num === 0 ? 'error.main' : 'text.primary',
+            minWidth: '120px',
+          }}
+        >
+          {num === 0 ? '🗑️ Remove Item' : `×${num}`}
+        </MenuItem>
+      ))}
+    </Menu>
+    </>
   );
 });
 
@@ -424,6 +510,7 @@ GroceryListDisplay.propTypes = {
   onRemoveItem: PropTypes.func.isRequired,
   onUpdateCategory: PropTypes.func.isRequired,
   onUpdateText: PropTypes.func.isRequired,
+  onUpdateCount: PropTypes.func.isRequired,
   categoryList: PropTypes.array.isRequired,
   loading: PropTypes.bool
 };

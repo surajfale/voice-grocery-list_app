@@ -7,12 +7,151 @@ import groceryIntelligence from '../services/groceryIntelligence.js';
 
 const VoiceRecognition = memo(({ onItemsDetected, disabled = false }) => {
   const [isListening, setIsListening] = useState(false);
-  const [transcript, setTranscript] = useState('');
+  const [_transcript, setTranscript] = useState('');
   const [fullTranscript, setFullTranscript] = useState('');
   const recognitionRef = useRef(null);
   const isManualStopRef = useRef(false);
+  const processAccumulatedItemsRef = useRef(null);
 
-  // Initialize speech recognition
+
+
+
+  // ...existing code... (speech initialization moved below so helpers are defined first)
+
+  // ...existing code...
+
+  // Clean speech text by removing filler words, utterances, and speech artifacts
+  const cleanSpeechText = useCallback((text) => {
+    // Comprehensive list of filler words, utterances, and speech artifacts
+    const fillerWords = [
+      // Utterances and sounds
+      'uhh', 'umm', 'ahh', 'ohh', 'err', 'hmm', 'huh', 'mhm', 'uh-huh', 'mm-hmm',
+      'uh', 'um', 'ah', 'oh', 'er', 'hm', 'eh', 'mm',
+      // Pronouns and non-grocery words
+      'i', 'me', 'my', 'we', 'us', 'our', 'you', 'your', 'he', 'she', 'it', 'they', 'them', 'their',
+      // Common speech patterns
+      'like', 'you know', 'i mean', 'basically', 'actually', 'literally', 'really', 'just', 'maybe',
+      'i think', 'i guess', 'sort of', 'kind of', 'kinda', 'sorta',
+      // Commands already handled in prefixes but adding for safety
+      'get', 'buy', 'pick', 'grab', 'take', 'find',
+      // Politeness words
+      'please', 'thanks', 'thank you', 'thanks a lot', 'thank you very much',
+      // Time/sequence words that aren't separators
+      'now', 'today', 'later', 'first', 'second', 'third', 'last', 'finally'
+    ];
+
+    let cleaned = text.toLowerCase();
+
+    // Remove common speech prefixes
+    cleaned = cleaned.replace(/^(i need|get me|buy|pick up|add|i want|get|grab|find|take)\s*/i, '');
+
+    // Remove common speech suffixes
+    cleaned = cleaned.replace(/\s*(please|thanks|thank you|thanks a lot|thank you very much)$/i, '');
+
+    // Remove articles and determiners
+    cleaned = cleaned.replace(/\b(some|a|an|the|these|those|this|that)\s+/gi, '');
+
+    // Remove filler words by tokenizing and filtering using a Set (avoids dynamic RegExp usage)
+    const fillerSet = new Set(fillerWords.map(w => w.toLowerCase()));
+    const tokens = cleaned.split(/\s+/).filter(Boolean);
+    const filteredTokens = tokens.filter(t => !fillerSet.has(t));
+    cleaned = filteredTokens.join(' ').replace(/\s+/g, ' ').trim();
+
+    return cleaned;
+  }, []);
+
+  // Intelligent word splitting for space-separated grocery items
+  function intelligentWordSplit(text) {
+    // Use the enhanced parsing from grocery intelligence
+    const items = groceryIntelligence.parseSpaceSeparatedItems(text);
+
+    logger.voice('Intelligent word split result:', items);
+
+    // If we only got one item back and it's the same as input,
+    // try a simple space split as fallback
+    if (items.length === 1 && items[0] === text && text.includes(' ')) {
+      const words = text.split(/\s+/).filter(word => word.length > 1);
+      logger.voice('Fallback to simple space split:', words);
+      return words;
+    }
+
+    return items;
+  }
+
+  // speech initialization moved later (after helpers and refs are declared)
+
+  // Check if a word is a filler word
+  const isFillerWord = useCallback((word) => {
+    const fillers = [
+      'uhh', 'umm', 'ahh', 'ohh', 'err', 'hmm', 'huh', 'mhm',
+      'uh', 'um', 'ah', 'oh', 'er', 'hm', 'eh', 'mm',
+      'like', 'really', 'just', 'maybe', 'actually', 'basically'
+    ];
+    return fillers.includes(word.toLowerCase().trim());
+  }, []);
+
+  // Parse speech transcript into grocery items
+  const parseGroceryItems = useCallback((text) => {
+    if (!text || !text.trim()) { return []; }
+
+    logger.voice('Raw transcript:', text);
+
+    // Enhanced separators for natural speech
+    const commonSeparators = /[,;]|\band\b|\bthen\b|\balso\b|\bplus\b|\bnext\b|\bafter that\b|\band then\b|\boh and\b/gi;
+
+    // Clean up the text by removing filler words, utterances, and speech artifacts
+    const cleanedText = cleanSpeechText(text);
+    logger.voice('After cleaning:', cleanedText);
+
+    if (!cleanedText.trim()) { return []; }
+
+    let items = [];
+
+    // First try to split by common separators
+    if (commonSeparators.test(cleanedText)) {
+      items = cleanedText
+        .split(commonSeparators)
+        .map(item => item.trim())
+        .filter(item => item.length > 0);
+    } else {
+      // If no separators found, try intelligent space-based splitting
+      items = intelligentWordSplit(cleanedText);
+    }
+
+    // Final cleanup of items
+    items = items
+      .map(item => item.trim())
+      .filter(item => item.length > 1) // Filter very short items
+      .filter(item => !isFillerWord(item)) // Remove any remaining filler words
+      // Remove duplicates (case-insensitive)
+      .filter((item, index, arr) =>
+        arr.findIndex(i => i.toLowerCase() === item.toLowerCase()) === index
+      );
+
+    logger.voice('Final parsed items:', items);
+    return items;
+  }, [cleanSpeechText, intelligentWordSplit, isFillerWord]);
+
+  // Process accumulated items from voice recognition
+  const processAccumulatedItems = useCallback(() => {
+    if (fullTranscript.trim()) {
+      logger.voice('Processing accumulated transcript:', fullTranscript);
+      const newItems = parseGroceryItems(fullTranscript);
+      if (newItems.length > 0) {
+        logger.voice('Items detected from voice:', newItems);
+        onItemsDetected(newItems);
+      }
+      // Clear the transcript for next session
+      setFullTranscript('');
+    }
+  }, [fullTranscript, onItemsDetected, parseGroceryItems]);
+
+  // Keep ref updated with latest function so callbacks can call it safely
+  useEffect(() => {
+    processAccumulatedItemsRef.current = processAccumulatedItems;
+  }, [processAccumulatedItems]);
+
+  // Initialize speech recognition after helpers and refs are ready
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
@@ -62,135 +201,10 @@ const VoiceRecognition = memo(({ onItemsDetected, disabled = false }) => {
       recognitionRef.current.onend = () => {
         setIsListening(false);
         // Process items when recognition ends naturally
-        processAccumulatedItems();
+        if (processAccumulatedItemsRef.current) processAccumulatedItemsRef.current();
       };
     }
-  }, [fullTranscript, onItemsDetected]);
-
-  // Parse speech transcript into grocery items
-  const parseGroceryItems = useCallback((text) => {
-    if (!text || !text.trim()) return [];
-
-    logger.voice('Raw transcript:', text);
-
-    // Enhanced separators for natural speech
-    const commonSeparators = /[,;]|\band\b|\bthen\b|\balso\b|\bplus\b|\bnext\b|\bafter that\b|\band then\b|\boh and\b/gi;
-
-    // Clean up the text by removing filler words, utterances, and speech artifacts
-    let cleanedText = cleanSpeechText(text);
-    logger.voice('After cleaning:', cleanedText);
-
-    if (!cleanedText.trim()) return [];
-
-    let items = [];
-
-    // First try to split by common separators
-    if (commonSeparators.test(cleanedText)) {
-      items = cleanedText
-        .split(commonSeparators)
-        .map(item => item.trim())
-        .filter(item => item.length > 0);
-    } else {
-      // If no separators found, try intelligent space-based splitting
-      items = intelligentWordSplit(cleanedText);
-    }
-
-    // Final cleanup of items
-    items = items
-      .map(item => item.trim())
-      .filter(item => item.length > 1) // Filter very short items
-      .filter(item => !isFillerWord(item)) // Remove any remaining filler words
-      // Remove duplicates (case-insensitive)
-      .filter((item, index, arr) =>
-        arr.findIndex(i => i.toLowerCase() === item.toLowerCase()) === index
-      );
-
-    logger.voice('Final parsed items:', items);
-    return items;
-  }, []);
-
-  // Clean speech text by removing filler words, utterances, and speech artifacts
-  const cleanSpeechText = useCallback((text) => {
-    // Comprehensive list of filler words, utterances, and speech artifacts
-    const fillerWords = [
-      // Utterances and sounds
-      'uhh', 'umm', 'ahh', 'ohh', 'err', 'hmm', 'huh', 'mhm', 'uh-huh', 'mm-hmm',
-      'uh', 'um', 'ah', 'oh', 'er', 'hm', 'eh', 'mm',
-      // Pronouns and non-grocery words
-      'i', 'me', 'my', 'we', 'us', 'our', 'you', 'your', 'he', 'she', 'it', 'they', 'them', 'their',
-      // Common speech patterns
-      'like', 'you know', 'i mean', 'basically', 'actually', 'literally', 'really', 'just', 'maybe',
-      'i think', 'i guess', 'sort of', 'kind of', 'kinda', 'sorta',
-      // Commands already handled in prefixes but adding for safety
-      'get', 'buy', 'pick', 'grab', 'take', 'find',
-      // Politeness words
-      'please', 'thanks', 'thank you', 'thanks a lot', 'thank you very much',
-      // Time/sequence words that aren't separators
-      'now', 'today', 'later', 'first', 'second', 'third', 'last', 'finally'
-    ];
-
-    let cleaned = text.toLowerCase();
-
-    // Remove common speech prefixes
-    cleaned = cleaned.replace(/^(i need|get me|buy|pick up|add|i want|get|grab|find|take)\s*/i, '');
-
-    // Remove common speech suffixes
-    cleaned = cleaned.replace(/\s*(please|thanks|thank you|thanks a lot|thank you very much)$/i, '');
-
-    // Remove articles and determiners
-    cleaned = cleaned.replace(/\b(some|a|an|the|these|those|this|that)\s+/gi, '');
-
-    // Remove filler words using word boundaries
-    const fillerPattern = new RegExp(`\\b(${fillerWords.join('|')})\\b`, 'gi');
-    cleaned = cleaned.replace(fillerPattern, ' ');
-
-    // Remove multiple spaces and trim
-    cleaned = cleaned.replace(/\s+/g, ' ').trim();
-
-    return cleaned;
-  }, []);
-
-  // Check if a word is a filler word
-  const isFillerWord = useCallback((word) => {
-    const fillers = [
-      'uhh', 'umm', 'ahh', 'ohh', 'err', 'hmm', 'huh', 'mhm',
-      'uh', 'um', 'ah', 'oh', 'er', 'hm', 'eh', 'mm',
-      'like', 'really', 'just', 'maybe', 'actually', 'basically'
-    ];
-    return fillers.includes(word.toLowerCase().trim());
-  }, []);
-
-  // Process accumulated items from voice recognition
-  const processAccumulatedItems = useCallback(() => {
-    if (fullTranscript.trim()) {
-      logger.voice('Processing accumulated transcript:', fullTranscript);
-      const newItems = parseGroceryItems(fullTranscript);
-      if (newItems.length > 0) {
-        logger.voice('Items detected from voice:', newItems);
-        onItemsDetected(newItems);
-      }
-      // Clear the transcript for next session
-      setFullTranscript('');
-    }
-  }, [fullTranscript, onItemsDetected, parseGroceryItems]);
-
-  // Intelligent word splitting for space-separated grocery items
-  const intelligentWordSplit = useCallback((text) => {
-    // Use the enhanced parsing from grocery intelligence
-    const items = groceryIntelligence.parseSpaceSeparatedItems(text);
-
-    logger.voice('Intelligent word split result:', items);
-
-    // If we only got one item back and it's the same as input,
-    // try a simple space split as fallback
-    if (items.length === 1 && items[0] === text && text.includes(' ')) {
-      const words = text.split(/\s+/).filter(word => word.length > 1);
-      logger.voice('Fallback to simple space split:', words);
-      return words;
-    }
-
-    return items;
-  }, []);
+  }, [fullTranscript]);
 
   const startListening = () => {
     if (recognitionRef.current && !disabled) {
@@ -208,13 +222,16 @@ const VoiceRecognition = memo(({ onItemsDetected, disabled = false }) => {
       isManualStopRef.current = true;
 
       // Process items immediately when user stops manually
-      logger.voice('User stopped listening manually, processing immediately');
-      processAccumulatedItems();
+  logger.voice('User stopped listening manually, processing immediately');
+  if (processAccumulatedItemsRef.current) processAccumulatedItemsRef.current();
 
       recognitionRef.current.stop();
       setIsListening(false);
     }
   };
+
+  // Compute currentDisplay for use in JSX (if needed)
+  // Example: const currentDisplay = (fullTranscriptRef.current || '') + ' ' + finalTranscript + ' ' + interimTranscript;
 
   return (
     <Box

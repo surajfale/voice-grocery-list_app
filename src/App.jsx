@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
 import {
   ThemeProvider,
   CssBaseline,
@@ -41,7 +42,6 @@ import {
   Share,
   Image,
   PictureAsPdf,
-  TextSnippet,
   ArrowDropDown,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -121,8 +121,9 @@ const VoiceGroceryList = ({ user, logout }) => {
   const [showHelpPage, setShowHelpPage] = useState(false);
   const [showThemeSettings, setShowThemeSettings] = useState(false);
   const [showCongratulations, setShowCongratulations] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [transcript, setTranscript] = useState('');
+  const [congratsDismissed, setCongratsDismissed] = useState(false);
+  const [isListening, _setIsListening] = useState(false);
+  const [transcript, _setTranscript] = useState('');
   const [showOnlyRemaining, setShowOnlyRemaining] = useState(false);
   const [downloadMenuAnchor, setDownloadMenuAnchor] = useState(null);
 
@@ -143,7 +144,8 @@ const VoiceGroceryList = ({ user, logout }) => {
     loading,
     dataLoading,
     pendingCorrections,
-    skippedDuplicates,
+  skippedDuplicates,
+  setPendingCorrections,
     error,
     setError,
     addItemsToList,
@@ -153,23 +155,33 @@ const VoiceGroceryList = ({ user, logout }) => {
     removeItem,
     updateItemCategory,
     updateItemText,
+    updateItemCount,
     clearCurrentList,
     deleteList,
   } = useGroceryList(user);
 
-  // Check if all items are completed and show congratulations
+  // Track previous all-completed state so we only trigger the congratulations
+  // dialog on the transition from not-all-complete -> all-complete.
+  const prevAllCompletedRef = useRef(false);
+
   useEffect(() => {
-    if (currentItems.length > 0) {
-      const allCompleted = currentItems.every(item => item.completed);
-      if (allCompleted && !showCongratulations) {
-        // Small delay to allow the UI to update before showing popup
-        const timer = setTimeout(() => {
-          setShowCongratulations(true);
-        }, 500);
-        return () => clearTimeout(timer);
-      }
+    const hasItems = currentItems.length > 0;
+    const allCompleted = hasItems && currentItems.every(item => item.completed);
+
+    // Only trigger when we transition from not-all-complete to all-complete
+    if (allCompleted && !prevAllCompletedRef.current && !congratsDismissed) {
+      const timer = setTimeout(() => setShowCongratulations(true), 500);
+      // Update previous state after scheduling the dialog
+      prevAllCompletedRef.current = true;
+      return () => clearTimeout(timer);
     }
-  }, [currentItems]); // Remove showCongratulations from dependencies to prevent infinite loop
+
+    // If we move to a non-all-complete state, clear the previous flag so we can
+    // detect the next completion transition.
+    if (!allCompleted && prevAllCompletedRef.current) {
+      prevAllCompletedRef.current = false;
+    }
+  }, [currentItems, congratsDismissed]);
 
   /**
    * Handle user menu opening
@@ -220,9 +232,9 @@ const VoiceGroceryList = ({ user, logout }) => {
     if (printableListRef.current) {
       try {
         await shareList(printableListRef.current, currentDateString, formatDateDisplay);
-      } catch (error) {
-        setError('Failed to share list. Please try downloading instead.');
-      }
+      } catch {
+          setError('Failed to share list. Please try downloading instead.');
+        }
     }
   };
 
@@ -234,7 +246,7 @@ const VoiceGroceryList = ({ user, logout }) => {
     if (printableListRef.current) {
       try {
         await downloadListAsImage(printableListRef.current, currentDateString);
-      } catch (error) {
+      } catch {
         setError('Failed to download image. Please try again.');
       }
     }
@@ -248,7 +260,7 @@ const VoiceGroceryList = ({ user, logout }) => {
     if (printableListRef.current) {
       try {
         await downloadListAsPDF(printableListRef.current, currentDateString);
-      } catch (error) {
+      } catch {
         setError('Failed to download PDF. Please try again.');
       }
     }
@@ -265,6 +277,9 @@ const VoiceGroceryList = ({ user, logout }) => {
    */
   const handleVoiceItems = (items) => {
     setShowCongratulations(false); // Reset congratulations when adding new items
+    setCongratsDismissed(false);
+    // Reset previous completion tracker when items change
+    prevAllCompletedRef.current = false;
     addItemsToList(items);
   };
 
@@ -276,6 +291,9 @@ const VoiceGroceryList = ({ user, logout }) => {
    */
   const handleManualItems = (items) => {
     setShowCongratulations(false); // Reset congratulations when adding new items
+    setCongratsDismissed(false);
+    // Reset previous completion tracker when items change
+    prevAllCompletedRef.current = false;
     addItemsToList(items);
   };
 
@@ -327,9 +345,9 @@ const VoiceGroceryList = ({ user, logout }) => {
     const yesterday = today.subtract(1, 'day');
     const tomorrow = today.add(1, 'day');
 
-    if (date.isSame(today, 'day')) return `Today (${date.format('MM/DD/YYYY')})`;
-    if (date.isSame(yesterday, 'day')) return `Yesterday (${date.format('MM/DD/YYYY')})`;
-    if (date.isSame(tomorrow, 'day')) return `Tomorrow (${date.format('MM/DD/YYYY')})`;
+    if (date.isSame(today, 'day')) {return `Today (${date.format('MM/DD/YYYY')})`;}
+    if (date.isSame(yesterday, 'day')) {return `Yesterday (${date.format('MM/DD/YYYY')})`;}
+    if (date.isSame(tomorrow, 'day')) {return `Tomorrow (${date.format('MM/DD/YYYY')})`;}
     
     return date.format('ddd, MMM D, YYYY');
   };
@@ -342,6 +360,9 @@ const VoiceGroceryList = ({ user, logout }) => {
    */
   const createNewListForDate = (date) => {
     setShowCongratulations(false); // Reset congratulations when switching dates
+    setCongratsDismissed(false);
+    // Reset previous completion tracker when switching dates/lists
+    prevAllCompletedRef.current = false;
     setCurrentDate(dayjs(date));
     setMobileDrawerOpen(false);
   };
@@ -486,7 +507,10 @@ const VoiceGroceryList = ({ user, logout }) => {
       {/* Congratulations Dialog */}
       <CongratulationsDialog
         open={showCongratulations}
-        onClose={() => setShowCongratulations(false)}
+        onClose={() => {
+          setShowCongratulations(false);
+          setCongratsDismissed(true);
+        }}
         itemCount={currentItems.length}
         currentDate={formatDateDisplay(currentDateString)}
       />
@@ -908,6 +932,7 @@ const VoiceGroceryList = ({ user, logout }) => {
                     onRemoveItem={handleItemRemove}
                     onUpdateCategory={handleCategoryChange}
                     onUpdateText={updateItemText}
+                    onUpdateCount={updateItemCount}
                     categoryList={categoryList}
                     loading={loading}
                   />
@@ -968,3 +993,9 @@ const App = () => {
 };
 
 export default App;
+
+// PropTypes for main component
+VoiceGroceryList.propTypes = {
+  user: PropTypes.object.isRequired,
+  logout: PropTypes.func.isRequired,
+};

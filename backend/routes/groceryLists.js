@@ -1,5 +1,5 @@
-const express = require('express');
-const GroceryList = require('../models/GroceryList');
+import express from 'express';
+import GroceryList from '../models/GroceryList.js';
 const router = express.Router();
 
 // Get all grocery lists for a user
@@ -88,6 +88,7 @@ router.post('/user/:userId/date/:date/items', async (req, res) => {
       text,
       category: category || 'Other',
       completed: false,
+      count: 1,
       addedAt: new Date()
     };
 
@@ -136,7 +137,7 @@ router.put('/user/:userId/date/:date/items/:itemId', async (req, res) => {
 
     // Update item properties
     Object.keys(updates).forEach(key => {
-      if (['text', 'category', 'completed'].includes(key)) {
+      if (['text', 'category', 'completed', 'count'].includes(key)) {
         item[key] = updates[key];
       }
     });
@@ -256,4 +257,4 @@ router.delete('/user/:userId/date/:date', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

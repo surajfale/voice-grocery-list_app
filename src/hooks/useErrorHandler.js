@@ -14,7 +14,7 @@ import logger from '../utils/logger.js';
 export const useErrorHandler = (options = {}) => {
   const {
     onError,
-    onRetry,
+    onRetry: _onRetry,
     autoClearDelay = 5000
   } = options;
 

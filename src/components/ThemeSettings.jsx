@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import {
   Dialog,
   DialogTitle,
@@ -339,6 +340,11 @@ const ThemeSettings = ({ open, onClose }) => {
       </DialogActions>
     </Dialog>
   );
+};
+
+ThemeSettings.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
 };
 
 export default ThemeSettings;

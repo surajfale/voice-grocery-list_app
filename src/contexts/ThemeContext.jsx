@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { createTheme } from '@mui/material/styles';
 
 const ThemeContext = createContext();
@@ -438,6 +439,10 @@ export const CustomThemeProvider = ({ children }) => {
       {children}
     </ThemeContext.Provider>
   );
+};
+
+CustomThemeProvider.propTypes = {
+  children: PropTypes.node.isRequired,
 };
 
 export default CustomThemeProvider;

@@ -77,7 +77,7 @@ export const downloadListAsText = (content, dateString) => {
  * @param {string} dateString - Date string for filename
  * @returns {Promise<Blob>} - Promise that resolves with the image blob
  */
-export const captureAsImage = async (element, dateString) => {
+export const captureAsImage = async (element, _dateString) => {
   try {
     const canvas = await html2canvas(element, {
       backgroundColor: '#ffffff',

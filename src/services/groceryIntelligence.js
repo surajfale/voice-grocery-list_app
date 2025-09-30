@@ -203,12 +203,12 @@ class GroceryIntelligenceService {
     const s1 = str1.toLowerCase().trim();
     const s2 = str2.toLowerCase().trim();
 
-    if (s1 === s2) return 1;
+    if (s1 === s2) {return 1;}
 
     const longer = s1.length > s2.length ? s1 : s2;
     const shorter = s1.length > s2.length ? s2 : s1;
 
-    if (longer.length === 0) return 1;
+    if (longer.length === 0) {return 1;}
 
     const distance = this.levenshteinDistance(longer, shorter);
     return (longer.length - distance) / longer.length;
@@ -368,7 +368,7 @@ class GroceryIntelligenceService {
     const text = itemText.toLowerCase();
 
     for (const [category, items] of Object.entries(this.groceryDatabase)) {
-      if (category === 'Other') continue;
+      if (category === 'Other') {continue;}
 
       for (const item of items) {
         // Exact match
@@ -456,7 +456,7 @@ class GroceryIntelligenceService {
    */
   parseSpaceSeparatedItems(text) {
     const words = text.split(/\s+/).filter(w => w.length > 0);
-    if (words.length <= 1) return [text];
+    if (words.length <= 1) {return [text];}
 
     const items = [];
     let i = 0;

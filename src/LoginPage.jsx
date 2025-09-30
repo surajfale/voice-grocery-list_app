@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PropTypes from 'prop-types';
 import {
   Box,
   Paper,
@@ -268,6 +269,10 @@ const LoginPage = ({ onSwitchToRegister }) => {
       </Container>
     </Box>
   );
+};
+
+LoginPage.propTypes = {
+  onSwitchToRegister: PropTypes.func.isRequired,
 };
 
 export default LoginPage;

@@ -21,7 +21,7 @@ const CorrectionDialog = memo(({
   onReject, 
   onClose 
 }) => {
-  if (!open || corrections.length === 0) return null;
+  if (!open || corrections.length === 0) {return null;}
 
   return (
     <Dialog
@@ -266,5 +266,8 @@ CorrectionDialog.propTypes = {
   onAccept: PropTypes.func.isRequired,
   onReject: PropTypes.func.isRequired
 };
+
+// onClose is optional (dialog can be controlled externally)
+CorrectionDialog.propTypes.onClose = PropTypes.func;
 
 export default CorrectionDialog;
