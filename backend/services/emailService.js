@@ -52,19 +52,23 @@ class EmailService {
           // Minimum TLS version
           minVersion: 'TLSv1.2',
         },
-        // Connection timeout
-        connectionTimeout: 10000,
-        greetingTimeout: 5000,
-        socketTimeout: 10000,
+        // Increase timeouts to avoid transient connection timeouts in some hosts
+        connectionTimeout: parseInt(process.env.EMAIL_CONNECTION_TIMEOUT || '30000'),
+        greetingTimeout: parseInt(process.env.EMAIL_GREETING_TIMEOUT || '10000'),
+        socketTimeout: parseInt(process.env.EMAIL_SOCKET_TIMEOUT || '30000'),
       };
+
+      // Masked debug info for logs
+      const maskedUser = process.env.EMAIL_USER ? process.env.EMAIL_USER.replace(/(.{2}).+(@.+)/, '$1***$2') : '<not-set>';
+      console.log(`✉️ Initializing email transporter -> host=${process.env.EMAIL_HOST}:${transportConfig.port} user=${maskedUser}`);
 
       this.transporter = nodemailer.createTransport(transportConfig);
 
       // Verify connection configuration
       this.transporter.verify((error) => {
         if (error) {
-          console.error('❌ Email service verification failed:', error.message);
-          console.warn('⚠️ Emails may not be sent. Please check your email configuration.');
+          console.error('❌ Email service verification failed:', error && error.message ? error.message : error);
+          console.warn('⚠️ Emails may not be sent. Please check your email configuration and network (SMTP host, port, firewall, provider policies).');
         } else {
           console.log('✅ Email service initialized and verified successfully');
         }
@@ -101,11 +105,11 @@ class EmailService {
     };
 
     try {
-      const info = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Welcome email sent:', info.messageId);
+      const info = await this.sendMailWithRetry(mailOptions);
+      console.log('✅ Welcome email sent:', info && info.messageId);
       return true;
     } catch (error) {
-      console.error('❌ Failed to send welcome email:', error);
+      console.error('❌ Failed to send welcome email:', error && error.message ? error.message : error);
       throw new Error('Failed to send welcome email');
     }
   }
@@ -142,11 +146,11 @@ class EmailService {
     };
 
     try {
-      const info = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Password reset email sent:', info.messageId);
+      const info = await this.sendMailWithRetry(mailOptions);
+      console.log('✅ Password reset email sent:', info && info.messageId);
       return true;
     } catch (error) {
-      console.error('❌ Failed to send password reset email:', error);
+      console.error('❌ Failed to send password reset email:', error && error.message ? error.message : error);
       throw new Error('Failed to send password reset email');
     }
   }
@@ -176,13 +180,47 @@ class EmailService {
     };
 
     try {
-      const info = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Password reset confirmation email sent:', info.messageId);
+      const info = await this.sendMailWithRetry(mailOptions);
+      console.log('✅ Password reset confirmation email sent:', info && info.messageId);
       return true;
     } catch (error) {
-      console.error('❌ Failed to send password reset confirmation email:', error);
+      console.error('❌ Failed to send password reset confirmation email:', error && error.message ? error.message : error);
       throw new Error('Failed to send confirmation email');
     }
+  }
+
+  /**
+   * Send mail with retries on transient network errors (ETIMEDOUT, ECONNRESET, ENOTFOUND)
+   * @param {object} mailOptions
+   * @param {number} attempts
+   */
+  async sendMailWithRetry(mailOptions, attempts = 3) {
+    if (!this.transporter) {
+      throw new Error('Email transporter not initialized');
+    }
+
+    let attempt = 0;
+    const transientErrors = new Set(['ETIMEDOUT', 'ECONNRESET', 'ENOTFOUND', 'ECONNREFUSED']);
+
+    while (attempt < attempts) {
+      try {
+        attempt += 1;
+        if (attempt > 1) console.log(`↻ Retrying email send (attempt ${attempt}/${attempts})`);
+        const info = await this.transporter.sendMail(mailOptions);
+        return info;
+      } catch (err) {
+        const code = err && err.code ? err.code : null;
+        const isTransient = code && transientErrors.has(code);
+        console.error(`Email send failed (attempt ${attempt}):`, err && err.message ? err.message : err, code ? `code=${code}` : '');
+        if (!isTransient || attempt >= attempts) {
+          throw err;
+        }
+        // exponential backoff
+        const delay = Math.min(30000, 500 * Math.pow(2, attempt - 1));
+        await new Promise((res) => setTimeout(res, delay));
+      }
+    }
+    throw new Error('Failed to send email after retries');
   }
 }
 
