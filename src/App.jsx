@@ -52,6 +52,8 @@ import { AuthProvider, useAuth } from './AuthContext';
 import { CustomThemeProvider, useThemeContext } from './contexts/ThemeContext';
 import LoginPage from './LoginPage';
 import RegisterPage from './RegisterPage';
+import ForgotPasswordPage from './ForgotPasswordPage';
+import ResetPasswordPage from './ResetPasswordPage';
 import HelpPage from './components/HelpPage';
 import ThemeSettings from './components/ThemeSettings';
 import VoiceRecognition from './components/VoiceRecognition';
@@ -75,7 +77,18 @@ import { shareList, downloadListAsImage, downloadListAsPDF } from './utils/downl
 const VoiceGroceryListApp = () => {
   const { isAuthenticated, user, logout, loading } = useAuth();
   const { theme } = useThemeContext();
-  const [showRegister, setShowRegister] = useState(false);
+  const [authPage, setAuthPage] = useState('login'); // 'login', 'register', 'forgot-password', 'reset-password'
+  const [resetToken, setResetToken] = useState('');
+
+  // Check for reset token in URL on mount
+  useEffect(() => {
+    const urlParams = new window.URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    if (token) {
+      setResetToken(token);
+      setAuthPage('reset-password');
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -92,10 +105,25 @@ const VoiceGroceryListApp = () => {
     return (
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        {showRegister ? (
-          <RegisterPage onSwitchToLogin={() => setShowRegister(false)} />
+        {authPage === 'register' ? (
+          <RegisterPage onSwitchToLogin={() => setAuthPage('login')} />
+        ) : authPage === 'forgot-password' ? (
+          <ForgotPasswordPage onBackToLogin={() => setAuthPage('login')} />
+        ) : authPage === 'reset-password' ? (
+          <ResetPasswordPage
+            token={resetToken}
+            onBackToLogin={() => {
+              setAuthPage('login');
+              setResetToken('');
+              // Clear URL params
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }}
+          />
         ) : (
-          <LoginPage onSwitchToRegister={() => setShowRegister(true)} />
+          <LoginPage
+            onSwitchToRegister={() => setAuthPage('register')}
+            onSwitchToForgotPassword={() => setAuthPage('forgot-password')}
+          />
         )}
       </ThemeProvider>
     );

@@ -24,6 +24,8 @@ import {
   PersonAdd,
 } from '@mui/icons-material';
 import { useAuth } from './AuthContext';
+import PasswordRequirements from './components/PasswordRequirements';
+import { validatePassword } from './utils/passwordValidator';
 
 const RegisterPage = ({ onSwitchToLogin }) => {
   const [formData, setFormData] = useState({
@@ -70,8 +72,10 @@ const RegisterPage = ({ onSwitchToLogin }) => {
       return 'Password is required';
     }
 
-    if (password.length < 6) {
-      return 'Password must be at least 6 characters long';
+    // Validate password strength
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      return 'Password does not meet security requirements. Please check the requirements below.';
     }
 
     /* eslint-disable security/detect-possible-timing-attacks */
@@ -278,7 +282,6 @@ const RegisterPage = ({ onSwitchToLogin }) => {
               value={formData.password}
               onChange={handleInputChange('password')}
               required
-              helperText="Minimum 6 characters"
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -296,7 +299,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
                   </InputAdornment>
                 ),
               }}
-              sx={{ 
+              sx={{
                 mb: 2,
                 '& .MuiInputBase-input': {
                   color: '#000000',
@@ -307,11 +310,11 @@ const RegisterPage = ({ onSwitchToLogin }) => {
                 '& .MuiInputLabel-root.Mui-focused': {
                   color: '#2196f3',
                 },
-                '& .MuiFormHelperText-root': {
-                  color: '#666666',
-                },
               }}
             />
+
+            {/* Password Requirements */}
+            <PasswordRequirements password={formData.password} />
 
             <TextField
               fullWidth
@@ -337,7 +340,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
                   </InputAdornment>
                 ),
               }}
-              sx={{ 
+              sx={{
                 mb: 3,
                 '& .MuiInputBase-input': {
                   color: '#000000',

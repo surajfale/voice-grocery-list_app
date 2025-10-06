@@ -46,6 +46,24 @@ Say your grocery items naturally and the app intelligently separates them:
 - 📊 **Smart Analytics** - Track shopping progress and completion rates
 - 🔧 **Enhanced Error Handling** - Clean console output with proper error management
 
+## 🔐 Security Features
+
+### Enterprise-Grade Security
+- **Password Protection**: bcrypt hashing with 12 salt rounds, secure session management
+- **Password Reset**: One-time use tokens with SHA-256 hashing, 1-hour expiration
+- **Rate Limiting**: Brute-force protection on all auth endpoints (login, registration, password reset)
+- **Anti-Phishing**: Email verification details (masked email, IP location, timestamp, one-time use notice)
+- **User Privacy**: User enumeration prevention, timing attack mitigation
+- **Email Security**: HTTPS-only links, professional templates with security warnings
+- **Request Tracking**: IP logging, request metadata, comprehensive audit trail
+- **CORS & Helmet**: Cross-origin protection and security headers
+
+### Email System
+- **Welcome Email**: Sent on registration with app features overview
+- **Password Reset**: Secure reset links with anti-phishing verification details
+- **Reset Confirmation**: Success notification with security tips
+- **ProtonMail Support**: Configured for secure email delivery
+
 ## 🛠️ Tech Stack
 
 ### Frontend
@@ -99,6 +117,16 @@ Say your grocery items naturally and the app intelligently separates them:
    PORT=3001
    CORS_ORIGIN=http://localhost:5173
    NODE_ENV=development
+
+   # Email Configuration (ProtonMail)
+   EMAIL_HOST=smtp.protonmail.ch
+   EMAIL_PORT=587
+   EMAIL_SECURE=false
+   EMAIL_USER=your-email@protonmail.com
+   EMAIL_PASS_KEY=key
+   EMAIL_PASS_ENC=enc
+   EMAIL_FROM=Grocery List App <your-email@protonmail.com>
+   FRONTEND_URL=http://localhost:5173
    ```
 
    **Frontend (.env in root directory):**

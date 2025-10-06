@@ -9,66 +9,58 @@ import {
   Container,
   Alert,
   InputAdornment,
-  IconButton,
   Link,
 } from '@mui/material';
 import {
-  Visibility,
-  VisibilityOff,
   ShoppingCart,
   Email,
-  Lock,
-  Login,
+  ArrowBack,
+  Send,
 } from '@mui/icons-material';
-import { useAuth } from './AuthContext';
 
-const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
+const ForgotPasswordPage = ({ onBackToLogin }) => {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
-
-  // Debug: Log whenever error state changes
-  React.useEffect(() => {
-    console.log('🔍 Error state changed:', error);
-  }, [error]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+    setSuccess('');
+
     // Basic validation
     if (!email.trim()) {
       setError('Email address is required');
-      return;
-    }
-    if (!password.trim()) {
-      setError('Password is required');
       return;
     }
 
     setLoading(true);
 
     try {
-      console.log('🔑 Attempting login for:', email);
-      const result = await login(email, password);
-      console.log('🔑 Login result:', result);
-      
-      if (!result.success) {
-        const errorMessage = result.error || 'Login failed';
-        console.log('🔑 Setting error message:', errorMessage);
-        setError(errorMessage);
-        setLoading(false); // Stop loading immediately when there's an error
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+      const response = await fetch(`${apiBaseUrl}/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setError(data.error || 'Failed to send reset email. Please try again.');
+        setLoading(false);
         return;
       }
-      
-      // If successful, the AuthContext will handle navigation
-      console.log('🔑 Login successful - AuthContext will handle navigation');
+
+      setSuccess('An email has been sent with a link to reset your password. You will receive the email if you provided the correct email address. Please check your inbox and spam folder.');
+      setEmail('');
+      setLoading(false);
     } catch (err) {
-      console.error('🔑 Login error caught:', err);
-      setError('Login failed. Please try again.');
+      console.error('Forgot password error:', err);
+      setError('Failed to send reset email. Please try again.');
       setLoading(false);
     }
   };
@@ -127,14 +119,12 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
               </Typography>
             </Box>
             <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
-              Welcome Back!
+              Forgot Password?
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Sign in to access your grocery lists across all devices
+              Enter your email address and we'll send you a link to reset your password
             </Typography>
           </Box>
-
-          {/* Debug: Test Error Button removed */}
 
           {/* Error Alert */}
           {error && (
@@ -143,7 +133,23 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
             </Alert>
           )}
 
-          {/* Login Form */}
+          {/* Success Alert */}
+          {success && (
+            <Alert severity="success" sx={{ mb: 3 }}>
+              {success}
+            </Alert>
+          )}
+
+          {/* Info Note */}
+          {!success && (
+            <Alert severity="info" sx={{ mb: 3 }}>
+              <Typography variant="body2">
+                <strong>Note:</strong> For security reasons, we'll send a password reset email only if an account exists with the provided email address. If you don't receive an email within a few minutes, please check your spam folder or verify that you entered the correct email.
+              </Typography>
+            </Alert>
+          )}
+
+          {/* Forgot Password Form */}
           <Box component="form" onSubmit={handleSubmit}>
             <TextField
               fullWidth
@@ -160,47 +166,8 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
                   </InputAdornment>
                 ),
               }}
-              sx={{ 
-                mb: 2,
-                '& .MuiInputBase-input': {
-                  color: '#000000',
-                },
-                '& .MuiInputLabel-root': {
-                  color: '#666666',
-                },
-                '& .MuiInputLabel-root.Mui-focused': {
-                  color: '#2196f3',
-                },
-              }}
-            />
-
-            <TextField
-              fullWidth
-              label="Password"
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              margin="normal"
-              required
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Lock color="action" />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowPassword(!showPassword)}
-                      edge="end"
-                    >
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
               sx={{
-                mb: 1,
+                mb: 3,
                 '& .MuiInputBase-input': {
                   color: '#000000',
                 },
@@ -212,26 +179,6 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
                 },
               }}
             />
-
-            {/* Forgot Password Link */}
-            <Box sx={{ textAlign: 'right', mb: 2 }}>
-              <Link
-                component="button"
-                type="button"
-                variant="body2"
-                onClick={onSwitchToForgotPassword}
-                sx={{
-                  textDecoration: 'none',
-                  color: 'primary.main',
-                  fontSize: '0.875rem',
-                  '&:hover': {
-                    textDecoration: 'underline',
-                  },
-                }}
-              >
-                Forgot Password?
-              </Link>
-            </Box>
 
             <Button
               type="submit"
@@ -239,7 +186,7 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
               variant="contained"
               size="large"
               disabled={loading}
-              startIcon={<Login />}
+              startIcon={<Send />}
               sx={{
                 py: 1.5,
                 fontSize: '1.1rem',
@@ -251,38 +198,37 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
                 mb: 2
               }}
             >
-              {loading ? 'Signing In...' : 'Sign In'}
+              {loading ? 'Sending...' : 'Send Reset Link'}
             </Button>
           </Box>
 
-          {/* Switch to Register */}
+          {/* Back to Login */}
           <Box sx={{ textAlign: 'center', mt: 3 }}>
-            <Typography variant="body2" color="text.secondary">
-              Don't have an account?{' '}
-              <Link
-                component="button"
-                variant="body2"
-                onClick={onSwitchToRegister}
-                sx={{
-                  textDecoration: 'none',
-                  fontWeight: 'bold',
-                  color: 'primary.main',
-                  '&:hover': {
-                    textDecoration: 'underline',
-                  },
-                }}
-              >
-                Create Account
-              </Link>
-            </Typography>
+            <Link
+              component="button"
+              variant="body2"
+              onClick={onBackToLogin}
+              sx={{
+                textDecoration: 'none',
+                fontWeight: 'bold',
+                color: 'primary.main',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 0.5,
+                '&:hover': {
+                  textDecoration: 'underline',
+                },
+              }}
+            >
+              <ArrowBack fontSize="small" />
+              Back to Login
+            </Link>
           </Box>
 
           {/* Privacy Note */}
           <Box sx={{ textAlign: 'center', mt: 2 }}>
             <Typography variant="caption" color="text.secondary">
               Your data is securely encrypted and stored in the cloud.
-              <br />
-              Access your lists from any device, anywhere.
             </Typography>
           </Box>
         </Paper>
@@ -291,9 +237,8 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
   );
 };
 
-LoginPage.propTypes = {
-  onSwitchToRegister: PropTypes.func.isRequired,
-  onSwitchToForgotPassword: PropTypes.func.isRequired,
+ForgotPasswordPage.propTypes = {
+  onBackToLogin: PropTypes.func.isRequired,
 };
 
-export default LoginPage;
+export default ForgotPasswordPage;
