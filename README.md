@@ -62,7 +62,7 @@ Say your grocery items naturally and the app intelligently separates them:
 - **Welcome Email**: Sent on registration with app features overview
 - **Password Reset**: Secure reset links with anti-phishing verification details
 - **Reset Confirmation**: Success notification with security tips
-- **ProtonMail Support**: Configured for secure email delivery
+- **Resend Integration**: Professional email delivery via Resend API
 
 ## 🛠️ Tech Stack
 
@@ -79,6 +79,7 @@ Say your grocery items naturally and the app intelligently separates them:
 - **MongoDB Atlas** for cloud database storage
 - **Mongoose ODM** for data modeling
 - **bcryptjs** for secure password hashing
+- **Resend** for transactional emails
 - **Helmet** for security headers
 - **Express Rate Limit** for API protection
 - **CORS** middleware for cross-origin requests
@@ -118,14 +119,9 @@ Say your grocery items naturally and the app intelligently separates them:
    CORS_ORIGIN=http://localhost:5173
    NODE_ENV=development
 
-   # Email Configuration (ProtonMail)
-   EMAIL_HOST=smtp.protonmail.ch
-   EMAIL_PORT=587
-   EMAIL_SECURE=false
-   EMAIL_USER=your-email@protonmail.com
-   EMAIL_PASS_KEY=key
-   EMAIL_PASS_ENC=enc
-   EMAIL_FROM=Grocery List App <your-email@protonmail.com>
+   # Email Configuration (Resend)
+   RESEND_API_KEY=your_resend_api_key_here
+   EMAIL_FROM=Grocery List App <onboarding@resend.dev>
    FRONTEND_URL=http://localhost:5173
    ```
 

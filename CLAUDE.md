@@ -124,6 +124,8 @@ Backend requires `.env` file with:
 - `MONGODB_URI` - MongoDB Atlas connection string
 - `PORT` - Server port (default 3001)
 - `CORS_ORIGIN` - Frontend URL (default http://localhost:5173)
+- `RESEND_API_KEY` - Resend API key for sending emails
+- `EMAIL_FROM` - Verified sender email address (e.g., noreply@yourdomain.com)
 
 Frontend uses `.env` with:
 - `VITE_API_BASE_URL` - Backend API URL (default http://localhost:3001/api)
