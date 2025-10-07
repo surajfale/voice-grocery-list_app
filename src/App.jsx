@@ -609,7 +609,7 @@ const VoiceGroceryList = ({ user, logout }) => {
                     lineHeight: 1.2,
                   }}
                 >
-                  GroceryAI
+                  Grocery List
                 </Typography>
                 <Typography
                   variant="caption"

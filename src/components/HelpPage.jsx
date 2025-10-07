@@ -158,7 +158,7 @@ const HelpPage = ({ onBack }) => {
                 Help & Guide
               </Typography>
               <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                Learn how to use GroceryAI effectively
+                Learn how to use Grocery Voice List effectively
               </Typography>
             </Box>
           </Box>

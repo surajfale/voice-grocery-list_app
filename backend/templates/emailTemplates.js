@@ -342,7 +342,7 @@ export const passwordResetEmail = ({ userName, resetToken, userEmail, requestIP,
           <li>Look for HTTPS and the correct domain name</li>
         </ul>
         <p style="margin: 10px 0 0 0; font-size: 13px;">
-          <strong>Suspicious email?</strong> Forward to: <a href="mailto:${process.env.EMAIL_USER || 'security@grocery-app.com'}" style="color: #ff9800;">${process.env.EMAIL_USER || 'security@grocery-app.com'}</a>
+          <strong>Suspicious email?</strong> Forward to: <a href="mailto:${process.env.EMAIL_USER || 'surajfale520@gmail.com'}" style="color: #ff9800;">${process.env.EMAIL_USER || 'surajfale520@gmail.com'}</a>
         </p>
       </div>
 
@@ -384,7 +384,7 @@ ${resetUrl}
 - Check the URL before clicking
 - Look for HTTPS and the correct domain name
 
-Suspicious email? Forward to: ${process.env.EMAIL_USER || 'security@grocery-app.com'}
+Suspicious email? Forward to: ${process.env.EMAIL_USER || 'surajfale520@gmail.com'}
 
 Email sent from Grocery List App Official
   `;
