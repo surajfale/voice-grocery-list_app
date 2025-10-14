@@ -708,7 +708,7 @@ const VoiceGroceryList = ({ user, logout }) => {
             borderBottom: '1px solid rgba(226, 232, 240, 0.8)',
           }}
         >
-          <Toolbar sx={{ minHeight: '72px', px: { xs: 2, sm: 3 } }}>
+          <Toolbar sx={{ minHeight: '72px', px: { xs: 1, sm: 3 } }}>
             {isMobile && (
               <IconButton
                 color="inherit"
@@ -728,23 +728,23 @@ const VoiceGroceryList = ({ user, logout }) => {
             )}
 
             {/* Logo and Brand */}
-            <Box sx={{ display: 'flex', alignItems: 'center', mr: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mr: { xs: 1, sm: 3 } }}>
               <Box
                 sx={{
-                  width: 40,
-                  height: 40,
+                  width: { xs: 32, sm: 40 },
+                  height: { xs: 32, sm: 40 },
                   borderRadius: '12px',
                   background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  mr: 2,
+                  mr: { xs: 1, sm: 2 },
                   boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
                 }}
               >
-                <ShoppingCart sx={{ color: 'white', fontSize: 20 }} />
+                <ShoppingCart sx={{ color: 'white', fontSize: { xs: 16, sm: 20 } }} />
               </Box>
-              <Box>
+              <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
                 <Typography
                   variant="h6"
                   component="div"
@@ -797,15 +797,15 @@ const VoiceGroceryList = ({ user, logout }) => {
             <Box sx={{
               display: 'flex',
               alignItems: 'center',
-              gap: { xs: 0.25, sm: 0.5 },
-              mr: { xs: 0.5, sm: 1 }
+              gap: { xs: 0, sm: 0.5 },
+              mr: { xs: 0, sm: 1 }
             }}>
               {/* Dark/Light Mode Toggle */}
               <IconButton
                 onClick={toggleMode}
                 sx={{
-                  width: { xs: 36, sm: 44 },
-                  height: { xs: 36, sm: 44 },
+                  width: { xs: 32, sm: 44 },
+                  height: { xs: 32, sm: 44 },
                   borderRadius: '12px',
                   color: 'text.secondary',
                   '&:hover': {
@@ -816,15 +816,15 @@ const VoiceGroceryList = ({ user, logout }) => {
                   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
               >
-                {mode === 'dark' ? <LightMode sx={{ fontSize: { xs: 18, sm: 24 } }} /> : <DarkMode sx={{ fontSize: { xs: 18, sm: 24 } }} />}
+                {mode === 'dark' ? <LightMode sx={{ fontSize: { xs: 16, sm: 24 } }} /> : <DarkMode sx={{ fontSize: { xs: 16, sm: 24 } }} />}
               </IconButton>
 
               {/* Color Theme Settings */}
               <IconButton
                 onClick={() => setShowThemeSettings(true)}
                 sx={{
-                  width: { xs: 36, sm: 44 },
-                  height: { xs: 36, sm: 44 },
+                  width: { xs: 32, sm: 44 },
+                  height: { xs: 32, sm: 44 },
                   borderRadius: '12px',
                   color: 'text.secondary',
                   '&:hover': {
@@ -835,7 +835,7 @@ const VoiceGroceryList = ({ user, logout }) => {
                   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
               >
-                <Palette sx={{ fontSize: { xs: 18, sm: 24 } }} />
+                <Palette sx={{ fontSize: { xs: 16, sm: 24 } }} />
               </IconButton>
             </Box>
 
@@ -843,9 +843,9 @@ const VoiceGroceryList = ({ user, logout }) => {
             <IconButton
               onClick={() => setShowHelpPage(true)}
               sx={{
-                mr: { xs: 0.5, sm: 1 },
-                width: { xs: 36, sm: 44 },
-                height: { xs: 36, sm: 44 },
+                mr: { xs: 0.25, sm: 1 },
+                width: { xs: 32, sm: 44 },
+                height: { xs: 32, sm: 44 },
                 borderRadius: '12px',
                 color: 'text.secondary',
                 '&:hover': {
@@ -856,31 +856,32 @@ const VoiceGroceryList = ({ user, logout }) => {
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             >
-              <Help sx={{ fontSize: { xs: 18, sm: 24 } }} />
+              <Help sx={{ fontSize: { xs: 16, sm: 24 } }} />
             </IconButton>
 
             {/* User Profile Section */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1.5 } }}>
               <Box sx={{
-                display: { xs: 'none', sm: 'block' },
+                display: 'block', // Always show user name
                 textAlign: 'right',
-                // Show for fold devices (narrow but not tiny)
-                '@media (min-width: 360px) and (max-width: 480px)': {
-                  display: 'block'
-                }
+                minWidth: 0, // Allow text to shrink
               }}>
                 <Typography variant="body2" sx={{
                   fontWeight: 600,
                   color: 'text.primary',
                   lineHeight: 1.2,
-                  // Smaller text for fold devices
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                  fontSize: { xs: '0.7rem', sm: '0.875rem' },
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  maxWidth: { xs: '80px', sm: '150px', md: '200px' }
                 }}>
                   {user.firstName} {user.lastName}
                 </Typography>
                 <Typography variant="caption" sx={{
                   color: 'text.secondary',
-                  fontSize: { xs: '0.65rem', sm: '0.75rem' }
+                  fontSize: { xs: '0.6rem', sm: '0.75rem' },
+                  display: { xs: 'none', sm: 'block' } // Hide "Member" text on very small screens
                 }}>
                   {currentItems.length} items today
                 </Typography>
@@ -897,10 +898,10 @@ const VoiceGroceryList = ({ user, logout }) => {
               >
                 <Avatar
                   sx={{
-                    width: { xs: 36, sm: 44 },
-                    height: { xs: 36, sm: 44 },
+                    width: { xs: 32, sm: 44 },
+                    height: { xs: 32, sm: 44 },
                     background: 'linear-gradient(135deg, #10B981 0%, #34D399 100%)',
-                    fontSize: { xs: '0.9rem', sm: '1.1rem' },
+                    fontSize: { xs: '0.75rem', sm: '1.1rem' },
                     fontWeight: 600,
                     boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
                   }}
