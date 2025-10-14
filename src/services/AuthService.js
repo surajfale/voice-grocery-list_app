@@ -202,7 +202,7 @@ export class AuthService extends BaseService {
 
   /**
    * Refresh authentication token
-   * 
+   *
    * @returns {Promise} Token refresh result
    */
   async refreshToken() {
@@ -215,14 +215,45 @@ export class AuthService extends BaseService {
       const result = await this.apiService.makeAuthenticatedRequest('/auth/refresh', {
         method: 'POST'
       }, token);
-      
+
       if (result.success && result.token) {
         localStorage.setItem(this.tokenKey, result.token);
         return this.createSuccessResponse(result.token, 'Token refreshed successfully');
       }
-      
+
       throw new Error(result.error || 'Token refresh failed');
     });
+  }
+
+  /**
+   * Delete user account
+   * Permanently deletes all user data and account
+   *
+   * @param {string} userId - User ID
+   * @param {string} password - User password for re-authentication
+   * @returns {Promise} Account deletion result
+   */
+  async deleteAccount(userId, password) {
+    return this.executeWithRetry(async () => {
+      logger.auth('Attempting account deletion for user:', userId);
+
+      // Validate user operation
+      this.validateUserOperation(userId, 'deleteAccount');
+
+      const result = await this.apiService.makeRequest('/auth/account', {
+        method: 'DELETE',
+        body: JSON.stringify({ userId, password })
+      });
+
+      if (result.success) {
+        // Clear stored data after successful deletion
+        this.clearStoredData();
+        logger.auth('Account deletion successful');
+        return this.createSuccessResponse(null, 'Account deleted successfully');
+      }
+
+      throw new Error(result.error || 'Account deletion failed');
+    }, { context: { userId } });
   }
 }
 

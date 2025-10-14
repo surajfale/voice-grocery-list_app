@@ -483,8 +483,100 @@ Thank you for keeping your account secure!
   };
 };
 
+/**
+ * Account Deletion Confirmation Email Template
+ * Sent after user data has been deleted but before account removal
+ * @param {Object} params - Template parameters
+ * @param {string} params.userName - User's first name
+ * @param {string} params.userEmail - User's email address
+ * @returns {Object} - Email subject and HTML/text content
+ */
+export const accountDeletionConfirmation = ({ userName, userEmail }) => {
+  const htmlContent = `
+    <div class="header">
+      <div class="icon">👋</div>
+      <h1>Account Deletion Confirmed</h1>
+    </div>
+    <div class="content">
+      <h2>Goodbye ${userName}</h2>
+      <p>We're sorry to see you go! Your account deletion request has been processed.</p>
+
+      <div class="success-box">
+        <strong>✅ Your data has been permanently deleted</strong>
+      </div>
+
+      <p>The following data has been permanently removed from our servers:</p>
+      <ul>
+        <li>All grocery lists and items</li>
+        <li>Personal preferences and settings</li>
+        <li>Account history and activity logs</li>
+        <li>All user-generated content</li>
+      </ul>
+
+      <div class="info-box">
+        <strong>📧 Final confirmation:</strong>
+        <p style="margin: 10px 0;">Your account (<strong>${userEmail}</strong>) will be completely removed from our system after this email is sent.</p>
+      </div>
+
+      <div class="warning-box">
+        <strong>⚠️ This action is irreversible</strong>
+        <p style="margin: 10px 0;">
+          If you wish to use Grocery List App again in the future, you'll need to create a new account.
+        </p>
+      </div>
+
+      <div class="divider"></div>
+
+      <p style="font-size: 14px; color: #666;">
+        <strong>Changed your mind?</strong><br>
+        If you deleted your account by mistake, you can create a new account anytime at our website.
+        However, your previous data cannot be recovered.
+      </p>
+
+      <div class="divider"></div>
+
+      <p style="font-size: 14px; color: #666;">
+        Thank you for using Grocery List App. We hope to see you again in the future! 💚
+      </p>
+    </div>
+  `;
+
+  const textContent = `
+Goodbye ${userName}
+
+We're sorry to see you go! Your account deletion request has been processed.
+
+✅ Your data has been permanently deleted
+
+The following data has been permanently removed from our servers:
+- All grocery lists and items
+- Personal preferences and settings
+- Account history and activity logs
+- All user-generated content
+
+📧 Final confirmation:
+Your account (${userEmail}) will be completely removed from our system after this email is sent.
+
+⚠️ This action is irreversible
+If you wish to use Grocery List App again in the future, you'll need to create a new account.
+
+Changed your mind?
+If you deleted your account by mistake, you can create a new account anytime at our website.
+However, your previous data cannot be recovered.
+
+Thank you for using Grocery List App. We hope to see you again in the future! 💚
+  `;
+
+  return {
+    subject: 'Account Deletion Confirmed - Grocery List App 👋',
+    html: baseTemplate(htmlContent),
+    text: textContent
+  };
+};
+
 export default {
   welcomeEmail,
   passwordResetEmail,
-  passwordResetConfirmation
+  passwordResetConfirmation,
+  accountDeletionConfirmation
 };

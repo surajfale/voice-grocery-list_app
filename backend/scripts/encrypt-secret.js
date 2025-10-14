@@ -7,6 +7,7 @@ import { encryptText, generateKey } from '../utils/cryptoUtil.js';
 const [,, secret, key] = process.argv;
 if (!secret) {
   console.error('Usage: node encrypt-secret.js "<secret>" [base64-key]');
+  // eslint-disable-next-line no-process-exit
   process.exit(2);
 }
 

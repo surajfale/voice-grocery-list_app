@@ -109,14 +109,31 @@ class LegacyApiStorageService {
   async getUserProfile(userId) {
     try {
       const result = await serviceManager.getService('auth').getUserProfile(userId);
-      
+
       if (result.success) {
         return { success: true, user: result.data };
       }
-      
+
       return { success: false, error: result.error };
     } catch (error) {
       logger.error('Error fetching user profile:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async deleteAccount(userId, password) {
+    try {
+      const result = await serviceManager.getService('auth').deleteAccount(userId, password);
+
+      if (result.success) {
+        // Clear cache after account deletion
+        await this.clearCache();
+        return { success: true };
+      }
+
+      return { success: false, error: result.error };
+    } catch (error) {
+      logger.error('Error deleting account:', error);
       return { success: false, error: error.message };
     }
   }

@@ -10,17 +10,17 @@ import {
 } from '@mui/material';
 import { Add } from '@mui/icons-material';
 
-const ManualInput = memo(({ onAddItems, loading = false }) => {
+const ManualInput = memo(({ onAddItems, loading = false, disabled = false }) => {
   const [manualInput, setManualInput] = useState('');
 
   const handleAddItems = () => {
-    if (manualInput.trim()) {
+    if (manualInput.trim() && !disabled) {
       // Parse input similar to voice recognition
       const items = manualInput
         .split(/[,;]/)
         .map(item => item.trim())
         .filter(item => item.length > 0);
-      
+
       onAddItems(items);
       setManualInput('');
     }
@@ -70,9 +70,9 @@ const ManualInput = memo(({ onAddItems, loading = false }) => {
           value={manualInput}
           onChange={(e) => setManualInput(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="e.g., milk, apples, basmati rice, turmeric..."
+          placeholder={disabled ? "Cannot add items to past dates" : "e.g., milk, apples, basmati rice, turmeric..."}
           variant="outlined"
-          disabled={loading}
+          disabled={loading || disabled}
           sx={{
             '& .MuiOutlinedInput-root': {
               borderRadius: '16px',
@@ -87,7 +87,7 @@ const ManualInput = memo(({ onAddItems, loading = false }) => {
         <Button
           variant="contained"
           onClick={handleAddItems}
-          disabled={!manualInput.trim() || loading}
+          disabled={!manualInput.trim() || loading || disabled}
           sx={{
             minHeight: '56px',
             px: 3,
@@ -127,7 +127,8 @@ ManualInput.displayName = 'ManualInput';
 // PropTypes validation
 ManualInput.propTypes = {
   onAddItems: PropTypes.func.isRequired,
-  loading: PropTypes.bool
+  loading: PropTypes.bool,
+  disabled: PropTypes.bool
 };
 
 export default ManualInput;

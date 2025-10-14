@@ -10,7 +10,9 @@ const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12; // recommended for GCM
 
 function keyFromString(keyStr) {
-  if (!keyStr) throw new Error('Key is required');
+  if (!keyStr) {
+    throw new Error('Key is required');
+  }
   // Accept base64 (recommended) or hex
   if (/^[0-9a-fA-F]{64}$/.test(keyStr)) {
     return Buffer.from(keyStr, 'hex');
@@ -36,7 +38,9 @@ export function encryptText(plainText, keyBase64) {
 export function decryptText(encryptedString, keyBase64) {
   const key = keyFromString(keyBase64);
   const parts = encryptedString.split(':');
-  if (parts.length !== 3) throw new Error('Invalid encrypted payload format');
+  if (parts.length !== 3) {
+    throw new Error('Invalid encrypted payload format');
+  }
   const iv = Buffer.from(parts[0], 'base64');
   const tag = Buffer.from(parts[1], 'base64');
   const cipherText = Buffer.from(parts[2], 'base64');

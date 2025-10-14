@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import User from '../models/User.js';
+import GroceryList from '../models/GroceryList.js';
 import emailService from '../services/emailService.js';
 import { validatePassword } from '../utils/passwordValidator.js';
 import {
@@ -9,7 +10,8 @@ import {
   tokenValidationLimiter,
   passwordResetCompletionLimiter,
   loginLimiter,
-  registrationLimiter
+  registrationLimiter,
+  accountDeletionLimiter
 } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
@@ -424,6 +426,80 @@ router.post('/reset-password', passwordResetCompletionLimiter, async (req, res) 
     res.status(500).json({
       success: false,
       error: 'Failed to reset password. Please try again.'
+    });
+  }
+});
+
+// Delete user account (with rate limiting)
+router.delete('/account', accountDeletionLimiter, async (req, res) => {
+  try {
+    const { userId, password } = req.body;
+    const clientIP = getClientIP(req);
+
+    // Validate input
+    if (!userId || !password) {
+      console.warn(`⚠️ Account deletion attempt with missing data from IP: ${clientIP}`);
+      return res.status(400).json({
+        success: false,
+        error: 'User ID and password are required for account deletion'
+      });
+    }
+
+    // Find user
+    const user = await User.findById(userId);
+    if (!user) {
+      console.warn(`⚠️ Account deletion attempt for non-existent user from IP: ${clientIP}`);
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    // Verify password (re-authentication)
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
+      console.warn(`⚠️ Account deletion attempt with incorrect password for ${user.email} from IP: ${clientIP}`);
+      return res.status(401).json({
+        success: false,
+        error: 'Incorrect password. Please verify your password to delete your account.'
+      });
+    }
+
+    // Store user info for email before deletion
+    const userEmail = user.email;
+    const userName = user.firstName;
+
+    // Log security event
+    console.log(`🗑️ Account deletion initiated for ${userEmail} from IP: ${clientIP}`);
+
+    // Step 1: Delete all user's grocery lists
+    const deletedLists = await GroceryList.deleteMany({ userId: user._id });
+    console.log(`✅ Deleted ${deletedLists.deletedCount} grocery lists for user ${userEmail}`);
+
+    // Step 2: Send confirmation email (before deleting user account)
+    try {
+      await emailService.sendAccountDeletionConfirmation(userEmail, userName);
+      console.log(`✅ Account deletion confirmation email sent to ${userEmail}`);
+    } catch (emailError) {
+      console.error('❌ Failed to send deletion confirmation email:', emailError);
+      // Continue with deletion even if email fails
+      // User has already confirmed they want to delete
+    }
+
+    // Step 3: Delete user account (after email is sent)
+    await User.findByIdAndDelete(user._id);
+    console.log(`✅ User account deleted: ${userEmail} from IP: ${clientIP}`);
+
+    res.json({
+      success: true,
+      message: 'Account and all associated data have been permanently deleted'
+    });
+
+  } catch (error) {
+    console.error('❌ Account deletion error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete account. Please try again.'
     });
   }
 });

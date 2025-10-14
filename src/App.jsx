@@ -24,6 +24,8 @@ import {
   Avatar,
   Paper,
   Button,
+  Alert,
+  AlertTitle,
 } from '@mui/material';
 import {
   Delete,
@@ -43,6 +45,7 @@ import {
   Image,
   PictureAsPdf,
   ArrowDropDown,
+  DeleteForever,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -56,6 +59,7 @@ import ForgotPasswordPage from './ForgotPasswordPage';
 import ResetPasswordPage from './ResetPasswordPage';
 import HelpPage from './components/HelpPage';
 import ThemeSettings from './components/ThemeSettings';
+import DeleteAccountDialog from './components/DeleteAccountDialog';
 import VoiceRecognition from './components/VoiceRecognition';
 import GroceryListDisplay from './components/GroceryListDisplay';
 import CorrectionDialog from './components/CorrectionDialog';
@@ -143,11 +147,14 @@ const VoiceGroceryListApp = () => {
 const VoiceGroceryList = ({ user, logout }) => {
   // Theme and UI state
   const { theme, mode, toggleMode } = useThemeContext();
+  const { deleteAccount } = useAuth();
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState({});
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const [showHelpPage, setShowHelpPage] = useState(false);
   const [showThemeSettings, setShowThemeSettings] = useState(false);
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [showCongratulations, setShowCongratulations] = useState(false);
   const [congratsDismissed, setCongratsDismissed] = useState(false);
   const [isListening, _setIsListening] = useState(false);
@@ -465,40 +472,168 @@ const VoiceGroceryList = ({ user, logout }) => {
             textField: {
               fullWidth: true,
               sx: { mb: 2 }
-            }
+            },
+            day: (dayProps) => {
+              // Guard against undefined day
+              if (!dayProps || !dayProps.day) {
+                return {};
+              }
+
+              const dateString = dayProps.day.format('YYYY-MM-DD');
+              const today = dayjs().startOf('day');
+              const isPast = dayProps.day.isBefore(today);
+              const hasExistingList = allLists[dateString] && allLists[dateString].length > 0;
+              const isToday = dayProps.day.isSame(today, 'day');
+
+              return {
+                sx: {
+                  // Grey out past dates without lists
+                  ...(isPast && !hasExistingList && {
+                    color: 'text.disabled',
+                    backgroundColor: 'action.disabledBackground',
+                    '&:hover': {
+                      backgroundColor: 'action.hover',
+                      cursor: 'not-allowed',
+                    },
+                    opacity: 0.5,
+                  }),
+                  // Highlight past dates WITH existing lists
+                  ...(isPast && hasExistingList && {
+                    backgroundColor: 'rgba(33, 150, 243, 0.15)',
+                    border: '2px solid #2196f3',
+                    fontWeight: 700,
+                    color: '#2196f3',
+                    '&:hover': {
+                      backgroundColor: 'rgba(33, 150, 243, 0.25)',
+                    },
+                  }),
+                  // Highlight today
+                  ...(isToday && {
+                    backgroundColor: 'rgba(76, 175, 80, 0.15)',
+                    border: '2px solid #4caf50',
+                    fontWeight: 700,
+                    '&:hover': {
+                      backgroundColor: 'rgba(76, 175, 80, 0.25)',
+                    },
+                  }),
+                  // Badge indicator for dates with lists
+                  ...(hasExistingList && !isPast && !isToday && {
+                    position: 'relative',
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      bottom: '4px',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: '4px',
+                      height: '4px',
+                      borderRadius: '50%',
+                      backgroundColor: 'primary.main',
+                    },
+                  }),
+                },
+              };
+            },
           }}
         />
       </LocalizationProvider>
 
+      {/* Date Legend */}
+      <Box sx={{ mb: 2, p: 1.5, backgroundColor: 'background.default', borderRadius: '8px', border: '1px solid', borderColor: 'divider' }}>
+        <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', display: 'block', mb: 1 }}>
+          Date Legend:
+        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(76, 175, 80, 0.4)', border: '2px solid #4caf50' }} />
+            <Typography variant="caption" color="text.secondary">Today</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(33, 150, 243, 0.4)', border: '2px solid #2196f3' }} />
+            <Typography variant="caption" color="text.secondary">Past (with list)</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'action.disabledBackground', opacity: 0.5 }} />
+            <Typography variant="caption" color="text.secondary">Past (no list)</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'primary.main' }} />
+            <Typography variant="caption" color="text.secondary">Has items</Typography>
+          </Box>
+        </Box>
+      </Box>
+
       <List>
         {sortedDates.length > 0 ? (
-          sortedDates.map(date => (
-            <ListItem key={date} disablePadding>
-              <ListItemButton
-                selected={date === currentDateString}
-                onClick={() => createNewListForDate(date)}
-                sx={{ borderRadius: 1, mb: 0.5 }}
-              >
-                <ListItemText
-                  primary={formatDateDisplay(date)}
-                  secondary={`${allLists[date]?.length || 0} items`}
-                />
-                {date !== currentDateString && (
-                  <IconButton
-                    edge="end"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteList(date);
-                    }}
-                    size="small"
-                    color="error"
-                  >
-                    <Delete />
-                  </IconButton>
-                )}
-              </ListItemButton>
-            </ListItem>
-          ))
+          sortedDates.map(date => {
+            const dateObj = dayjs(date);
+            const today = dayjs().startOf('day');
+            const isPastDate = dateObj.isBefore(today);
+            const hasItems = allLists[date]?.length > 0;
+
+            return (
+              <ListItem key={date} disablePadding>
+                <ListItemButton
+                  selected={date === currentDateString}
+                  onClick={() => createNewListForDate(date)}
+                  sx={{
+                    borderRadius: 1,
+                    mb: 0.5,
+                    // Style past dates with existing lists
+                    ...(isPastDate && hasItems && {
+                      backgroundColor: date === currentDateString ? 'rgba(33, 150, 243, 0.25)' : 'rgba(33, 150, 243, 0.08)',
+                      borderLeft: '4px solid #2196f3',
+                      '&:hover': {
+                        backgroundColor: 'rgba(33, 150, 243, 0.15)',
+                      },
+                    }),
+                  }}
+                >
+                  <ListItemText
+                    primary={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography
+                          sx={{
+                            fontWeight: date === currentDateString ? 700 : 500,
+                            color: isPastDate && hasItems ? '#2196f3' : 'text.primary',
+                          }}
+                        >
+                          {formatDateDisplay(date)}
+                        </Typography>
+                        {isPastDate && hasItems && (
+                          <Chip
+                            label="Past"
+                            size="small"
+                            sx={{
+                              height: '18px',
+                              fontSize: '0.7rem',
+                              backgroundColor: '#2196f3',
+                              color: 'white',
+                              fontWeight: 600,
+                            }}
+                          />
+                        )}
+                      </Box>
+                    }
+                    secondary={`${allLists[date]?.length || 0} items`}
+                  />
+                  {date !== currentDateString && (
+                    <IconButton
+                      edge="end"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteList(date);
+                      }}
+                      size="small"
+                      color="error"
+                    >
+                      <Delete />
+                    </IconButton>
+                  )}
+                </ListItemButton>
+              </ListItem>
+            );
+          })
         ) : (
           <ListItem>
             <ListItemText primary="No grocery lists yet" />
@@ -547,6 +682,20 @@ const VoiceGroceryList = ({ user, logout }) => {
       <ThemeSettings
         open={showThemeSettings}
         onClose={() => setShowThemeSettings(false)}
+      />
+
+      {/* Delete Account Dialog */}
+      <DeleteAccountDialog
+        open={showDeleteAccountDialog}
+        onClose={() => setShowDeleteAccountDialog(false)}
+        onDeleteAccount={async (password) => {
+          setDeletingAccount(true);
+          const result = await deleteAccount(password);
+          setDeletingAccount(false);
+          return result;
+        }}
+        user={user}
+        loading={deletingAccount}
       />
 
       <Box sx={{ display: 'flex' }}>
@@ -776,7 +925,17 @@ const VoiceGroceryList = ({ user, logout }) => {
                   {user.firstName} {user.lastName}
                 </Typography>
               </Box>
-              <MenuItem onClick={handleLogout} sx={{ gap: 1, mt: 1 }}>
+              <MenuItem
+                onClick={() => {
+                  setShowDeleteAccountDialog(true);
+                  handleUserMenuClose();
+                }}
+                sx={{ gap: 1, mt: 1, color: 'error.main' }}
+              >
+                <DeleteForever fontSize="small" />
+                Delete Account
+              </MenuItem>
+              <MenuItem onClick={handleLogout} sx={{ gap: 1 }}>
                 <Logout fontSize="small" />
                 Sign Out
               </MenuItem>
@@ -845,10 +1004,27 @@ const VoiceGroceryList = ({ user, logout }) => {
                 onClearError={() => setError('')}
               />
 
+              {/* Past Date Warning */}
+              {currentDate.isBefore(dayjs().startOf('day')) && (
+                <Alert
+                  severity="warning"
+                  sx={{
+                    mb: 3,
+                    borderRadius: '12px',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                  }}
+                >
+                  <AlertTitle sx={{ fontWeight: 700 }}>📅 Past Date Selected</AlertTitle>
+                  You are viewing a past grocery list. You cannot add new items to past dates.
+                  {currentItems.length === 0 && ' This date has no existing list.'}
+                </Alert>
+              )}
+
               {/* Manual Input Section */}
               <ManualInput
                 onAddItems={handleManualItems}
                 loading={loading}
+                disabled={currentDate.isBefore(dayjs().startOf('day'))}
               />
 
               {/* List Stats and Controls */}
@@ -1001,7 +1177,7 @@ const VoiceGroceryList = ({ user, logout }) => {
         {/* Voice Recognition Component */}
         <VoiceRecognition
           onItemsDetected={handleVoiceItems}
-          disabled={loading}
+          disabled={loading || currentDate.isBefore(dayjs().startOf('day'))}
         />
       </Box>
     </ThemeProvider>

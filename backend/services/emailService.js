@@ -164,6 +164,45 @@ class EmailService {
       throw new Error('Failed to send confirmation email');
     }
   }
+
+  /**
+   * Send account deletion confirmation email to user
+   * @param {string} to - Recipient email address
+   * @param {string} userName - User's first name
+   * @returns {Promise<boolean>} - Success status
+   */
+  async sendAccountDeletionConfirmation(to, userName) {
+    if (!this.resend) {
+      console.error('Resend client not initialized. Cannot send email.');
+      throw new Error('Email service not configured');
+    }
+
+    const template = emailTemplates.accountDeletionConfirmation({
+      userName,
+      userEmail: to
+    });
+
+    try {
+      const { data, error } = await this.resend.emails.send({
+        from: process.env.EMAIL_FROM,
+        to: [to],
+        subject: template.subject,
+        html: template.html,
+        text: template.text,
+      });
+
+      if (error) {
+        console.error('❌ Failed to send account deletion confirmation email:', error);
+        throw new Error('Failed to send deletion confirmation email');
+      }
+
+      console.log('✅ Account deletion confirmation email sent:', data?.id);
+      return true;
+    } catch (error) {
+      console.error('❌ Failed to send account deletion confirmation email:', error && error.message ? error.message : error);
+      throw new Error('Failed to send deletion confirmation email');
+    }
+  }
 }
 
 // Export singleton instance

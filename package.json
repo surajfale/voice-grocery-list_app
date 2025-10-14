@@ -41,10 +41,12 @@
     "clean": "rm -rf dist",
     "deploy:netlify": "pnpm build && netlify deploy --prod --dir=dist",
     "serve": "vite preview --host --port 4173",
-    "lint": "eslint src --max-warnings 10",
-    "lint:fix": "eslint src --fix",
-    "lint:backend": "cd backend && eslint .",
-    "lint:backend:fix": "cd backend && eslint . --fix",
+    "lint": "pnpm lint:frontend && pnpm lint:backend",
+    "lint:frontend": "eslint src --max-warnings 10",
+    "lint:backend": "cd backend && pnpm lint",
+    "lint:fix": "pnpm lint:frontend:fix && pnpm lint:backend:fix",
+    "lint:frontend:fix": "eslint src --fix",
+    "lint:backend:fix": "cd backend && pnpm lint:fix",
     "postinstall": "echo 'Run pnpm lint to check for issues'"
   }
 }

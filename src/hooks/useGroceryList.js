@@ -46,6 +46,12 @@ export const useGroceryList = (user) => {
       if (!user || !user._id) {
         throw new Error('User not authenticated');
       }
+
+      // Check if trying to add items to a past date
+      const today = dayjs().startOf('day');
+      if (currentDate.isBefore(today)) {
+        throw new Error('Cannot add items to past dates. Please select today or a future date.');
+      }
     } catch (error) {
       setError(error.message);
       return;
@@ -112,6 +118,7 @@ export const useGroceryList = (user) => {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDateString, processGroceryItem, user, isDuplicate, setError]);
 
   // Handle correction acceptance

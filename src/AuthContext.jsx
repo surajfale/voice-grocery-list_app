@@ -134,6 +134,38 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const deleteAccount = async (password) => {
+    try {
+      setLoading(true);
+      logger.auth('Account deletion requested');
+
+      const result = await apiStorage.deleteAccount(user._id, password);
+
+      if (result.success) {
+        // Clear user data and log out
+        localStorage.removeItem('groceryListUser');
+        setUser(null);
+        setIsAuthenticated(false);
+        await apiStorage.clearCache();
+        logger.auth('Account deletion completed');
+        return { success: true };
+      }
+
+      return {
+        success: false,
+        error: result.error || 'Account deletion failed'
+      };
+    } catch (error) {
+      logger.error('Account deletion error:', error);
+      return {
+        success: false,
+        error: 'Network error. Please check your connection.'
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Security validation helper
   const validateUserOperation = (targetUserId) => {
     if (!user || !user._id) {
@@ -151,6 +183,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    deleteAccount,
     loading,
     validateUserOperation,
     authError,

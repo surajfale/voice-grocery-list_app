@@ -2,6 +2,24 @@ import express from 'express';
 import GroceryList from '../models/GroceryList.js';
 const router = express.Router();
 
+/**
+ * Helper function to check if a date is in the past
+ * @param {string} dateString - Date string in YYYY-MM-DD format
+ * @returns {boolean} - True if date is in the past (excluding today)
+ */
+const isPastDate = (dateString) => {
+  // Parse the date string as local time (YYYY-MM-DD)
+  const [year, month, day] = dateString.split('-').map(Number);
+  const inputDate = new Date(year, month - 1, day); // month is 0-indexed
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  inputDate.setHours(0, 0, 0, 0);
+
+  // Return true only if input date is BEFORE today (not equal to today)
+  return inputDate < today;
+};
+
 // Get all grocery lists for a user
 router.get('/user/:userId', async (req, res) => {
   try {
@@ -33,8 +51,19 @@ router.get('/user/:userId/date/:date', async (req, res) => {
 
     let list = await GroceryList.findOne({ userId, date });
 
-    // Create empty list if it doesn't exist
+    // Create empty list if it doesn't exist, but only for today or future dates
     if (!list) {
+      // Check if date is in the past
+      if (isPastDate(date)) {
+        // Return 404 for past dates that don't have a list
+        return res.status(404).json({
+          success: false,
+          error: 'Cannot create grocery list for past dates',
+          code: 'PAST_DATE_NOT_ALLOWED'
+        });
+      }
+
+      // Create list for today or future dates
       list = new GroceryList({
         userId,
         date,
@@ -76,6 +105,16 @@ router.post('/user/:userId/date/:date/items', async (req, res) => {
     let list = await GroceryList.findOne({ userId, date });
 
     if (!list) {
+      // Prevent creating new lists for past dates
+      if (isPastDate(date)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Cannot add items to past dates. Please select today or a future date.',
+          code: 'PAST_DATE_NOT_ALLOWED'
+        });
+      }
+
+      // Create list for today or future dates
       list = new GroceryList({
         userId,
         date,

@@ -76,12 +76,12 @@ export const passwordResetCompletionLimiter = rateLimit({
  * Prevents brute force login attacks
  */
 export const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Max 5 failed login attempts
+  windowMs: 5 * 60 * 1000, // 5 minutes (reduced for development)
+  max: 10, // Max 10 failed login attempts (increased for development)
   skipSuccessfulRequests: true, // Don't count successful logins
   message: {
     success: false,
-    error: 'Too many login attempts. Please try again in 15 minutes.'
+    error: 'Too many login attempts. Please try again in 5 minutes.'
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -89,7 +89,7 @@ export const loginLimiter = rateLimit({
     console.warn(`⚠️ Rate limit exceeded for login: IP=${req.ip}, Email=${req.body.email}`);
     res.status(429).json({
       success: false,
-      error: 'Too many login attempts. Please try again in 15 minutes.'
+      error: 'Too many login attempts. Please try again in 5 minutes.'
     });
   }
 });
@@ -112,6 +112,28 @@ export const registrationLimiter = rateLimit({
     res.status(429).json({
       success: false,
       error: 'Too many accounts created. Please try again later.'
+    });
+  }
+});
+
+/**
+ * Rate limiter for account deletion
+ * Prevents abuse of account deletion endpoint
+ */
+export const accountDeletionLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 2, // Max 2 deletion attempts per hour per IP
+  message: {
+    success: false,
+    error: 'Too many account deletion attempts. Please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    console.warn(`⚠️ Rate limit exceeded for account deletion: IP=${req.ip}`);
+    res.status(429).json({
+      success: false,
+      error: 'Too many account deletion attempts. Please try again later.'
     });
   }
 });
