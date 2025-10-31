@@ -43,9 +43,10 @@ pnpm dev
 ## Architecture
 
 ### Tech Stack
-- **Frontend**: React 18 with Vite, Material-UI (MUI), Voice Recognition API, Day.js
+- **Frontend**: React 18 with Vite, Material-UI (MUI), Voice Recognition API, Day.js, PWA support
 - **Backend**: Node.js with Express, MongoDB Atlas, bcryptjs, CORS, Helmet, Rate limiting
 - **Database**: MongoDB Atlas with Mongoose ODM
+- **PWA**: Vite PWA plugin with Workbox service worker for offline support and app-like experience
 
 ### Project Structure
 - `/src/` - React frontend source code
@@ -142,8 +143,17 @@ This app was migrated from JSONBin to MongoDB backend. See `MIGRATION_NOTES.md` 
 - Frontend runs on port 5173, backend on port 3001
 - Dependencies are optimized (removed unused prop-types)
 - Includes netlify.toml for optimized Netlify deployment
-- Comprehensive deployment documentation available (DEPLOYMENT.md)
+- Comprehensive deployment documentation available (docs/DEPLOYMENT.md)
 - Both frontend and backend use ESM (type: "module" in package.json)
+- **PWA enabled**: Installable on Android/iOS with offline support (see docs/PWA_SETUP.md)
+
+### Documentation Structure
+All documentation is organized in the `/docs` folder:
+- **Architecture.md** - Complete system architecture and technical design
+- **Usage.md** - Comprehensive user guide for all features
+- **DEPLOYMENT.md** - Production deployment guide (Netlify + Railway)
+- **PWA_SETUP.md** - Progressive Web App installation and features
+- **MONGODB_SETUP.md** - Database configuration and setup
 
 
 

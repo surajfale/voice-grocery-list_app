@@ -25,7 +25,9 @@
       "Bash(find:*)",
       "Bash(grep:*)",
       "Bash(if [ -f backend/.env ])",
-      "Bash(then cat backend/.env)"
+      "Bash(then cat backend/.env)",
+      "Bash(timeout 15 pnpm lint:frontend)",
+      "Bash(npx eslint:*)"
     ],
     "deny": []
   }

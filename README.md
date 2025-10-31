@@ -150,7 +150,7 @@ Say your grocery items naturally and the app intelligently separates them:
 - **Backend**: Deployed on [Railway](https://railway.app) with MongoDB Atlas
 - **Database**: MongoDB Atlas (cloud-hosted)
 
-See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for complete deployment instructions.
+See **[Deployment Guide](./docs/DEPLOYMENT.md)** for complete deployment instructions.
 
 ### Quick Deploy Links
 [![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/surajfale/voice-grocery-list_app)
@@ -170,9 +170,15 @@ pnpm --filter backend start  # Production server
 
 ## 📖 Documentation
 
-- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Complete deployment guide for Netlify + Railway
-- **[CLAUDE.md](./CLAUDE.md)** - Developer guidance for Claude Code
-- **[MONGODB_SETUP.md](./MONGODB_SETUP.md)** - Database setup instructions
+### User Documentation
+- **[Usage Guide](./docs/Usage.md)** - Complete guide for using the app, from basics to advanced features
+- **[PWA Setup](./docs/PWA_SETUP.md)** - Install the app on your device for native-like experience
+
+### Developer Documentation
+- **[Architecture](./docs/Architecture.md)** - Comprehensive technical architecture and design decisions
+- **[Deployment Guide](./docs/DEPLOYMENT.md)** - Step-by-step deployment instructions for Netlify + Railway
+- **[MongoDB Setup](./docs/MONGODB_SETUP.md)** - Database configuration and setup guide
+- **[Claude.md](./CLAUDE.md)** - AI assistant guidance for development
 
 
 ## �🛠️ Development
@@ -197,12 +203,23 @@ voice-grocery-list_app/
 ├── src/                     # React frontend source
 │   ├── components/          # React components
 │   ├── contexts/           # Context providers
-│   └── services/           # API and utility services
+│   ├── hooks/              # Custom React hooks
+│   ├── services/           # API and utility services
+│   └── utils/              # Helper utilities
 ├── backend/                # Node.js backend
 │   ├── models/             # MongoDB models
 │   ├── routes/             # Express routes
+│   ├── middleware/         # Express middleware
 │   └── server.js           # Main server file
+├── docs/                   # Documentation
+│   ├── Architecture.md     # Technical architecture
+│   ├── Usage.md            # User guide
+│   ├── DEPLOYMENT.md       # Deployment guide
+│   ├── PWA_SETUP.md        # PWA installation
+│   └── MONGODB_SETUP.md    # Database setup
+├── public/                 # Static assets & PWA icons
 ├── netlify.toml            # Netlify configuration
+├── CLAUDE.md               # AI development guidance
 └── pnpm-workspace.yaml     # pnpm workspace config
 ```
 
