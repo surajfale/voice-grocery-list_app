@@ -137,3 +137,41 @@ export const accountDeletionLimiter = rateLimit({
     });
   }
 });
+
+/**
+ * Rate limiter for receipt chat requests (per user)
+ */
+export const receiptChatUserLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const userId = req.body?.userId || 'anonymous';
+    return `${userId}-${req.ip}`;
+  },
+  handler: (req, res) => {
+    console.warn(`⚠️ Chat rate limit exceeded for user=${req.body?.userId} ip=${req.ip}`);
+    res.status(429).json({
+      success: false,
+      error: 'You have reached the chat rate limit. Please wait a few minutes before trying again.'
+    });
+  }
+});
+
+/**
+ * Rate limiter for receipt chat requests (per IP)
+ */
+export const receiptChatIpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    console.warn(`⚠️ Chat IP rate limit exceeded for ip=${req.ip}`);
+    res.status(429).json({
+      success: false,
+      error: 'Too many chat requests from this IP. Please slow down.'
+    });
+  }
+});

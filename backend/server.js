@@ -7,6 +7,7 @@ import 'dotenv/config';
 
 import authRoutes from './routes/auth.js';
 import groceryListRoutes from './routes/groceryLists.js';
+import receiptRoutes from './routes/receipts.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -107,6 +108,7 @@ mongoose.connect(process.env.MONGODB_URI)
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/grocery-lists', groceryListRoutes);
+app.use('/api/receipts', receiptRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

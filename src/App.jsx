@@ -46,6 +46,7 @@ import {
   PictureAsPdf,
   ArrowDropDown,
   DeleteForever,
+  ReceiptLong,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -70,6 +71,7 @@ import EmptyState from './components/EmptyState';
 import ErrorBoundary from './components/ErrorBoundary';
 import Footer from './components/Footer';
 import PrintableList from './components/PrintableList';
+import ReceiptsPage from './pages/ReceiptsPage.jsx';
 import { useGroceryList } from './hooks/useGroceryList';
 import groceryIntelligence from './services/groceryIntelligence.js';
 import { shareList, downloadListAsImage, downloadListAsPDF } from './utils/downloadList';
@@ -161,6 +163,7 @@ const VoiceGroceryList = ({ user, logout }) => {
   const [transcript, _setTranscript] = useState('');
   const [showOnlyRemaining, setShowOnlyRemaining] = useState(false);
   const [downloadMenuAnchor, setDownloadMenuAnchor] = useState(null);
+  const [activeView, setActiveView] = useState('lists');
 
   // Ref for the printable list component
   const printableListRef = useRef(null);
@@ -168,6 +171,7 @@ const VoiceGroceryList = ({ user, logout }) => {
   // Responsive design helpers
   const muiTheme = useTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
+  const isReceiptsView = activeView === 'receipts';
 
   // Use the custom hook for grocery list management
   const {
@@ -217,6 +221,12 @@ const VoiceGroceryList = ({ user, logout }) => {
       prevAllCompletedRef.current = false;
     }
   }, [currentItems, congratsDismissed]);
+
+  useEffect(() => {
+    if (isReceiptsView) {
+      setMobileDrawerOpen(false);
+    }
+  }, [isReceiptsView]);
 
   /**
    * Handle user menu opening
@@ -709,7 +719,7 @@ const VoiceGroceryList = ({ user, logout }) => {
           }}
         >
           <Toolbar sx={{ minHeight: '72px', px: { xs: 1, sm: 3 } }}>
-            {isMobile && (
+            {isMobile && !isReceiptsView && (
               <IconButton
                 color="inherit"
                 edge="start"
@@ -777,21 +787,37 @@ const VoiceGroceryList = ({ user, logout }) => {
             <Box sx={{ flexGrow: 1 }} />
 
             {/* Current Date Badge */}
-            <Chip
-              label={formatDateDisplay(currentDateString)}
-              variant="outlined"
+            {!isReceiptsView && (
+              <Chip
+                label={formatDateDisplay(currentDateString)}
+                variant="outlined"
+                sx={{
+                  display: { xs: 'none', md: 'flex' },
+                  mr: 2,
+                  borderColor: 'rgba(99, 102, 241, 0.2)',
+                  color: 'text.secondary',
+                  fontWeight: 600,
+                  '&:hover': {
+                    borderColor: 'primary.main',
+                    backgroundColor: 'rgba(99, 102, 241, 0.04)',
+                  }
+                }}
+              />
+            )}
+
+            <Button
+              variant={isReceiptsView ? 'contained' : 'outlined'}
+              size="small"
+              startIcon={<ReceiptLong fontSize="small" />}
+              onClick={() => setActiveView(isReceiptsView ? 'lists' : 'receipts')}
               sx={{
-                display: { xs: 'none', md: 'flex' },
-                mr: 2,
-                borderColor: 'rgba(99, 102, 241, 0.2)',
-                color: 'text.secondary',
-                fontWeight: 600,
-                '&:hover': {
-                  borderColor: 'primary.main',
-                  backgroundColor: 'rgba(99, 102, 241, 0.04)',
-                }
+                textTransform: 'none',
+                borderRadius: 9999,
+                mr: 2
               }}
-            />
+            >
+              {isReceiptsView ? 'Back to Lists' : 'Receipts'}
+            </Button>
 
             {/* Theme Controls */}
             <Box sx={{
@@ -945,32 +971,34 @@ const VoiceGroceryList = ({ user, logout }) => {
         </AppBar>
 
         {/* Navigation Drawer */}
-        {!isMobile ? (
-          <Drawer
-            variant="permanent"
-            sx={{
-              width: 320,
-              flexShrink: 0,
-              '& .MuiDrawer-paper': {
+        {!isReceiptsView && (
+          !isMobile ? (
+            <Drawer
+              variant="permanent"
+              sx={{
                 width: 320,
-                boxSizing: 'border-box',
-              },
-            }}
-          >
-            <Toolbar />
-            {drawerContent}
-          </Drawer>
-        ) : (
-          <Drawer
-            variant="temporary"
-            open={mobileDrawerOpen}
-            onClose={() => setMobileDrawerOpen(false)}
-            ModalProps={{
-              keepMounted: true,
-            }}
-          >
-            {drawerContent}
-          </Drawer>
+                flexShrink: 0,
+                '& .MuiDrawer-paper': {
+                  width: 320,
+                  boxSizing: 'border-box',
+                },
+              }}
+            >
+              <Toolbar />
+              {drawerContent}
+            </Drawer>
+          ) : (
+            <Drawer
+              variant="temporary"
+              open={mobileDrawerOpen}
+              onClose={() => setMobileDrawerOpen(false)}
+              ModalProps={{
+                keepMounted: true,
+              }}
+            >
+              {drawerContent}
+            </Drawer>
+          )
         )}
 
         {/* Main Content */}
@@ -988,174 +1016,180 @@ const VoiceGroceryList = ({ user, logout }) => {
           <Toolbar sx={{ minHeight: '72px' }} />
 
           <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3, md: 4 }, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-            <Box sx={{ flexGrow: 1 }}>
-              {/* Loading Indicator */}
-              {dataLoading && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                  <CircularProgress />
-                </Box>
-              )}
-
-              {/* Status Alerts */}
-              <StatusAlerts
-                isListening={isListening}
-                transcript={transcript}
-                skippedDuplicates={skippedDuplicates}
-                error={error}
-                onClearError={() => setError('')}
-              />
-
-              {/* Past Date Warning */}
-              {currentDate.isBefore(dayjs().startOf('day')) && (
-                <Alert
-                  severity="warning"
-                  sx={{
-                    mb: 3,
-                    borderRadius: '12px',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                  }}
-                >
-                  <AlertTitle sx={{ fontWeight: 700 }}>📅 Past Date Selected</AlertTitle>
-                  You are viewing a past grocery list. You cannot add new items to past dates.
-                  {currentItems.length === 0 && ' This date has no existing list.'}
-                </Alert>
-              )}
-
-              {/* Manual Input Section */}
-              <ManualInput
-                onAddItems={handleManualItems}
-                loading={loading}
-                disabled={currentDate.isBefore(dayjs().startOf('day'))}
-              />
-
-              {/* List Stats and Controls */}
-              {currentItems.length > 0 && (
-                <Paper sx={{ p: 2, mb: 3 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      {currentItems.filter(item => !item.completed).length} of {currentItems.length} items remaining
-                    </Typography>
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                      <Button
-                        startIcon={showOnlyRemaining ? <FilterListOff /> : <FilterList />}
-                        onClick={() => setShowOnlyRemaining(!showOnlyRemaining)}
-                        variant={showOnlyRemaining ? "contained" : "outlined"}
-                        size="small"
-                        disabled={loading}
-                        sx={{
-                          borderRadius: '8px',
-                          textTransform: 'none',
-                          fontWeight: 600,
-                        }}
-                      >
-                        {showOnlyRemaining ? 'Show All' : 'Remaining Only'}
-                      </Button>
-                      <Button
-                        startIcon={<Download />}
-                        endIcon={<ArrowDropDown />}
-                        onClick={handleDownloadMenuOpen}
-                        variant="outlined"
-                        size="small"
-                        disabled={loading}
-                        sx={{
-                          borderRadius: '8px',
-                          textTransform: 'none',
-                          fontWeight: 600,
-                        }}
-                      >
-                        Download
-                      </Button>
-                      <Menu
-                        anchorEl={downloadMenuAnchor}
-                        open={Boolean(downloadMenuAnchor)}
-                        onClose={handleDownloadMenuClose}
-                        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                        PaperProps={{
-                          sx: {
-                            mt: 1,
-                            borderRadius: '12px',
-                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-                          }
-                        }}
-                      >
-                        <MenuItem onClick={handleShare} sx={{ gap: 2, px: 2, py: 1.5 }}>
-                          <Share fontSize="small" />
-                          <Box>
-                            <Typography variant="body2" fontWeight={600}>Share Image</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              Best for mobile sharing
-                            </Typography>
-                          </Box>
-                        </MenuItem>
-                        <MenuItem onClick={handleDownloadImage} sx={{ gap: 2, px: 2, py: 1.5 }}>
-                          <Image fontSize="small" />
-                          <Box>
-                            <Typography variant="body2" fontWeight={600}>Download Image</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              PNG format
-                            </Typography>
-                          </Box>
-                        </MenuItem>
-                        <MenuItem onClick={handleDownloadPDF} sx={{ gap: 2, px: 2, py: 1.5 }}>
-                          <PictureAsPdf fontSize="small" />
-                          <Box>
-                            <Typography variant="body2" fontWeight={600}>Download PDF</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              Professional format
-                            </Typography>
-                          </Box>
-                        </MenuItem>
-                      </Menu>
-                      <Button
-                        startIcon={<Clear />}
-                        onClick={clearCurrentList}
-                        color="error"
-                        size="small"
-                        disabled={loading}
-                        sx={{
-                          borderRadius: '8px',
-                          textTransform: 'none',
-                          fontWeight: 600,
-                        }}
-                      >
-                        {loading ? 'Clearing...' : 'Clear List'}
-                      </Button>
-                    </Box>
-                  </Box>
-                </Paper>
-              )}
-
-              {/* Grocery List Display */}
-              {currentItems.length > 0 ? (
-                filteredItems.length > 0 ? (
-                  <GroceryListDisplay
-                    groupedItems={groupedItems}
-                    expandedCategories={expandedCategories}
-                    onToggleCategory={toggleCategoryExpansion}
-                    onToggleItem={handleItemToggle}
-                    onRemoveItem={handleItemRemove}
-                    onUpdateCategory={handleCategoryChange}
-                    onUpdateText={updateItemText}
-                    onUpdateCount={updateItemCount}
-                    categoryList={categoryList}
-                    loading={loading}
-                  />
-                ) : (
-                  <Paper sx={{ p: 4, textAlign: 'center', borderRadius: '20px' }}>
-                    <Typography variant="h6" color="text.secondary" gutterBottom>
-                      🎉 All items completed!
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      You've checked off all items. Toggle "Show All" to see completed items.
-                    </Typography>
-                  </Paper>
-                )
+            <Box sx={{ flexGrow: 1, width: '100%' }}>
+              {isReceiptsView ? (
+                <ReceiptsPage user={user} />
               ) : (
-                <EmptyState
-                  currentDateString={currentDateString}
-                  formatDateDisplay={formatDateDisplay}
-                />
+                <>
+                  {/* Loading Indicator */}
+                  {dataLoading && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                      <CircularProgress />
+                    </Box>
+                  )}
+
+                  {/* Status Alerts */}
+                  <StatusAlerts
+                    isListening={isListening}
+                    transcript={transcript}
+                    skippedDuplicates={skippedDuplicates}
+                    error={error}
+                    onClearError={() => setError('')}
+                  />
+
+                  {/* Past Date Warning */}
+                  {currentDate.isBefore(dayjs().startOf('day')) && (
+                    <Alert
+                      severity="warning"
+                      sx={{
+                        mb: 3,
+                        borderRadius: '12px',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                      }}
+                    >
+                      <AlertTitle sx={{ fontWeight: 700 }}>📅 Past Date Selected</AlertTitle>
+                      You are viewing a past grocery list. You cannot add new items to past dates.
+                      {currentItems.length === 0 && ' This date has no existing list.'}
+                    </Alert>
+                  )}
+
+                  {/* Manual Input Section */}
+                  <ManualInput
+                    onAddItems={handleManualItems}
+                    loading={loading}
+                    disabled={currentDate.isBefore(dayjs().startOf('day'))}
+                  />
+
+                  {/* List Stats and Controls */}
+                  {currentItems.length > 0 && (
+                    <Paper sx={{ p: 2, mb: 3 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          {currentItems.filter(item => !item.completed).length} of {currentItems.length} items remaining
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                          <Button
+                            startIcon={showOnlyRemaining ? <FilterListOff /> : <FilterList />}
+                            onClick={() => setShowOnlyRemaining(!showOnlyRemaining)}
+                            variant={showOnlyRemaining ? "contained" : "outlined"}
+                            size="small"
+                            disabled={loading}
+                            sx={{
+                              borderRadius: '8px',
+                              textTransform: 'none',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {showOnlyRemaining ? 'Show All' : 'Remaining Only'}
+                          </Button>
+                          <Button
+                            startIcon={<Download />}
+                            endIcon={<ArrowDropDown />}
+                            onClick={handleDownloadMenuOpen}
+                            variant="outlined"
+                            size="small"
+                            disabled={loading}
+                            sx={{
+                              borderRadius: '8px',
+                              textTransform: 'none',
+                              fontWeight: 600,
+                            }}
+                          >
+                            Download
+                          </Button>
+                          <Menu
+                            anchorEl={downloadMenuAnchor}
+                            open={Boolean(downloadMenuAnchor)}
+                            onClose={handleDownloadMenuClose}
+                            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                            PaperProps={{
+                              sx: {
+                                mt: 1,
+                                borderRadius: '12px',
+                                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+                              }
+                            }}
+                          >
+                            <MenuItem onClick={handleShare} sx={{ gap: 2, px: 2, py: 1.5 }}>
+                              <Share fontSize="small" />
+                              <Box>
+                                <Typography variant="body2" fontWeight={600}>Share Image</Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  Best for mobile sharing
+                                </Typography>
+                              </Box>
+                            </MenuItem>
+                            <MenuItem onClick={handleDownloadImage} sx={{ gap: 2, px: 2, py: 1.5 }}>
+                              <Image fontSize="small" />
+                              <Box>
+                                <Typography variant="body2" fontWeight={600}>Download Image</Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  PNG format
+                                </Typography>
+                              </Box>
+                            </MenuItem>
+                            <MenuItem onClick={handleDownloadPDF} sx={{ gap: 2, px: 2, py: 1.5 }}>
+                              <PictureAsPdf fontSize="small" />
+                              <Box>
+                                <Typography variant="body2" fontWeight={600}>Download PDF</Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  Professional format
+                                </Typography>
+                              </Box>
+                            </MenuItem>
+                          </Menu>
+                          <Button
+                            startIcon={<Clear />}
+                            onClick={clearCurrentList}
+                            color="error"
+                            size="small"
+                            disabled={loading}
+                            sx={{
+                              borderRadius: '8px',
+                              textTransform: 'none',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {loading ? 'Clearing...' : 'Clear List'}
+                          </Button>
+                        </Box>
+                      </Box>
+                    </Paper>
+                  )}
+
+                  {/* Grocery List Display */}
+                  {currentItems.length > 0 ? (
+                    filteredItems.length > 0 ? (
+                      <GroceryListDisplay
+                        groupedItems={groupedItems}
+                        expandedCategories={expandedCategories}
+                        onToggleCategory={toggleCategoryExpansion}
+                        onToggleItem={handleItemToggle}
+                        onRemoveItem={handleItemRemove}
+                        onUpdateCategory={handleCategoryChange}
+                        onUpdateText={updateItemText}
+                        onUpdateCount={updateItemCount}
+                        categoryList={categoryList}
+                        loading={loading}
+                      />
+                    ) : (
+                      <Paper sx={{ p: 4, textAlign: 'center', borderRadius: '20px' }}>
+                        <Typography variant="h6" color="text.secondary" gutterBottom>
+                          🎉 All items completed!
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          You've checked off all items. Toggle "Show All" to see completed items.
+                        </Typography>
+                      </Paper>
+                    )
+                  ) : (
+                    <EmptyState
+                      currentDateString={currentDateString}
+                      formatDateDisplay={formatDateDisplay}
+                    />
+                  )}
+                </>
               )}
             </Box>
 
@@ -1164,22 +1198,26 @@ const VoiceGroceryList = ({ user, logout }) => {
           </Container>
         </Box>
 
-        {/* Hidden Printable List Component for Export */}
-        <Box sx={{ position: 'absolute', left: '-9999px', top: 0 }}>
-          <PrintableList
-            ref={printableListRef}
-            items={currentItems}
-            dateString={currentDateString}
-            formatDateDisplay={formatDateDisplay}
-            theme={theme}
-          />
-        </Box>
+        {!isReceiptsView && (
+          <>
+            {/* Hidden Printable List Component for Export */}
+            <Box sx={{ position: 'absolute', left: '-9999px', top: 0 }}>
+              <PrintableList
+                ref={printableListRef}
+                items={currentItems}
+                dateString={currentDateString}
+                formatDateDisplay={formatDateDisplay}
+                theme={theme}
+              />
+            </Box>
 
-        {/* Voice Recognition Component */}
-        <VoiceRecognition
-          onItemsDetected={handleVoiceItems}
-          disabled={loading || currentDate.isBefore(dayjs().startOf('day'))}
-        />
+            {/* Voice Recognition Component */}
+            <VoiceRecognition
+              onItemsDetected={handleVoiceItems}
+              disabled={loading || currentDate.isBefore(dayjs().startOf('day'))}
+            />
+          </>
+        )}
       </Box>
     </ThemeProvider>
   );

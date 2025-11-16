@@ -182,7 +182,19 @@ MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/voice-groc
 PORT=3001
 CORS_ORIGIN=https://your-netlify-app.netlify.app
 NODE_ENV=production
+OPENAI_API_KEY=sk-your-prod-key
+RAG_EMBEDDINGS_MODEL=text-embedding-3-small
+RAG_COMPLETIONS_MODEL=gpt-4o-mini
+RAG_TOP_K=5
+RAG_CHUNK_SIZE=512
+RAG_VECTOR_INDEX=receiptVectorIndex
+EMBEDDINGS_VERSION=1
 ```
+
+**Verification tips**
+- After saving the variables in Railway, open the service shell and run `env | grep RAG_` to confirm they are injected.
+- Hit `https://<railway-app>/api/health` and confirm no errors appear in logs related to missing OpenAI credentials.
+- Trigger `pnpm --filter backend ingest:receipts` once in production to ensure the ingestion job can see the credentials.
 
 ### Frontend (Netlify)
 ```

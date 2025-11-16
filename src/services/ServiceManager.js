@@ -2,6 +2,7 @@ import { BaseService } from './BaseService.js';
 import ApiService from './ApiService.js';
 import AuthService from './AuthService.js';
 import GroceryListService from './GroceryListService.js';
+import ReceiptService from './ReceiptService.js';
 import GroceryIntelligenceService from './groceryIntelligence.js';
 import logger from '../utils/logger.js';
 
@@ -19,13 +20,15 @@ export class ServiceManager extends BaseService {
     this.authService = new AuthService();
     this.groceryListService = new GroceryListService();
     this.groceryIntelligenceService = GroceryIntelligenceService;
+    this.receiptService = new ReceiptService();
     
     // Service registry for easy access
     this.services = {
       api: this.apiService,
       auth: this.authService,
       groceryList: this.groceryListService,
-      intelligence: this.groceryIntelligenceService
+      intelligence: this.groceryIntelligenceService,
+      receipt: this.receiptService
     };
     
     // Service health status
@@ -55,6 +58,7 @@ export class ServiceManager extends BaseService {
       this.serviceHealth.set('auth', true);
       this.serviceHealth.set('groceryList', true);
       this.serviceHealth.set('intelligence', true);
+      this.serviceHealth.set('receipt', true);
       
       const allHealthy = Array.from(this.serviceHealth.values()).every(status => status);
       
@@ -204,6 +208,10 @@ export class ServiceManager extends BaseService {
         case 'groceryList':
           this.groceryListService = new GroceryListService();
           this.services.groceryList = this.groceryListService;
+          break;
+        case 'receipt':
+          this.receiptService = new ReceiptService();
+          this.services.receipt = this.receiptService;
           break;
         default:
           throw new Error(`Cannot restart service: ${serviceName}`);

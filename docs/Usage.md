@@ -10,6 +10,7 @@ Complete guide for using the Voice Grocery List App, from getting started to adv
 - [Managing Lists](#managing-lists)
 - [Categories](#categories)
 - [Sharing & Export](#sharing--export)
+- [Receipts Workspace](#receipts-workspace)
 - [Theme Customization](#theme-customization)
 - [Account Management](#account-management)
 - [PWA Installation](#pwa-installation)
@@ -265,6 +266,51 @@ On supported devices (Android, iOS):
 2. Browser print dialog opens
 3. Select printer or "Save as PDF"
 4. Print with clean formatting
+
+## Receipts Workspace
+
+The Receipts view lets you archive real-world grocery receipts, extract structured data, and prepare for future AI analysis.
+
+### Switching Views
+1. Click the **Receipts** button in the top app bar to enter the workspace.
+2. Use **Back to Lists** to return to your standard grocery planning workflow.
+
+### Uploading Receipts
+1. Drag an image (JPG, PNG, WebP, HEIC) into the upload card or click **Choose File**.
+2. The backend streams the file into MongoDB GridFS and immediately runs Tesseract OCR.
+3. Status badges show whether the file is still `processing`, fully `ready`, or encountered an `error`.
+
+### Reviewing OCR Results
+- Select a receipt from the list to open detailed metadata.
+- Review detected merchant, purchase date, totals, and parsed line items.
+- See an inline preview of the stored image alongside the raw OCR transcript for quick verification.
+
+### Deleting Receipts
+- Use the trash icon on any receipt row to remove both metadata and the stored image.
+- Deletions are permanent and free the corresponding GridFS storage.
+
+### Chatting About Receipts (RAG)
+1. Scroll to **AI Insights** at the bottom of the Receipts page.
+2. Optionally apply filters first:
+   - **Date range**: restrict context to certain days.
+   - **Merchants**: select one or more vendors via autocomplete.
+   - **Receipt IDs**: target exact receipts (type to search).
+   - **Top K**: control how many vector matches to retrieve (1-15).
+3. Type a question (3–500 characters). Use natural language like “Summarize my coffee purchases in October” or “How much did I spend at Trader Joe’s last week?”.
+4. Click **Ask** (or use `Ctrl/Cmd + Enter`). The status chip cycles through “Searching receipts…” and “Generating answer…” while the backend performs retrieval + LLM generation.
+5. Review the answer card:
+   - Markdown formatting highlights key numbers or bullet lists.
+   - Use the **copy** icon to copy the response.
+   - Use **Regenerate** to retry with the same filters/question.
+   - Source cards show the cited receipts (merchant, date, total). Clicking a card loads the receipt details in the left panel.
+6. If no matching receipts are found, you’ll see an info alert encouraging you to widen filters.
+
+**Error handling**
+- Offline status triggers a warning banner with retry guidance.
+- Rate-limit or backend failures surface a toast plus “Retry last” button.
+- Validation issues (short question, invalid ID) show inline messages without hitting the server.
+
+> **Data scope:** The chat endpoint only reads receipts belonging to the signed-in user. Filters are enforced server-side to prevent cross-user leakage.
 
 ## Theme Customization
 
@@ -592,4 +638,4 @@ Reset emails include anti-phishing details:
 
 **Need more help?** Check the [Architecture Guide](./Architecture.md) for technical details or [Deployment Guide](./Deployment.md) for hosting information.
 
-**Last Updated**: October 2024
+**Last Updated**: November 2025

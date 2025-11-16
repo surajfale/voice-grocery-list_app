@@ -29,6 +29,7 @@ Say your grocery items naturally and the app intelligently separates them:
 - 📱 **Responsive Design** - Optimized for desktop and mobile devices
 - 🎨 **Dynamic Theming** - Dark/light mode with customizable color schemes
  - 📤 **Share & Export** - Share lists via the Web Share API on supported devices and download lists as an image or PDF using built-in utilities (`shareList`, `downloadListAsImage`, `downloadListAsPDF`). A printable list component (`PrintableList`) is available and wired to a `printableListRef` for easy export/print workflows.
+- 🧾 **Receipt OCR Workspace** - Upload grocery receipts, run on-device Tesseract OCR, capture merchant/date/total/items, and store both text + original image in MongoDB GridFS for future analysis.
 
 ### User Experience
 - 🔐 **Secure Authentication** - Protected user accounts with validation
@@ -45,6 +46,12 @@ Say your grocery items naturally and the app intelligently separates them:
 - 🛡️ **Security Headers** - Production-ready security configuration
 - 📊 **Smart Analytics** - Track shopping progress and completion rates
 - 🔧 **Enhanced Error Handling** - Clean console output with proper error management
+- 🤖 **Chat Stub for AI Insights** - Built-in chatbot UI wired to a placeholder `/api/receipts/chat` endpoint so you can plug in your own vector database/RAG pipeline to query historical receipts.
+
+### Receipts Workspace
+- Switch to the **Receipts** view from the app bar to manage your uploaded receipts alongside grocery lists.
+- Drag-and-drop or select image files (JPG, PNG, HEIC, WebP) to trigger OCR, structured parsing, and storage.
+- Review detected metadata + items, preview the original image, delete entries, and ask stubbed AI questions that you can later replace with a full RAG implementation.
 
 ## 🔐 Security Features
 
@@ -142,6 +149,10 @@ Say your grocery items naturally and the app intelligently separates them:
 5. **Open your browser**
    - Frontend: http://localhost:5173
    - Backend API: http://localhost:3001/api/health
+
+### Receipt OCR Requirements
+- Receipt uploads run [`tesseract.js`](https://github.com/naptha/tesseract.js) inside the Node backend. The first upload downloads the English language data (~30–50 MB), so allow outbound internet access and a little extra startup time.
+- Original images are stored in MongoDB GridFS (`receiptFiles` bucket). Keep an eye on Atlas storage usage if you plan to archive lots of high-resolution photos.
 
 ## 🚀 Deployment
 
