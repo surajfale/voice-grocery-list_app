@@ -12,6 +12,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  ListItemIcon,
   ListItemButton,
   Chip,
   Drawer,
@@ -38,6 +39,7 @@ import {
   Palette,
   LightMode,
   DarkMode,
+  Settings,
   FilterList,
   FilterListOff,
   Download,
@@ -164,6 +166,7 @@ const VoiceGroceryList = ({ user, logout }) => {
   const [showOnlyRemaining, setShowOnlyRemaining] = useState(false);
   const [downloadMenuAnchor, setDownloadMenuAnchor] = useState(null);
   const [activeView, setActiveView] = useState('lists');
+  const [settingsMenuAnchor, setSettingsMenuAnchor] = useState(null);
 
   // Ref for the printable list component
   const printableListRef = useRef(null);
@@ -267,6 +270,17 @@ const VoiceGroceryList = ({ user, logout }) => {
    */
   const handleDownloadMenuClose = () => {
     setDownloadMenuAnchor(null);
+  };
+
+  /**
+   * Handle settings menu open/close
+   */
+  const handleSettingsMenuOpen = (event) => {
+    setSettingsMenuAnchor(event.currentTarget);
+  };
+
+  const handleSettingsMenuClose = () => {
+    setSettingsMenuAnchor(null);
   };
 
   /**
@@ -819,59 +833,13 @@ const VoiceGroceryList = ({ user, logout }) => {
               {isReceiptsView ? 'Back to Lists' : 'Receipts'}
             </Button>
 
-            {/* Theme Controls */}
-            <Box sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: { xs: 0, sm: 0.5 },
-              mr: { xs: 0, sm: 1 }
-            }}>
-              {/* Dark/Light Mode Toggle */}
-              <IconButton
-                onClick={toggleMode}
-                sx={{
-                  width: { xs: 32, sm: 44 },
-                  height: { xs: 32, sm: 44 },
-                  borderRadius: '12px',
-                  color: 'text.secondary',
-                  '&:hover': {
-                    backgroundColor: mode === 'dark' ? 'rgba(245, 158, 11, 0.08)' : 'rgba(30, 41, 59, 0.08)',
-                    color: mode === 'dark' ? '#F59E0B' : '#1E293B',
-                    transform: 'scale(1.05)',
-                  },
-                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                }}
-              >
-                {mode === 'dark' ? <LightMode sx={{ fontSize: { xs: 16, sm: 24 } }} /> : <DarkMode sx={{ fontSize: { xs: 16, sm: 24 } }} />}
-              </IconButton>
-
-              {/* Color Theme Settings */}
-              <IconButton
-                onClick={() => setShowThemeSettings(true)}
-                sx={{
-                  width: { xs: 32, sm: 44 },
-                  height: { xs: 32, sm: 44 },
-                  borderRadius: '12px',
-                  color: 'text.secondary',
-                  '&:hover': {
-                    backgroundColor: 'rgba(139, 92, 246, 0.08)',
-                    color: '#8B5CF6',
-                    transform: 'scale(1.05)',
-                  },
-                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                }}
-              >
-                <Palette sx={{ fontSize: { xs: 16, sm: 24 } }} />
-              </IconButton>
-            </Box>
-
-            {/* Help Button */}
+            {/* Settings Menu (theme + help) */}
             <IconButton
-              onClick={() => setShowHelpPage(true)}
+              onClick={handleSettingsMenuOpen}
               sx={{
-                mr: { xs: 0.25, sm: 1 },
-                width: { xs: 32, sm: 44 },
-                height: { xs: 32, sm: 44 },
+                mr: { xs: 0.5, sm: 1 },
+                width: { xs: 36, sm: 44 },
+                height: { xs: 36, sm: 44 },
                 borderRadius: '12px',
                 color: 'text.secondary',
                 '&:hover': {
@@ -882,7 +850,7 @@ const VoiceGroceryList = ({ user, logout }) => {
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
             >
-              <Help sx={{ fontSize: { xs: 16, sm: 24 } }} />
+              <Settings sx={{ fontSize: { xs: 18, sm: 24 } }} />
             </IconButton>
 
             {/* User Profile Section */}
@@ -965,6 +933,71 @@ const VoiceGroceryList = ({ user, logout }) => {
               <MenuItem onClick={handleLogout} sx={{ gap: 1 }}>
                 <Logout fontSize="small" />
                 Sign Out
+              </MenuItem>
+            </Menu>
+
+            <Menu
+              anchorEl={settingsMenuAnchor}
+              open={Boolean(settingsMenuAnchor)}
+              onClose={handleSettingsMenuClose}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              PaperProps={{
+                sx: {
+                  mt: 1,
+                  borderRadius: '16px',
+                  minWidth: 240,
+                }
+              }}
+            >
+              <MenuItem
+                onClick={() => {
+                  toggleMode();
+                  handleSettingsMenuClose();
+                }}
+                sx={{ gap: 1 }}
+              >
+                <ListItemIcon>
+                  {mode === 'dark' ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
+                </ListItemIcon>
+                <ListItemText
+                  primary={mode === 'dark' ? 'Light mode' : 'Dark mode'}
+                  secondary="Toggle base theme"
+                  primaryTypographyProps={{ fontWeight: 600 }}
+                />
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setShowThemeSettings(true);
+                  handleSettingsMenuClose();
+                }}
+                sx={{ gap: 1 }}
+              >
+                <ListItemIcon>
+                  <Palette fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Theme settings"
+                  secondary="Accent colors & hues"
+                  primaryTypographyProps={{ fontWeight: 600 }}
+                />
+              </MenuItem>
+              <Divider sx={{ my: 0.5 }} />
+              <MenuItem
+                onClick={() => {
+                  setShowHelpPage(true);
+                  handleSettingsMenuClose();
+                }}
+                sx={{ gap: 1 }}
+              >
+                <ListItemIcon>
+                  <Help fontSize="small" />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Help & tips"
+                  secondary="Guides and shortcuts"
+                  primaryTypographyProps={{ fontWeight: 600 }}
+                />
               </MenuItem>
             </Menu>
           </Toolbar>
