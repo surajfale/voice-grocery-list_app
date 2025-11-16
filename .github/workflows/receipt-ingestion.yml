@@ -20,7 +20,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run ingestion job
-        run: pnpm --filter backend run ingest:receipts
+        run: pnpm --filter ./backend run ingest:receipts
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
