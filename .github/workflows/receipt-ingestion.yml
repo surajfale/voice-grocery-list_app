@@ -1,0 +1,35 @@
+name: receipt-ingestion
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - name: Install backend deps
+        run: |
+          cd backend
+          pnpm install --frozen-lockfile
+
+      - name: Run ingestion job
+        run: pnpm --filter backend run ingest:receipts
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          RAG_EMBEDDINGS_MODEL: ${{ secrets.RAG_EMBEDDINGS_MODEL || 'text-embedding-3-small' }}
+          RAG_COMPLETIONS_MODEL: ${{ secrets.RAG_COMPLETIONS_MODEL || 'gpt-4o-mini' }}
+          RAG_TOP_K: ${{ secrets.RAG_TOP_K || 5 }}
+          RAG_CHUNK_SIZE: ${{ secrets.RAG_CHUNK_SIZE || 512 }}
+          RAG_VECTOR_INDEX: ${{ secrets.RAG_VECTOR_INDEX || 'receiptVectorIndex' }}
+          EMBEDDINGS_VERSION: ${{ secrets.EMBEDDINGS_VERSION || 1 }}
+

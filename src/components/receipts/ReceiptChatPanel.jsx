@@ -26,7 +26,7 @@ import {
   Replay as ReplayIcon
 } from '@mui/icons-material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DateRangePicker } from '@mui/x-date-pickers/DateRangePicker';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -251,18 +251,26 @@ const ReceiptChatPanel = ({ userId, receipts, onSelectReceipt }) => {
               <Typography variant="subtitle2">Filters</Typography>
             </Stack>
             <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <DateRangePicker
-                value={dateRange}
-                onChange={(newRange) => setDateRange(newRange)}
-                disableFuture
-                slotProps={{
-                  textField: {
-                    size: 'small',
-                    helperText: 'Limit the date range for retrieval',
-                    fullWidth: true
-                  }
-                }}
-              />
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <DatePicker
+                    label="Start date"
+                    value={dateRange[0]}
+                    onChange={(value) => setDateRange([value, dateRange[1]])}
+                    disableFuture
+                    slotProps={{ textField: { size: 'small', fullWidth: true } }}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <DatePicker
+                    label="End date"
+                    value={dateRange[1]}
+                    onChange={(value) => setDateRange([dateRange[0], value])}
+                    disableFuture
+                    slotProps={{ textField: { size: 'small', fullWidth: true } }}
+                  />
+                </Grid>
+              </Grid>
             </LocalizationProvider>
             <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
