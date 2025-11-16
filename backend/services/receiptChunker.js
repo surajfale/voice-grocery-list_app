@@ -81,7 +81,9 @@ const buildMetadata = (receipt, chunkSize) => ({
     source: 'receipt',
     chunkSizeWords: chunkSize,
     hasRawText: Boolean(receipt.rawText),
-    itemCount: Array.isArray(receipt.items) ? receipt.items.length : 0
+    itemCount: Array.isArray(receipt.items) ? receipt.items.length : 0,
+    pageCount: typeof receipt.pageCount === 'number' ? receipt.pageCount : 1,
+    dimensions: receipt.stitchedDimensions || null
 });
 
 export class ReceiptChunker {

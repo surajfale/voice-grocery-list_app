@@ -26,6 +26,7 @@ Use this checklist to validate the Retrieval-Augmented Generation experience end
 - [ ] Trigger an intentional backend failure (e.g., temporarily revoke `OPENAI_API_KEY`) and ensure the UI shows a helpful fallback message with a retry option.
 - [ ] Hit the chat endpoint repeatedly (more than 20 times within 15 minutes) to confirm the 429 rate-limit message surfaces in the UI.
 - [ ] When no receipts match the filters, confirm the info alert “No receipts matched this query” appears inside the answer card.
+- [ ] Attempt to upload the same receipt twice and confirm the UI surfaces the duplicate warning instructing you to delete the existing copy.
 
 ## 5. Backend Spot Checks
 - [ ] Run `pnpm --filter backend test` and ensure all Vitest suites pass (chunker, RAG service, chat route).
@@ -38,5 +39,12 @@ Use this checklist to validate the Retrieval-Augmented Generation experience end
 - [ ] Verify dark mode still renders readable markdown and source cards.
 
 Document any failures (with reproduction steps and console/network logs) before marking the checklist complete.
+
+## 7. Local Pipeline Harness
+- Use `pnpm --filter backend test:receipt-local -- --file ./receipts/sample.jpg --user <ObjectId> --question "What did I spend?"`
+  - Requires `MONGODB_URI` + `OPENAI_API_KEY` in the environment (same as backend server).
+  - Script uploads the provided file to GridFS, runs OCR, chunking, embeddings, and issues a RAG chat scoped to that receipt.
+  - Add `--no-chat` to stop before the LLM call or `--chunk-size <words>` to override chunk length for experiments.
+  - Supply multiple `--file` flags (or `--files path1,path2`) to stitch long receipts locally before OCR—the order of the flags controls the vertical stacking.
 
 

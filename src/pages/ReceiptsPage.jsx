@@ -52,6 +52,27 @@ ReceiptMetadata.propTypes = {
   value: PropTypes.oneOfType([PropTypes.string, PropTypes.number])
 };
 
+const formatBytes = (bytes) => {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return '';
+  }
+
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let value = bytes;
+  let unitIndex = 0;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  const formatted = value >= 10 || unitIndex === 0
+    ? Math.round(value)
+    : value.toFixed(1);
+
+  return `${formatted} ${units[unitIndex]}`;
+};
+
 const ReceiptsPage = ({ user }) => {
   const fileInputRef = useRef(null);
   const [localError, setLocalError] = useState('');
@@ -73,19 +94,28 @@ const ReceiptsPage = ({ user }) => {
 
   const displayError = localError || error;
 
+  const handleFiles = (fileList) => {
+    const files = Array.from(fileList || []).filter(Boolean);
+    if (!files.length) {
+      return;
+    }
+
+    if (files.length > 10) {
+      setLocalError('Please select 10 images or fewer per receipt.');
+      return;
+    }
+
+    const invalidFile = files.find((file) => !ALLOWED_FILE_TYPES.includes(file.type));
+    if (invalidFile) {
+      setLocalError('Unsupported file type. Please upload PNG, JPG, WEBP, or HEIC images only.');
+      return;
+    }
+
+    uploadReceipt(files);
+  };
+
   const handleFileChange = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-      setLocalError('Unsupported file type. Please upload a PNG, JPG, or HEIC image.');
-      event.target.value = '';
-      return;
-    }
-
-    uploadReceipt(file);
+    handleFiles(event.target.files);
     event.target.value = '';
   };
 
@@ -119,14 +149,7 @@ const ReceiptsPage = ({ user }) => {
         onDragOver={(event) => event.preventDefault()}
         onDrop={(event) => {
           event.preventDefault();
-          const droppedFile = event.dataTransfer.files?.[0];
-          if (droppedFile) {
-            if (!ALLOWED_FILE_TYPES.includes(droppedFile.type)) {
-              setLocalError('Unsupported file type. Please upload a PNG, JPG, or HEIC image.');
-              return;
-            }
-            uploadReceipt(droppedFile);
-          }
+          handleFiles(event.dataTransfer.files);
         }}
       >
         <Box>
@@ -134,7 +157,10 @@ const ReceiptsPage = ({ user }) => {
             Upload grocery receipt
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Drop an image here or choose a file to automatically run OCR and save it to your history.
+            Drop one or more receipt photos (max 10) or choose files to have them stitched, OCR’d, and added to your history.
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Tip: Select images in order from top to bottom—the server will stitch them vertically into a single receipt.
           </Typography>
         </Box>
         <Stack direction="row" spacing={2}>
@@ -152,10 +178,11 @@ const ReceiptsPage = ({ user }) => {
             component="label"
             disabled={uploading}
           >
-            {uploading ? 'Uploading...' : 'Choose File'}
+            {uploading ? 'Uploading...' : 'Choose Image(s)'}
             <input
               type="file"
               accept="image/*"
+              multiple
               hidden
               ref={fileInputRef}
               onChange={handleFileChange}
@@ -212,7 +239,11 @@ const ReceiptsPage = ({ user }) => {
                       </Avatar>
                     </ListItemAvatar>
                     <ListItemText
-                      primary={receipt.merchant || receipt.originalFilename || 'Unknown merchant'}
+                      primary={
+                        receipt.merchant || receipt.originalFilename
+                          ? `${receipt.merchant || receipt.originalFilename}${receipt.pageCount > 1 ? ` (${receipt.pageCount} pages)` : ''}`
+                          : 'Unknown merchant'
+                      }
                       secondary={
                         <Stack direction="row" spacing={1} alignItems="center">
                           <Typography variant="caption" color="text.secondary">
@@ -255,17 +286,20 @@ const ReceiptsPage = ({ user }) => {
                 </Stack>
 
                 <Grid container spacing={2}>
-                  <Grid item xs={12} sm={4}>
+                  <Grid item xs={12} sm={3}>
                     <ReceiptMetadata label="Purchase Date" value={selectedReceipt.purchaseDate} />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid item xs={12} sm={3}>
                     <ReceiptMetadata
                       label="Total"
                       value={selectedReceipt.total ? `${selectedReceipt.currency || '$'}${selectedReceipt.total}` : '—'}
                     />
                   </Grid>
-                  <Grid item xs={12} sm={4}>
+                  <Grid item xs={12} sm={3}>
                     <ReceiptMetadata label="Items detected" value={selectedReceipt.items?.length || 0} />
+                  </Grid>
+                  <Grid item xs={12} sm={3}>
+                    <ReceiptMetadata label="Pages combined" value={selectedReceipt.pageCount || 1} />
                   </Grid>
                 </Grid>
 
@@ -286,6 +320,24 @@ const ReceiptsPage = ({ user }) => {
                         ))}
                       </List>
                     </Paper>
+                  </Box>
+                )}
+
+                {selectedReceipt.sourceImages?.length > 1 && (
+                  <Box>
+                    <Typography variant="subtitle2" mb={1}>
+                      Uploaded images
+                    </Typography>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      {selectedReceipt.sourceImages.map((image, index) => (
+                        <Chip
+                          key={`${selectedReceipt._id}-source-${image.filename || index}`}
+                          label={`${image.filename || `Image ${index + 1}`} ${formatBytes(image.size) ? `(${formatBytes(image.size)})` : ''}`}
+                          variant="outlined"
+                          size="small"
+                        />
+                      ))}
+                    </Stack>
                   </Box>
                 )}
 

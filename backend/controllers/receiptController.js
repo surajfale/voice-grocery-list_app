@@ -7,6 +7,8 @@ import {
 } from '../utils/gridFs.js';
 import { runReceiptOcr } from '../services/receiptOcr.js';
 import receiptRagService from '../services/ReceiptRagService.js';
+import { prepareReceiptImage } from '../utils/imageStitcher.js';
+import { computeSha256 } from '../utils/cryptoUtil.js';
 
 const asObject = (receipt) => {
   if (!receipt) {
@@ -20,10 +22,42 @@ const ensureValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
 const normalizeUserId = (req) => req.body.userId || req.query.userId || req.params.userId;
 
+const RECEIPT_FIELD_NAMES = ['receipt', 'receiptImages', 'receipts'];
+
+const getUploadedReceiptFiles = (req) => {
+  if (Array.isArray(req.files) && req.files.length > 0) {
+    return req.files.filter((file) => RECEIPT_FIELD_NAMES.includes(file.fieldname));
+  }
+
+  if (req.file) {
+    return [req.file];
+  }
+
+  if (req.files && typeof req.files === 'object') {
+    const aggregated = [];
+    ['receiptImages', 'receipts', 'receipt'].forEach((key) => {
+      if (Array.isArray(req.files[key])) {
+        aggregated.push(...req.files[key]);
+      }
+    });
+    return aggregated;
+  }
+
+  return [];
+};
+
+const buildCombinedFilename = (files) => {
+  const baseName = files[0]?.originalname
+    ? files[0].originalname.replace(/\.[^/.]+$/, '')
+    : 'receipt';
+  const suffix = files.length > 1 ? '-stitched' : '';
+  return `${baseName}${suffix}.png`;
+};
+
 export const uploadReceipt = async (req, res) => {
   try {
-    const { file } = req;
     const userId = normalizeUserId(req);
+    const files = getUploadedReceiptFiles(req);
 
     if (!userId || !ensureValidObjectId(userId)) {
       return res.status(400).json({
@@ -32,32 +66,68 @@ export const uploadReceipt = async (req, res) => {
       });
     }
 
-    if (!file) {
+    const normalizedUserId = new mongoose.Types.ObjectId(userId);
+
+    if (!files.length) {
       return res.status(400).json({
         success: false,
-        error: 'Receipt image is required'
+        error: 'At least one receipt image is required'
+      });
+    }
+
+    if (files.length > 10) {
+      return res.status(400).json({
+        success: false,
+        error: 'You can upload up to 10 images per receipt.'
       });
     }
 
     let fileId;
     let receipt;
 
+    let uploadPayload;
     try {
-      fileId = await uploadBufferToGridFs(file.buffer, {
-        filename: file.originalname || `receipt-${Date.now()}`,
-        contentType: file.mimetype,
+      const stitchedImage = await prepareReceiptImage(files);
+      const contentHash = computeSha256(stitchedImage.buffer);
+      const duplicateReceipt = await Receipt.findOne({
+        userId: normalizedUserId,
+        contentHash
+      }).lean();
+
+      if (duplicateReceipt) {
+        return res.status(409).json({
+          success: false,
+          error: 'Duplicate receipt detected. Delete the existing receipt from your history before uploading it again.',
+          duplicateReceiptId: duplicateReceipt._id
+        });
+      }
+
+      uploadPayload = stitchedImage;
+
+      const combinedFilename = buildCombinedFilename(files);
+
+      fileId = await uploadBufferToGridFs(stitchedImage.buffer, {
+        filename: combinedFilename,
+        contentType: stitchedImage.mimeType,
         metadata: {
-          userId,
-          uploadedAt: new Date()
+          userId: normalizedUserId.toString(),
+          uploadedAt: new Date(),
+          pageCount: stitchedImage.pageCount,
+          sourceImages: stitchedImage.sourceImages,
+          contentHash
         }
       });
 
       receipt = await Receipt.create({
-        userId,
-        originalFilename: file.originalname,
-        mimeType: file.mimetype,
-        size: file.size,
+        userId: normalizedUserId,
+        originalFilename: combinedFilename,
+        mimeType: stitchedImage.mimeType,
+        size: stitchedImage.buffer.length,
         fileId,
+        pageCount: stitchedImage.pageCount,
+        sourceImages: stitchedImage.sourceImages,
+        stitchedDimensions: stitchedImage.dimensions,
+        contentHash,
         status: 'processing'
       });
     } catch (storageError) {
@@ -71,7 +141,7 @@ export const uploadReceipt = async (req, res) => {
     let message = 'Receipt uploaded and processed successfully.';
 
     try {
-      const ocrResult = await runReceiptOcr(file.buffer);
+      const ocrResult = await runReceiptOcr(uploadPayload.buffer);
 
       receipt.rawText = ocrResult.rawText;
       receipt.merchant = ocrResult.merchant;

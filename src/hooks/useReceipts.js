@@ -58,15 +58,21 @@ export const useReceipts = (user) => {
     }
   }, [userId, setError]);
 
-  const uploadReceipt = useCallback(async (file) => {
+  const uploadReceipt = useCallback(async (files) => {
     if (!userId) {
       setError('Please sign in to upload receipts');
       return;
     }
 
+    const normalizedFiles = Array.isArray(files) ? files : [files].filter(Boolean);
+    if (!normalizedFiles.length) {
+      setError('Please choose at least one receipt image');
+      return;
+    }
+
     setUploading(true);
     try {
-      const result = await receiptService.uploadReceipt(userId, file);
+      const result = await receiptService.uploadReceipt(userId, normalizedFiles);
       if (result.success) {
         setReceipts((prev) => [result.data, ...prev]);
         await refreshSelectedReceipt(result.data._id);

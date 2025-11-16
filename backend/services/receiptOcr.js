@@ -106,8 +106,12 @@ export const runReceiptOcr = async (buffer, {
   language = 'eng',
   logger
 } = {}) => {
+  const safeLogger = typeof logger === 'function'
+    ? logger
+    : () => {};
+
   const result = await Tesseract.recognize(buffer, language, {
-    logger
+    logger: safeLogger
   });
 
   const rawText = result?.data?.text?.trim() || '';

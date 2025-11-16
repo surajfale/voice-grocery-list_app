@@ -22,6 +22,23 @@ const ReceiptSchema = new mongoose.Schema({
     required: true,
     index: true
   },
+  contentHash: {
+    type: String,
+    index: true
+  },
+  pageCount: {
+    type: Number,
+    default: 1
+  },
+  sourceImages: [{
+    filename: { type: String },
+    size: { type: Number },
+    mimeType: { type: String }
+  }],
+  stitchedDimensions: {
+    width: { type: Number },
+    height: { type: Number }
+  },
   status: {
     type: String,
     enum: ['processing', 'ready', 'error'],
@@ -48,6 +65,10 @@ const ReceiptSchema = new mongoose.Schema({
 });
 
 ReceiptSchema.index({ embeddingStatus: 1, embeddingsVersion: 1 });
+ReceiptSchema.index(
+  { userId: 1, contentHash: 1 },
+  { unique: true, sparse: true }
+);
 
 const Receipt = mongoose.model('Receipt', ReceiptSchema);
 

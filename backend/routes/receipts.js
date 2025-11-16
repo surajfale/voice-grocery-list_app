@@ -16,7 +16,8 @@ const router = express.Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10 MB
+    fileSize: 10 * 1024 * 1024, // 10 MB per file
+    files: 10
   },
   fileFilter: (_req, file, callback) => {
     const allowedMimeTypes = [
@@ -36,7 +37,7 @@ const upload = multer({
   }
 });
 
-router.post('/', upload.single('receipt'), uploadReceipt);
+router.post('/', upload.any(), uploadReceipt);
 router.get('/user/:userId', listReceipts);
 router.post(
   '/chat',

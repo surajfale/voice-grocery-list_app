@@ -83,9 +83,39 @@ const formatFilter = (clauses) => {
 
   return {
     compound: {
-      filter: clauses
+      must: clauses
     }
   };
+};
+
+const buildMatchConditions = (filters = {}) => {
+  const match = {};
+
+  if (filters.userId) {
+    match.userId = toObjectId(filters.userId, 'userId');
+  }
+
+  if (filters.receiptIds?.length) {
+    match.receiptId = {
+      $in: filters.receiptIds.map((id) => toObjectId(id, 'receiptIds'))
+    };
+  } else if (filters.receiptId) {
+    match.receiptId = toObjectId(filters.receiptId, 'receiptId');
+  }
+
+  if (filters.purchaseDate) {
+    match.purchaseDate = filters.purchaseDate;
+  } else if (filters.dateRange && (filters.dateRange.start || filters.dateRange.end)) {
+    match.purchaseDate = {};
+    if (filters.dateRange.start) {
+      match.purchaseDate.$gte = filters.dateRange.start;
+    }
+    if (filters.dateRange.end) {
+      match.purchaseDate.$lte = filters.dateRange.end;
+    }
+  }
+
+  return Object.keys(match).length ? match : null;
 };
 
 export const vectorStore = {
@@ -158,22 +188,27 @@ export const vectorStore = {
     }
 
     const filterClauses = buildFilterClauses(filters);
+    const formattedFilter = formatFilter(filterClauses);
+    const matchConditions = buildMatchConditions(filters);
+
+    const searchK = formattedFilter ? Math.min(topK * 5, 100) : topK;
+
     const searchStage = {
       index: ragConfig.vectorIndex,
       knnBeta: {
         vector: queryVector,
         path: 'embedding',
-        k: topK
+        k: searchK
       }
     };
 
-    const formattedFilter = formatFilter(filterClauses);
     if (formattedFilter) {
-      searchStage.filter = formattedFilter;
+      searchStage.knnBeta.filter = formattedFilter;
     }
 
     const pipeline = [
       { $search: searchStage },
+      ...(matchConditions ? [{ $match: matchConditions }] : []),
       { $addFields: { score: { $meta: 'searchScore' } } },
       { $limit: topK },
       {

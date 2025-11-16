@@ -50,8 +50,16 @@ export function decryptText(encryptedString, keyBase64) {
   return decrypted.toString('utf8');
 }
 
+export function computeSha256(data) {
+  const hash = crypto.createHash('sha256');
+  const normalized = typeof data === 'string' ? Buffer.from(data) : data;
+  hash.update(normalized);
+  return hash.digest('hex');
+}
+
 export default {
   generateKey,
   encryptText,
   decryptText,
+  computeSha256,
 };

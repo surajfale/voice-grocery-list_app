@@ -14,19 +14,22 @@ export class ReceiptService extends BaseService {
     return `${this.apiBaseUrl}/receipts/${receiptId}/image?${params.toString()}`;
   }
 
-  async uploadReceipt(userId, file) {
+  async uploadReceipt(userId, files) {
     return this.executeWithRetry(async () => {
       if (!userId) {
         throw new Error('User ID is required');
       }
 
-      if (!file) {
+      const normalizedFiles = Array.isArray(files) ? files : [files].filter(Boolean);
+      if (!normalizedFiles.length) {
         throw new Error('Receipt file is required');
       }
 
       const formData = new FormData();
       formData.append('userId', userId);
-      formData.append('receipt', file);
+      normalizedFiles.forEach((file) => {
+        formData.append('receiptImages', file);
+      });
 
       const response = await fetch(`${this.apiBaseUrl}/receipts`, {
         method: 'POST',
@@ -41,7 +44,10 @@ export class ReceiptService extends BaseService {
 
       return this.createSuccessResponse(data.receipt, data.message || 'Receipt uploaded');
     }, {
-      context: { userId, filename: file?.name }
+      context: {
+        userId,
+        files: normalizedFiles.map((file) => file.name)
+      }
     });
   }
 
