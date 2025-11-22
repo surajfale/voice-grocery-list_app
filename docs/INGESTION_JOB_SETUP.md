@@ -57,9 +57,52 @@ jobs:
 ```
 
 ### Secret management
-1. In GitHub → **Settings → Secrets and variables → Actions**, add the variables listed above.  
-2. Use the same values you configured in Railway/production.  
-3. For optional values (like `RAG_TOP_K`), you can hardcode defaults in the workflow instead of storing as secrets.
+
+#### Setting up GitHub Secrets (Required for Public Repositories)
+
+Since this is a public repository, you **must** use GitHub Secrets to store sensitive credentials. Secrets are encrypted and never exposed in logs or code.
+
+**Step-by-step setup:**
+
+1. **Navigate to Repository Settings:**
+   - Go to your repository on GitHub
+   - Click **Settings** (top menu)
+   - In the left sidebar, click **Secrets and variables** → **Actions**
+
+2. **Add Required Secrets:**
+   Click **New repository secret** for each of the following:
+
+   **Required Secrets:**
+   - **Name:** `MONGODB_URI`
+     - **Value:** Your MongoDB Atlas connection string
+     - Example: `mongodb+srv://username:password@cluster.mongodb.net/dbname?retryWrites=true&w=majority`
+     - ⚠️ **Important:** Replace `username` and `password` with your actual credentials
+  
+   - **Name:** `OPENAI_API_KEY`
+     - **Value:** Your OpenAI API key (starts with `sk-`)
+     - Get it from: https://platform.openai.com/api-keys
+
+   **Optional Secrets (have defaults in workflow):**
+   - `RAG_EMBEDDINGS_MODEL` (default: `text-embedding-3-small`)
+   - `RAG_COMPLETIONS_MODEL` (default: `gpt-4o-mini`)
+   - `RAG_TOP_K` (default: `5`)
+   - `RAG_CHUNK_SIZE` (default: `512`)
+   - `RAG_VECTOR_INDEX` (default: `receiptVectorIndex`)
+   - `EMBEDDINGS_VERSION` (default: `1`)
+
+3. **Security Best Practices:**
+   - ✅ Secrets are encrypted at rest and in transit
+   - ✅ Secrets are automatically masked in workflow logs (even if accidentally printed)
+   - ✅ Only workflows can access secrets (not visible to collaborators or in code)
+   - ✅ Use the same values you configured in Railway/production
+   - ⚠️ **Never** commit secrets to the repository (even in `.env` files)
+   - ⚠️ If you suspect a secret was exposed, rotate it immediately
+
+4. **Testing Secrets:**
+   - After adding secrets, manually trigger the workflow:
+     - Go to **Actions** → **receipt-ingestion** → **Run workflow**
+   - If secrets are missing, the workflow will fail with a clear error
+   - Check workflow logs to verify the job runs successfully
 
 ### Monitoring
 - Every run shows up in **Actions → receipt-ingestion**.  

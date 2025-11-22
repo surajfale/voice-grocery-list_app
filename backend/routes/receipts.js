@@ -6,7 +6,9 @@ import {
   getReceipt,
   deleteReceipt,
   streamReceiptImage,
-  chatAboutReceipts
+  chatAboutReceipts,
+  checkEmbeddingStatus,
+  triggerEmbedding
 } from '../controllers/receiptController.js';
 import { receiptChatIpLimiter, receiptChatUserLimiter } from '../middleware/rateLimiter.js';
 import validateChatRequest from '../middleware/validateChatRequest.js';
@@ -46,6 +48,8 @@ router.post(
   validateChatRequest,
   chatAboutReceipts
 );
+router.post('/embedding/status', checkEmbeddingStatus);
+router.post('/embedding/trigger', triggerEmbedding);
 router.get('/:receiptId', getReceipt);
 router.get('/:receiptId/image', streamReceiptImage);
 router.delete('/:receiptId', deleteReceipt);

@@ -9,6 +9,12 @@ import { runReceiptOcr } from '../services/receiptOcr.js';
 import receiptRagService from '../services/ReceiptRagService.js';
 import { prepareReceiptImage } from '../utils/imageStitcher.js';
 import { computeSha256 } from '../utils/cryptoUtil.js';
+import receiptChunker from '../services/receiptChunker.js';
+import { getEmbeddingClient } from '../utils/embeddingClient.js';
+import vectorStore from '../utils/vectorStore.js';
+import ragConfig from '../config/ragConfig.js';
+import logger from '../utils/logger.js';
+import { estimateEmbeddingCost } from '../utils/costEstimator.js';
 
 const asObject = (receipt) => {
   if (!receipt) {
@@ -358,7 +364,8 @@ export const chatAboutReceipts = async (req, res) => {
       sources: result.sources || [],
       usage: result.usage || null,
       contextChunks: result.contextChunks || [],
-      question: result.question
+      question: result.question,
+      diagnostic: result.diagnostic || null
     });
   } catch (error) {
     const isValidationError = /invalid|required|question|userId|receipt/i.test(error?.message || '');
@@ -371,6 +378,145 @@ export const chatAboutReceipts = async (req, res) => {
       error: isValidationError
         ? error.message
         : 'Failed to process chat request. Please try again later.'
+    });
+  }
+};
+
+export const checkEmbeddingStatus = async (req, res) => {
+  try {
+    const userId = normalizeUserId(req);
+    const { receiptIds } = req.body || {};
+
+    if (!userId || !ensureValidObjectId(userId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid userId is required'
+      });
+    }
+
+    const status = await receiptRagService.checkEmbeddingStatus({ userId, receiptIds });
+
+    return res.json({
+      success: true,
+      ...status
+    });
+  } catch (error) {
+    console.error('Failed to check embedding status:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to check embedding status'
+    });
+  }
+};
+
+export const triggerEmbedding = async (req, res) => {
+  try {
+    const userId = normalizeUserId(req);
+    const { receiptId } = req.body || {};
+
+    if (!userId || !ensureValidObjectId(userId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid userId is required'
+      });
+    }
+
+    const normalizedUserId = new mongoose.Types.ObjectId(userId);
+    const query = { userId: normalizedUserId, status: 'ready' };
+
+    if (receiptId && ensureValidObjectId(receiptId)) {
+      query._id = receiptId;
+    } else {
+      // Only process receipts that aren't synced or need re-embedding
+      query.$or = [
+        { embeddingStatus: { $ne: 'synced' } },
+        { embeddingsVersion: { $lt: ragConfig.embeddingsVersion } }
+      ];
+    }
+
+    const receipts = await Receipt.find(query).limit(10).sort({ updatedAt: 1 });
+
+    if (receipts.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No receipts need embedding',
+        processed: 0,
+        successCount: 0,
+        failedCount: 0
+      });
+    }
+
+    const embeddingClient = getEmbeddingClient();
+    const stats = {
+      processed: 0,
+      successCount: 0,
+      failedCount: 0
+    };
+
+    for (const receiptDoc of receipts) {
+      try {
+        await Receipt.updateOne({ _id: receiptDoc._id }, { $set: { embeddingStatus: 'pending' } });
+
+        const receipt = receiptDoc.toObject({ depopulate: true });
+        receipt._id = receiptDoc._id;
+        receipt.userId = receiptDoc.userId;
+
+        const chunks = receiptChunker.chunkReceipt(receipt);
+        if (!chunks.length) {
+          throw new Error('No embeddable content extracted from receipt.');
+        }
+
+        const embeddingResult = await embeddingClient.embedBatch(chunks.map((chunk) => chunk.text));
+        const chunkPayloads = chunks.map((chunk, index) => ({
+          ...chunk,
+          embedding: embeddingResult.embeddings[index]
+        }));
+
+        await vectorStore.upsertChunks(chunkPayloads);
+
+        receiptDoc.embeddingStatus = 'synced';
+        receiptDoc.embeddingsVersion = ragConfig.embeddingsVersion;
+        receiptDoc.errorMessage = undefined;
+        await receiptDoc.save();
+
+        stats.processed += 1;
+        stats.successCount += 1;
+
+        logger.info('rag.embedding.triggered', {
+          receiptId: receiptDoc._id.toString(),
+          userId: receiptDoc.userId?.toString(),
+          chunkCount: chunks.length
+        });
+      } catch (error) {
+        await Receipt.updateOne(
+          { _id: receiptDoc._id },
+          {
+            $set: {
+              embeddingStatus: 'failed',
+              errorMessage: error.message || 'Embedding failed'
+            }
+          }
+        );
+        stats.processed += 1;
+        stats.failedCount += 1;
+        logger.error('rag.embedding.failed', {
+          receiptId: receiptDoc._id.toString(),
+          userId: receiptDoc.userId?.toString(),
+          error: error.message || error
+        });
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `Processed ${stats.processed} receipt(s)`,
+      ...stats
+    });
+  } catch (error) {
+    console.error('Failed to trigger embedding:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to trigger embedding'
     });
   }
 };

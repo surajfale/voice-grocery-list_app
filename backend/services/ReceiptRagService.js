@@ -4,6 +4,7 @@ import { getEmbeddingClient } from '../utils/embeddingClient.js';
 import { vectorStore } from '../utils/vectorStore.js';
 import logger from '../utils/logger.js';
 import { estimateCompletionCost, estimateEmbeddingCost } from '../utils/costEstimator.js';
+import Receipt from '../models/Receipt.js';
 
 const MIN_QUESTION_LENGTH = 3;
 const MAX_QUESTION_LENGTH = 500;
@@ -234,11 +235,78 @@ export class ReceiptRagService {
   }
 
   /**
+   * Check if receipts are embedded and ready for RAG queries.
+   * @param {Object} params
+   * @param {string} params.userId - Owner of the receipts.
+   * @param {string[]} [params.receiptIds] - Optional list of receipt ObjectIds to check.
+   */
+  async checkEmbeddingStatus({ userId, receiptIds } = {}) {
+    const normalizedUserId = ensureValidObjectId(userId, 'userId');
+    const query = { userId: normalizedUserId, status: 'ready' };
+
+    if (Array.isArray(receiptIds) && receiptIds.length > 0) {
+      query._id = { $in: receiptIds.map((id) => ensureValidObjectId(id, 'receiptIds')) };
+    }
+
+    const receipts = await Receipt.find(query).lean();
+    const total = receipts.length;
+    const synced = receipts.filter((r) => r.embeddingStatus === 'synced').length;
+    const pending = receipts.filter((r) => r.embeddingStatus === 'pending' || !r.embeddingStatus).length;
+    const failed = receipts.filter((r) => r.embeddingStatus === 'failed').length;
+
+    return {
+      total,
+      synced,
+      pending,
+      failed,
+      ready: synced > 0,
+      receipts: receipts.map((r) => ({
+        receiptId: r._id.toString(),
+        embeddingStatus: r.embeddingStatus || 'pending',
+        status: r.status,
+        errorMessage: r.errorMessage
+      }))
+    };
+  }
+
+  /**
    * Convenience method that runs retrieval followed by generation.
    */
   async chat({ userId, question, receiptIds, dateRange, topK } = {}) {
     if (!userId) {
       throw new Error('userId is required.');
+    }
+
+    // Check embedding status before searching
+    const embeddingStatus = await this.checkEmbeddingStatus({ userId, receiptIds });
+
+    if (embeddingStatus.total === 0) {
+      return {
+        answer: 'You don\'t have any receipts uploaded yet. Please upload receipts first before asking questions.',
+        sources: [],
+        contextChunks: [],
+        question: sanitizeQuestion(question),
+        diagnostic: {
+          totalReceipts: 0,
+          embeddedReceipts: 0,
+          pendingReceipts: 0
+        }
+      };
+    }
+
+    if (embeddingStatus.synced === 0 && embeddingStatus.pending > 0) {
+      return {
+        answer: `Your receipts are still being processed. ${embeddingStatus.pending} receipt(s) are pending embedding. Please wait a few minutes and try again, or trigger the embedding job manually.`,
+        sources: [],
+        contextChunks: [],
+        question: sanitizeQuestion(question),
+        diagnostic: {
+          totalReceipts: embeddingStatus.total,
+          embeddedReceipts: embeddingStatus.synced,
+          pendingReceipts: embeddingStatus.pending,
+          failedReceipts: embeddingStatus.failed
+        }
+      };
     }
 
     const retrieval = await this.retrieveContext({
@@ -250,11 +318,31 @@ export class ReceiptRagService {
     });
 
     if (!retrieval.chunks || retrieval.chunks.length === 0) {
+      // Provide more helpful error message based on embedding status
+      let errorMessage = 'I could not find any receipts that match your question.';
+
+      if (embeddingStatus.pending > 0) {
+        errorMessage += ` Note: ${embeddingStatus.pending} receipt(s) are still being processed.`;
+      }
+
+      if (embeddingStatus.failed > 0) {
+        errorMessage += ` Warning: ${embeddingStatus.failed} receipt(s) failed to process.`;
+      }
+
+      errorMessage += ' Try adjusting the filters or uploading additional receipts.';
+
       return {
-        answer: 'I could not find any receipts that match your question. Try adjusting the filters or uploading additional receipts.',
+        answer: errorMessage,
         sources: [],
         contextChunks: [],
-        question: retrieval.sanitizedQuestion
+        question: retrieval.sanitizedQuestion,
+        diagnostic: {
+          totalReceipts: embeddingStatus.total,
+          embeddedReceipts: embeddingStatus.synced,
+          pendingReceipts: embeddingStatus.pending,
+          failedReceipts: embeddingStatus.failed,
+          chunksFound: 0
+        }
       };
     }
 
@@ -265,7 +353,12 @@ export class ReceiptRagService {
       sources: generation.sources,
       usage: generation.usage,
       contextChunks: retrieval.chunks,
-      question: retrieval.sanitizedQuestion
+      question: retrieval.sanitizedQuestion,
+      diagnostic: {
+        totalReceipts: embeddingStatus.total,
+        embeddedReceipts: embeddingStatus.synced,
+        chunksFound: retrieval.chunks.length
+      }
     };
   }
 }

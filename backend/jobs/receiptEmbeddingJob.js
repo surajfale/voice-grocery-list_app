@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { pathToFileURL } from 'url';
 import mongoose from 'mongoose';
 import ragConfig from '../config/ragConfig.js';
 import Receipt from '../models/Receipt.js';
@@ -11,7 +12,8 @@ import { estimateEmbeddingCost } from '../utils/costEstimator.js';
 const embeddingClient = getEmbeddingClient();
 
 const parseArgs = (argv) => {
-  const args = argv.slice(2);
+  // Filter out the "--" separator that pnpm might pass
+  const args = argv.slice(2).filter((arg) => arg !== '--');
   const options = {
     batchSize: 50,
     receiptId: null,
@@ -20,7 +22,7 @@ const parseArgs = (argv) => {
 
   const getValue = (flag) => {
     const explicitIndex = args.indexOf(flag);
-    if (explicitIndex !== -1) {
+    if (explicitIndex !== -1 && explicitIndex + 1 < args.length) {
       return args[explicitIndex + 1];
     }
     const prefixedArg = args.find((arg) => arg.startsWith(`${flag}=`));
@@ -51,8 +53,11 @@ const connectToDatabase = async () => {
   }
 
   if (mongoose.connection.readyState !== 1) {
+    console.log('🔌 Connecting to MongoDB...');
     await mongoose.connect(process.env.MONGODB_URI);
     logger.info('ingest.db.connected');
+  } else {
+    console.log('✅ Already connected to MongoDB');
   }
 };
 
@@ -135,61 +140,120 @@ const processReceipt = async (receiptDoc) => {
 };
 
 const run = async () => {
-  const options = parseArgs(process.argv);
-  logger.info('ingest.run.started', { options });
+  try {
+    console.log('🚀 Starting receipt embedding job...');
+    const options = parseArgs(process.argv);
+    logger.info('ingest.run.started', { options });
+    console.log(`   Options: batchSize=${options.batchSize}, force=${options.force}, receiptId=${options.receiptId || 'all'}`);
 
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY is not configured. Cannot generate embeddings.');
-  }
-
-  await connectToDatabase();
-
-  const query = buildReceiptQuery(options);
-  const startTime = Date.now();
-  const stats = {
-    processed: 0,
-    success: 0,
-    failed: 0
-  };
-
-  while (true) {
-    const receipts = await Receipt.find(query)
-      .sort({ updatedAt: 1 })
-      .limit(options.batchSize);
-
-    if (receipts.length === 0) {
-      break;
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not configured. Cannot generate embeddings.');
     }
 
-    for (const receiptDoc of receipts) {
-      const result = await processReceipt(receiptDoc);
-      stats.processed += 1;
-      if (result.success) {
-        stats.success += 1;
-      } else {
-        stats.failed += 1;
+    await connectToDatabase();
+    console.log('✅ Connected to database');
+
+    const query = buildReceiptQuery(options);
+    const startTime = Date.now();
+    const stats = {
+      processed: 0,
+      success: 0,
+      failed: 0
+    };
+    const processedReceiptIds = new Set();
+
+    while (true) {
+      // Build query excluding already processed receipts in this run
+      const currentQuery = { ...query };
+      if (processedReceiptIds.size > 0) {
+        currentQuery._id = { $nin: Array.from(processedReceiptIds).map((id) => new mongoose.Types.ObjectId(id)) };
+      }
+
+      const receipts = await Receipt.find(currentQuery)
+        .sort({ updatedAt: 1 })
+        .limit(options.batchSize);
+
+      if (receipts.length === 0) {
+        if (stats.processed === 0) {
+          console.log('ℹ️  No receipts found that need embedding.');
+          console.log('   All receipts are already synced or no receipts exist.');
+        }
+        break;
+      }
+
+      console.log(`\n📦 Found ${receipts.length} receipt(s) to process...`);
+
+      for (const receiptDoc of receipts) {
+        const receiptId = receiptDoc._id.toString();
+
+        // Skip if already processed in this run
+        if (processedReceiptIds.has(receiptId)) {
+          continue;
+        }
+
+        console.log(`\n   Processing receipt ${receiptId}...`);
+
+        const result = await processReceipt(receiptDoc);
+        processedReceiptIds.add(receiptId);
+        stats.processed += 1;
+
+        if (result.success) {
+          stats.success += 1;
+          console.log(`   ✅ Successfully embedded receipt ${receiptId} (${result.chunkCount} chunks)`);
+        } else {
+          stats.failed += 1;
+          console.log(`   ❌ Failed to embed receipt ${receiptId}: ${result.error?.message || 'Unknown error'}`);
+        }
+      }
+
+      if (options.receiptId) {
+        break;
       }
     }
 
-    if (options.receiptId) {
-      break;
-    }
-  }
+    const duration = Date.now() - startTime;
+    logger.info('ingest.run.completed', {
+      ...stats,
+      durationMs: duration
+    });
 
-  logger.info('ingest.run.completed', {
-    ...stats,
-    durationMs: Date.now() - startTime
-  });
-  await mongoose.disconnect();
+    console.log('\n📊 Job Summary:');
+    console.log(`   Processed: ${stats.processed}`);
+    console.log(`   Successful: ${stats.success}`);
+    console.log(`   Failed: ${stats.failed}`);
+    console.log(`   Duration: ${(duration / 1000).toFixed(2)}s`);
+
+    await mongoose.disconnect();
+    console.log('✅ Disconnected from database');
+  } catch (error) {
+    console.error('❌ Error in run function:', error.message || error);
+    console.error('Stack:', error.stack);
+    throw error;
+  }
 };
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const invokedDirectly = (() => {
+  if (!process.argv[1]) {
+    return false;
+  }
+  try {
+    return import.meta.url === pathToFileURL(process.argv[1]).href;
+  } catch (_error) {
+    return false;
+  }
+})();
+
+if (invokedDirectly) {
   run()
     .then(() => {
       logger.info('ingest.run.finished');
+      console.log('\n✨ Embedding job completed successfully!');
+      process.exit(0);
     })
     .catch((error) => {
       logger.error('ingest.run.failed', { error: error.message || error });
+      console.error('\n❌ Embedding job failed:', error.message || error);
+      console.error('Stack:', error.stack);
       mongoose.disconnect().finally(() => {
         process.exit(1);
       });

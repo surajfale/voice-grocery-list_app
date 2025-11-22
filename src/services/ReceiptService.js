@@ -91,6 +91,57 @@ export class ReceiptService extends BaseService {
       throw new Error(result.error || 'Failed to delete receipt');
     }, { context: { userId, receiptId } });
   }
+
+  async checkEmbeddingStatus(userId, receiptIds = null) {
+    return this.executeWithRetry(async () => {
+      const body = { userId };
+      if (receiptIds && Array.isArray(receiptIds) && receiptIds.length > 0) {
+        body.receiptIds = receiptIds;
+      }
+
+      const result = await this.apiService.makeRequest('/receipts/embedding/status', {
+        method: 'POST',
+        body: JSON.stringify(body)
+      });
+
+      if (result.success) {
+        return this.createSuccessResponse({
+          total: result.total || 0,
+          synced: result.synced || 0,
+          pending: result.pending || 0,
+          failed: result.failed || 0,
+          ready: result.ready || false,
+          receipts: result.receipts || []
+        }, 'Embedding status checked');
+      }
+
+      throw new Error(result.error || 'Failed to check embedding status');
+    }, { context: { userId, receiptIds } });
+  }
+
+  async triggerEmbedding(userId, receiptId = null) {
+    return this.executeWithRetry(async () => {
+      const body = { userId };
+      if (receiptId) {
+        body.receiptId = receiptId;
+      }
+
+      const result = await this.apiService.makeRequest('/receipts/embedding/trigger', {
+        method: 'POST',
+        body: JSON.stringify(body)
+      });
+
+      if (result.success) {
+        return this.createSuccessResponse({
+          processed: result.processed || 0,
+          successCount: result.successCount || 0,
+          failedCount: result.failedCount || 0
+        }, result.message || 'Embedding triggered');
+      }
+
+      throw new Error(result.error || 'Failed to trigger embedding');
+    }, { context: { userId, receiptId } });
+  }
 }
 
 export default ReceiptService;
