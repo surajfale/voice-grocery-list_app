@@ -15,12 +15,13 @@ export class ReceiptService extends BaseService {
   }
 
   async uploadReceipt(userId, files) {
+    const normalizedFiles = Array.isArray(files) ? files : [files].filter(Boolean);
+
     return this.executeWithRetry(async () => {
       if (!userId) {
         throw new Error('User ID is required');
       }
 
-      const normalizedFiles = Array.isArray(files) ? files : [files].filter(Boolean);
       if (!normalizedFiles.length) {
         throw new Error('Receipt file is required');
       }
