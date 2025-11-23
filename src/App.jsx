@@ -75,7 +75,7 @@ import PrintableList from './components/PrintableList';
 import CongratulationsDialog from './components/CongratulationsDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import ReceiptsPage from './pages/ReceiptsPage';
-import useGroceryList from './hooks/useGroceryList';
+import { useGroceryList } from './hooks/useGroceryList';
 import groceryIntelligence from './services/groceryIntelligence';
 import { downloadListAsImage, downloadListAsPDF, shareList } from './utils/downloadList';
 

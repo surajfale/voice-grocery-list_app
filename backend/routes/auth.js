@@ -53,6 +53,16 @@ router.post('/register', registrationLimiter, async (req, res) => {
       });
     }
 
+    // Check total user count - limit to 10 accounts
+    const userCount = await User.countDocuments();
+    if (userCount >= 10) {
+      console.warn(`⚠️ Registration attempt blocked: Maximum user limit (10) reached from IP: ${getClientIP(req)}`);
+      return res.status(403).json({
+        success: false,
+        error: 'Registration is currently closed. Maximum number of accounts (10) has been reached.'
+      });
+    }
+
     // Check if user already exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
