@@ -179,6 +179,20 @@ const RegisterPage = ({ onSwitchToLogin }) => {
             </Typography>
           </Box>
 
+          {/* Project Disclaimer Alert */}
+          <Alert
+            severity="info"
+            sx={{
+              mb: 3,
+              border: '1px solid #29b6f6',
+              backgroundColor: 'rgba(41, 182, 246, 0.1)'
+            }}
+          >
+            <Typography variant="body2">
+              <strong>Note:</strong> This is a personal learning project. Service availability is not guaranteed and data may be reset.
+            </Typography>
+          </Alert>
+
           {/* Error Alert */}
           {error && (
             <Alert severity="error" sx={{ mb: 3 }}>
@@ -203,7 +217,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
                       </InputAdornment>
                     ),
                   }}
-                  sx={{ 
+                  sx={{
                     mb: 2,
                     '& .MuiInputBase-input': {
                       color: '#000000',
@@ -231,7 +245,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
                       </InputAdornment>
                     ),
                   }}
-                  sx={{ 
+                  sx={{
                     mb: 2,
                     '& .MuiInputBase-input': {
                       color: '#000000',
@@ -261,7 +275,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
                   </InputAdornment>
                 ),
               }}
-              sx={{ 
+              sx={{
                 mb: 2,
                 '& .MuiInputBase-input': {
                   color: '#000000',

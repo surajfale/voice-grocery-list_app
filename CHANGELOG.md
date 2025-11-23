@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### 2025-11-21 22:49:44 - b7bc702 [LOCAL]
+### 2025-11-21 22:49:44 - b7bc702 [PUSHED]
 
 feat(receipt): add embedding status check and trigger endpoints
 

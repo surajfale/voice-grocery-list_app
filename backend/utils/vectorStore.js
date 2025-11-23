@@ -229,10 +229,33 @@ export const vectorStore = {
 
     try {
       const results = await ReceiptChunk.aggregate(pipeline).exec();
+
+      // If no results, check if chunks exist and log diagnostic info
+      if (results.length === 0) {
+        const totalChunks = await ReceiptChunk.countDocuments(matchConditions || {});
+        if (matchConditions?.userId) {
+          const userChunks = await ReceiptChunk.countDocuments({ userId: matchConditions.userId });
+          console.warn(`⚠️  Vector search returned 0 results. Total chunks for userId ${matchConditions.userId}: ${userChunks}`);
+        } else {
+          console.warn(`⚠️  Vector search returned 0 results. Total chunks in database: ${totalChunks}`);
+        }
+      }
+
       return results;
     } catch (error) {
-      console.error('❌ Failed to search receipt chunks:', error);
-      throw new Error('Failed to search receipt chunks');
+      // Check if it's a MongoDB Atlas Search index error
+      const isIndexError = error.message?.includes('index') ||
+        error.message?.includes('search') ||
+        error.code === 17106; // MongoDB Atlas Search error code
+
+      if (isIndexError) {
+        console.error(`❌ MongoDB Atlas Search index error. Index "${ragConfig.vectorIndex}" may not exist or be misconfigured.`);
+        console.error('   Please ensure the vector index is created in MongoDB Atlas.');
+        console.error('   See docs/atlas_vector_index.md for setup instructions.');
+      }
+
+      console.error('❌ Failed to search receipt chunks:', error.message || error);
+      throw new Error(`Failed to search receipt chunks: ${error.message || 'Unknown error'}`);
     }
   }
 };

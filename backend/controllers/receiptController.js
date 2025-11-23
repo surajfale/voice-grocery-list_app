@@ -409,6 +409,49 @@ export const checkEmbeddingStatus = async (req, res) => {
   }
 };
 
+export const checkChunks = async (req, res) => {
+  try {
+    const userId = normalizeUserId(req);
+    const { receiptId } = req.query || {};
+
+    if (!userId || !ensureValidObjectId(userId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid userId is required'
+      });
+    }
+
+    const normalizedUserId = new mongoose.Types.ObjectId(userId);
+    const query = { userId: normalizedUserId };
+
+    if (receiptId && ensureValidObjectId(receiptId)) {
+      query.receiptId = new mongoose.Types.ObjectId(receiptId);
+    }
+
+    const ReceiptChunk = (await import('../models/ReceiptChunk.js')).default;
+    const totalChunks = await ReceiptChunk.countDocuments(query);
+    const sampleChunks = await ReceiptChunk.find(query).limit(3).lean();
+
+    return res.json({
+      success: true,
+      totalChunks,
+      sampleChunks: sampleChunks.map((chunk) => ({
+        receiptId: chunk.receiptId?.toString(),
+        chunkIndex: chunk.chunkIndex,
+        hasEmbedding: Array.isArray(chunk.embedding) && chunk.embedding.length > 0,
+        embeddingLength: chunk.embedding?.length || 0,
+        textPreview: chunk.text?.substring(0, 100) || ''
+      }))
+    });
+  } catch (error) {
+    console.error('Failed to check chunks:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to check chunks'
+    });
+  }
+};
+
 export const triggerEmbedding = async (req, res) => {
   try {
     const userId = normalizeUserId(req);

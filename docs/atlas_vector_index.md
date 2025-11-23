@@ -17,7 +17,7 @@ Create a **Search** index on the `receiptChunks` collection with the following J
     "fields": {
       "embedding": {
         "type": "knnVector",
-        "dimension": 1536,
+        "dimensions": 1536,
         "similarity": "cosine"
       },
       "userId": { "type": "objectId" },

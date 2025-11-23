@@ -38,7 +38,7 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+
     // Basic validation
     if (!email.trim()) {
       setError('Email address is required');
@@ -55,7 +55,7 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
       console.log('🔑 Attempting login for:', email);
       const result = await login(email, password);
       console.log('🔑 Login result:', result);
-      
+
       if (!result.success) {
         const errorMessage = result.error || 'Login failed';
         console.log('🔑 Setting error message:', errorMessage);
@@ -63,7 +63,7 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
         setLoading(false); // Stop loading immediately when there's an error
         return;
       }
-      
+
       // If successful, the AuthContext will handle navigation
       console.log('🔑 Login successful - AuthContext will handle navigation');
     } catch (err) {
@@ -134,7 +134,19 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
             </Typography>
           </Box>
 
-          {/* Debug: Test Error Button removed */}
+          {/* Project Disclaimer Alert */}
+          <Alert
+            severity="info"
+            sx={{
+              mb: 3,
+              border: '1px solid #29b6f6',
+              backgroundColor: 'rgba(41, 182, 246, 0.1)'
+            }}
+          >
+            <Typography variant="body2">
+              <strong>Note:</strong> This is a personal learning project. Service availability is not guaranteed and data may be reset.
+            </Typography>
+          </Alert>
 
           {/* Error Alert */}
           {error && (
@@ -160,7 +172,7 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
                   </InputAdornment>
                 ),
               }}
-              sx={{ 
+              sx={{
                 mb: 2,
                 '& .MuiInputBase-input': {
                   color: '#000000',
