@@ -136,11 +136,11 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
 
           {/* Project Disclaimer Alert */}
           <Alert
-            severity="info"
+            severity="warning"
             sx={{
               mb: 3,
-              border: '1px solid #29b6f6',
-              backgroundColor: 'rgba(41, 182, 246, 0.1)'
+              border: '1px solid #ed6c02',
+              backgroundColor: 'rgba(237, 108, 2, 0.1)'
             }}
           >
             <Typography variant="body2">
