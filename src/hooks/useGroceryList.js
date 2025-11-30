@@ -516,8 +516,24 @@ export const useGroceryList = (user) => {
     loadCurrentList();
   }, [currentDateString, user, allLists]);
 
+  // Get all historical items for autosuggest
+  const historicalItems = useMemo(() => {
+    const itemsSet = new Set();
+    Object.values(allLists).forEach(items => {
+      if (Array.isArray(items)) {
+        items.forEach(item => {
+          if (item.text) {
+            itemsSet.add(item.text);
+          }
+        });
+      }
+    });
+    return Array.from(itemsSet).sort();
+  }, [allLists]);
+
   return {
     allLists,
+    historicalItems,
     currentDate,
     setCurrentDate,
     currentDateString,

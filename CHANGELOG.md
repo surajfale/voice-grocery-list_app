@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### 2025-11-29 23:49:15 - 308558b [LOCAL]
+
+feat(autocomplete): add fuzzy search for historical items in input
+
+- Integrate Fuse.js for improved item suggestions
+- Update ManualInput component to use autocomplete
+- Enhance user experience with historical item filtering
+- Modify useGroceryList hook to provide historical items
+- Update dependencies in package.json and pnpm-lock.yaml### Added
 - **Account Limit**: Registration limited to 10 accounts maximum to prevent resource abuse
 - **Account Deletion**: Secure account deletion with password re-authentication and complete data cleanup
 - **Receipt RAG System**: Full receipt embedding and RAG chat capabilities using OpenAI API

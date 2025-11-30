@@ -1,4 +1,4 @@
-import React, { useState, memo } from 'react';
+import React, { useState, useMemo, memo } from 'react';
 import PropTypes from 'prop-types';
 import {
   Paper,
@@ -7,28 +7,50 @@ import {
   TextField,
   Button,
   CircularProgress,
+  Autocomplete,
+  Chip,
 } from '@mui/material';
 import { Add } from '@mui/icons-material';
+import Fuse from 'fuse.js';
 
-const ManualInput = memo(({ onAddItems, loading = false, disabled = false }) => {
-  const [manualInput, setManualInput] = useState('');
+const ManualInput = memo(({ onAddItems, historicalItems = [], loading = false, disabled = false }) => {
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [inputValue, setInputValue] = useState('');
 
-  const handleAddItems = () => {
-    if (manualInput.trim() && !disabled) {
-      // Parse input similar to voice recognition
-      const items = manualInput
-        .split(/[,;]/)
-        .map(item => item.trim())
-        .filter(item => item.length > 0);
+  const fuse = useMemo(() => new Fuse(historicalItems, {
+    threshold: 0.3,
+    distance: 100,
+    minMatchCharLength: 2,
+  }), [historicalItems]);
 
-      onAddItems(items);
-      setManualInput('');
+  const filterOptions = (options, params) => {
+    const { inputValue } = params;
+    
+    let filtered = [];
+
+    if (inputValue === '') {
+      // Show top 5 suggestions when empty if available, or nothing
+      return options.slice(0, 5);
     }
+    
+    const results = fuse.search(inputValue);
+    filtered = results.map(result => result.item);
+
+    // Suggest the exact input if it's not in the list (and not empty)
+    // Case insensitive check
+    const isExisting = filtered.some((option) => option.toLowerCase() === inputValue.toLowerCase());
+    if (inputValue !== '' && !isExisting) {
+      filtered.push(inputValue);
+    }
+
+    return filtered;
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleAddItems();
+  const handleAddItems = () => {
+    if (selectedItems.length > 0 && !disabled) {
+      onAddItems(selectedItems);
+      setSelectedItems([]);
+      setInputValue('');
     }
   };
 
@@ -64,30 +86,64 @@ const ManualInput = memo(({ onAddItems, loading = false, disabled = false }) => 
         </Typography>
       </Box>
 
-      <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
-        <TextField
+      <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+        <Autocomplete
+          multiple
+          freeSolo
           fullWidth
-          value={manualInput}
-          onChange={(e) => setManualInput(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder={disabled ? "Cannot add items to past dates" : "e.g., milk, apples, basmati rice, turmeric..."}
-          variant="outlined"
-          disabled={loading || disabled}
-          sx={{
-            '& .MuiOutlinedInput-root': {
-              borderRadius: '16px',
-              fontSize: '1rem',
-              minHeight: '56px',
-              '&.Mui-focused': {
-                boxShadow: '0 0 0 3px rgba(99, 102, 241, 0.1)',
-              },
-            },
+          options={historicalItems}
+          value={selectedItems}
+          onChange={(event, newValue) => {
+            setSelectedItems(newValue);
           }}
+          inputValue={inputValue}
+          onInputChange={(event, newInputValue) => {
+            setInputValue(newInputValue);
+          }}
+          filterOptions={filterOptions}
+          disabled={loading || disabled}
+          renderTags={(value, getTagProps) =>
+            value.map((option, index) => {
+              const { key, ...tagProps } = getTagProps({ index });
+              return (
+                <Chip
+                  key={key}
+                  variant="outlined"
+                  label={option}
+                  {...tagProps}
+                />
+              );
+            })
+          }
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              placeholder={disabled ? "Cannot add items to past dates" : "e.g., milk, apples, basmati rice..."}
+              variant="outlined"
+              onKeyDown={(e) => {
+                // If user hits Enter and input is empty, trigger add
+                if (e.key === 'Enter' && !inputValue && selectedItems.length > 0) {
+                  handleAddItems();
+                  e.preventDefault();
+                }
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: '16px',
+                  fontSize: '1rem',
+                  minHeight: '56px',
+                  '&.Mui-focused': {
+                    boxShadow: '0 0 0 3px rgba(99, 102, 241, 0.1)',
+                  },
+                },
+              }}
+            />
+          )}
         />
         <Button
           variant="contained"
           onClick={handleAddItems}
-          disabled={!manualInput.trim() || loading || disabled}
+          disabled={selectedItems.length === 0 || loading || disabled}
           sx={{
             minHeight: '56px',
             px: 3,
@@ -127,6 +183,7 @@ ManualInput.displayName = 'ManualInput';
 // PropTypes validation
 ManualInput.propTypes = {
   onAddItems: PropTypes.func.isRequired,
+  historicalItems: PropTypes.arrayOf(PropTypes.string),
   loading: PropTypes.bool,
   disabled: PropTypes.bool
 };

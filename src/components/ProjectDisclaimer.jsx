@@ -23,7 +23,7 @@ const ProjectDisclaimer = () => {
         }, 300);
     };
 
-    if (!visible) return null;
+    if (!visible) { return null; }
 
     return (
         <Box sx={{ width: '100%', position: 'relative', zIndex: 2000 }}>

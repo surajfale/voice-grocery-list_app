@@ -180,6 +180,7 @@ const VoiceGroceryList = ({ user, logout }) => {
   // Use the custom hook for grocery list management
   const {
     allLists,
+    historicalItems,
     currentDate,
     setCurrentDate,
     currentDateString,
@@ -1085,6 +1086,7 @@ const VoiceGroceryList = ({ user, logout }) => {
                     {/* Manual Input Section */}
                     <ManualInput
                       onAddItems={handleManualItems}
+                      historicalItems={historicalItems}
                       loading={loading}
                       disabled={currentDate.isBefore(dayjs().startOf('day'))}
                     />
