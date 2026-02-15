@@ -25,7 +25,7 @@ class EmbeddingClient {
   }
 
   initializeClient() {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY?.trim();
     if (!apiKey) {
       console.warn('⚠️ OPENAI_API_KEY is not set. RAG features will be disabled.');
       this.client = null;
