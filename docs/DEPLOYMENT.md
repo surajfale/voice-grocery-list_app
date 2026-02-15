@@ -129,7 +129,7 @@ PORT=8000
 2. Open the **"Variables"** tab
 3. Add a new environment variable:
 
-```
+```   
 OCR_SERVICE_URL=https://ocr-service-production-xxxx.up.railway.app
 ```
 
