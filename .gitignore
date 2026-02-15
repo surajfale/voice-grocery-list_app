@@ -65,3 +65,18 @@ coverage/
 
 # Local environment files (keep these local only)
 .env.local
+
+# Python / OCR service
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# EasyOCR model cache (downloaded at runtime)
+.EasyOCR/

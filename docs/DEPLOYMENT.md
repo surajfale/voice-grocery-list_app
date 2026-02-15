@@ -6,6 +6,7 @@ This guide provides step-by-step instructions for deploying the Voice Grocery Li
 
 - **Frontend**: React app deployed on Netlify
 - **Backend**: Node.js/Express API deployed on Railway
+- **OCR Service**: Python/FastAPI + EasyOCR deployed on Railway (same project, separate service)
 - **Database**: MongoDB Atlas (cloud database)
 
 ## Prerequisites
@@ -50,7 +51,7 @@ This guide provides step-by-step instructions for deploying the Voice Grocery Li
 4. Copy the connection string (replace `<password>` with your actual password)
 5. Save this for later: `mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<database>?retryWrites=true&w=majority`
 
-## Step 2: Railway Backend Deployment
+## Step 2: Railway Backend Deployment (Node.js API)
 
 ### 2.1 Create Railway Account
 1. Go to [Railway](https://railway.app)
@@ -87,6 +88,80 @@ NODE_ENV=production
 ### 2.5 Get Railway Backend URL
 1. After deployment, Railway will provide a URL like: `https://your-app-name.up.railway.app`
 2. Save this URL for frontend configuration
+
+## Step 2b: Railway OCR Microservice (EasyOCR)
+
+The OCR microservice runs as a **separate Railway service** in the same project. It uses Python/FastAPI with EasyOCR for deep-learning text extraction from receipt and product-label photos.
+
+### 2b.1 Add a New Service
+1. Open your existing Railway project (the one containing the Node.js backend)
+2. Click **"+ New"** → **"GitHub Repo"**
+3. Select the **same** `voice-grocery-list_app` repository
+
+### 2b.2 Configure Build Settings
+1. Click on the newly created service
+2. Go to **"Settings"** tab
+3. Set the following:
+   - **Service Name**: `ocr-service` (or any descriptive name)
+   - **Root Directory**: `ocr-service`
+   - **Builder**: `Dockerfile` (Railway will auto-detect the Dockerfile)
+
+> **Note**: The `ocr-service/railway.json` file is included in the repo and configures Dockerfile-based builds, the health check endpoint (`/health`), and restart policies automatically.
+
+### 2b.3 Set Environment Variables
+1. In the OCR service dashboard, go to **"Variables"** tab
+2. No mandatory environment variables are required — the defaults work. Optionally set:
+
+```
+PORT=8000
+```
+
+> Railway automatically injects `PORT` and the service respects it via `${PORT:-8000}`.
+
+### 2b.4 Generate a Public Domain
+1. In the OCR service's **"Settings"** → **"Networking"**
+2. Click **"Generate Domain"** to create a public Railway URL like:
+   `https://ocr-service-production-xxxx.up.railway.app`
+3. Save this URL — the Node.js backend needs it
+
+### 2b.5 Connect the Node.js Backend to the OCR Service
+1. Go back to your **Node.js backend service** on Railway
+2. Open the **"Variables"** tab
+3. Add a new environment variable:
+
+```
+OCR_SERVICE_URL=https://ocr-service-production-xxxx.up.railway.app
+```
+
+Replace with the actual URL from step 2b.4.
+
+> **Private networking alternative**: If both services are in the same Railway project, you can use Railway's internal networking for lower latency and zero egress costs. In the OCR service's Settings → Networking, note the **private domain** (e.g., `ocr-service.railway.internal`). Then set:
+> ```
+> OCR_SERVICE_URL=http://ocr-service.railway.internal:8000
+> ```
+> Private networking is only available on Railway's paid plans.
+
+### 2b.6 Verify OCR Service Deployment
+1. Visit the OCR service health endpoint:
+   ```
+   https://ocr-service-production-xxxx.up.railway.app/health
+   ```
+   Should return: `{"status":"ok"}`
+
+2. Test OCR with curl:
+   ```bash
+   curl -X POST -F "file=@receipt.jpg" \
+     https://ocr-service-production-xxxx.up.railway.app/ocr
+   ```
+   Should return: `{"raw_text": "...", "lines": [...], "items": [...]}`
+
+3. Upload a receipt through the app's Receipts page and verify the OCR text appears correctly
+
+### 2b.7 Important Notes
+
+- **First deploy takes ~3–5 minutes** because the Docker build downloads the EasyOCR model (~100 MB). Subsequent deploys are faster since Docker layers are cached.
+- **Memory usage**: EasyOCR loads a deep-learning model into memory. The service needs at least **512 MB RAM**. Railway's free tier provides 512 MB; if you experience OOM crashes, upgrade to the Hobby plan ($5/month) for 8 GB.
+- **Cold starts**: If the OCR service sleeps (free tier), the first request after wakeup takes a few seconds for model loading. This is normal. Consider using Railway's "Always On" setting on paid plans.
 
 ## Step 3: Netlify Frontend Deployment
 
@@ -182,6 +257,7 @@ MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/voice-groc
 PORT=3001
 CORS_ORIGIN=https://your-netlify-app.netlify.app
 NODE_ENV=production
+OCR_SERVICE_URL=https://ocr-service-production-xxxx.up.railway.app
 OPENAI_API_KEY=sk-your-prod-key
 RAG_EMBEDDINGS_MODEL=text-embedding-3-small
 RAG_COMPLETIONS_MODEL=gpt-4o-mini

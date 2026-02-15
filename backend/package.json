@@ -26,8 +26,7 @@
     "nodemailer": "^7.0.9",
     "openai": "^4.74.1",
     "resend": "^6.1.2",
-    "sharp": "^0.34.4",
-    "tesseract.js": "^6.0.1"
+    "sharp": "^0.34.4"
   },
   "devDependencies": {
     "@types/supertest": "^6.0.3",
