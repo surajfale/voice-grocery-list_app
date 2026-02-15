@@ -5,7 +5,8 @@ export default defineConfig({
     environment: 'node',
     include: [
       'services/__tests__/**/*.test.js',
-      'routes/__tests__/**/*.test.js'
+      'routes/__tests__/**/*.test.js',
+      'utils/__tests__/**/*.test.js'
     ],
     globals: true,
     reporters: ['default'],

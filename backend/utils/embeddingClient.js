@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import OpenAI from 'openai';
+import OpenAI, { APIConnectionError, APIConnectionTimeoutError } from 'openai';
 import ragConfig from '../config/ragConfig.js';
 
 const DEFAULT_MAX_ATTEMPTS = Number(process.env.RAG_CLIENT_MAX_ATTEMPTS || 3);
@@ -57,7 +57,12 @@ class EmbeddingClient {
         return await operation();
       } catch (error) {
         const status = error?.status || error?.response?.status;
-        const retryable = RETRYABLE_STATUS_CODES.has(status);
+
+        const retryable = RETRYABLE_STATUS_CODES.has(status) ||
+          error instanceof APIConnectionError ||
+          error instanceof APIConnectionTimeoutError ||
+          error?.constructor?.name === 'APIConnectionError' ||
+          error?.constructor?.name === 'APIConnectionTimeoutError';
 
         if (attempt >= maxAttempts || !retryable) {
           console.error(`❌ ${label} failed after ${attempt} attempt(s):`, error?.message || error);
