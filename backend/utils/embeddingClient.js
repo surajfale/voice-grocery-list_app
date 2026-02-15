@@ -66,6 +66,7 @@ class EmbeddingClient {
 
         if (attempt >= maxAttempts || !retryable) {
           console.error(`❌ ${label} failed after ${attempt} attempt(s):`, error?.message || error);
+          if (error?.cause) console.error('   Caused by:', error.cause);
           throw error;
         }
 
