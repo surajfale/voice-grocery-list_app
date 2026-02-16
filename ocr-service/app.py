@@ -529,26 +529,54 @@ def _extract_amount_from_line(line: str) -> float | None:
 
 def _extract_total(lines: list[str]) -> tuple[float | None, str | None]:
     """
-    Find the total amount by checking keywords in priority order.
-    Returns (amount, currency_symbol).
+    Find the total amount.  Handles multi-line receipts where the keyword
+    ("Total Charge:") is on one line and the amount ("$77.65") is on the
+    next line.
     """
     for pattern in TOTAL_KEYWORDS:
-        for line in lines:
+        for i, line in enumerate(lines):
             if not pattern.search(line):
                 continue
 
-            # Skip "subtotal" lines
+            # Skip subtotal lines
             if any(st.search(line) for st in SUBTOTAL_KEYWORDS):
                 continue
 
-            # Skip "total items" / "items sold" lines – those are counts
+            # Skip "total items" lines
             if TOTAL_ITEM_COUNT_RE.search(line):
                 continue
 
-            # Find the best price on this line
+            # Skip tax lines ("Tax Total:" is NOT the receipt total)
+            if any(t.search(line) for t in TAX_KEYWORDS):
+                continue
+
+            # Try price on the SAME line
             amount = _find_best_price(line)
+
+            # If no price on same line, check the NEXT few lines
+            if amount is None:
+                for j in range(1, 4):
+                    if i + j >= len(lines):
+                        break
+                    next_line = lines[i + j]
+                    # Stop if we hit another keyword line
+                    if any(kw.search(next_line) for kw in
+                           TOTAL_KEYWORDS + SUBTOTAL_KEYWORDS + TAX_KEYWORDS + SAVINGS_KEYWORDS):
+                        break
+                    amount = _find_best_price(next_line)
+                    if amount is not None:
+                        break
+
             if amount is not None and amount >= 0.01:
+                # Look for currency on the keyword line or the amount line
                 curr = CURRENCY_RE.search(line)
+                if not curr:
+                    for j in range(1, 4):
+                        if i + j >= len(lines):
+                            break
+                        curr = CURRENCY_RE.search(lines[i + j])
+                        if curr:
+                            break
                 sym = curr.group(1) if curr else None
                 if sym and sym.lower().startswith("rs"):
                     sym = "₹"
@@ -574,35 +602,67 @@ def _extract_total(lines: list[str]) -> tuple[float | None, str | None]:
 
 
 def _extract_subtotal(lines: list[str]) -> float | None:
-    """Extract subtotal if present."""
+    """Extract subtotal – handles amount on same or next line."""
     for pat in SUBTOTAL_KEYWORDS:
-        for line in lines:
+        for i, line in enumerate(lines):
             if pat.search(line):
                 amount = _find_best_price(line)
                 if amount is not None and amount >= 0.01:
                     return amount
+                # Check next few lines
+                for j in range(1, 4):
+                    if i + j >= len(lines):
+                        break
+                    next_line = lines[i + j]
+                    if any(kw.search(next_line) for kw in
+                           TOTAL_KEYWORDS + SUBTOTAL_KEYWORDS + TAX_KEYWORDS):
+                        break
+                    amount = _find_best_price(next_line)
+                    if amount is not None and amount >= 0.01:
+                        return amount
     return None
 
 
 def _extract_tax(lines: list[str]) -> float | None:
-    """Extract sales tax if present."""
+    """Extract sales tax – handles amount on same or next line."""
     for pat in TAX_KEYWORDS:
-        for line in lines:
+        for i, line in enumerate(lines):
             if pat.search(line):
                 amount = _find_best_price(line)
                 if amount is not None and 0.01 <= amount < 500:
                     return amount
+                # Check next few lines
+                for j in range(1, 4):
+                    if i + j >= len(lines):
+                        break
+                    next_line = lines[i + j]
+                    if any(kw.search(next_line) for kw in
+                           TOTAL_KEYWORDS + SUBTOTAL_KEYWORDS + TAX_KEYWORDS):
+                        break
+                    amount = _find_best_price(next_line)
+                    if amount is not None and 0.01 <= amount < 500:
+                        return amount
     return None
 
 
 def _extract_savings(lines: list[str]) -> float | None:
-    """Extract total savings/discounts if present."""
+    """Extract total savings/discounts – handles amount on same or next line."""
     for pat in SAVINGS_KEYWORDS:
-        for line in lines:
+        for i, line in enumerate(lines):
             if pat.search(line):
                 amount = _find_best_price(line)
                 if amount is not None and amount >= 0.01:
                     return amount
+                for j in range(1, 4):
+                    if i + j >= len(lines):
+                        break
+                    next_line = lines[i + j]
+                    if any(kw.search(next_line) for kw in
+                           TOTAL_KEYWORDS + SUBTOTAL_KEYWORDS + TAX_KEYWORDS + SAVINGS_KEYWORDS):
+                        break
+                    amount = _find_best_price(next_line)
+                    if amount is not None and amount >= 0.01:
+                        return amount
     return None
 
 
@@ -661,105 +721,129 @@ def _is_non_item_line(line: str, store: str) -> bool:
     return False
 
 
+def _has_item_name(text: str) -> bool:
+    """
+    Check if a line contains a meaningful item name (at least 3 letters
+    after stripping prices, quantities, and currency symbols).
+    """
+    cleaned = PRICE_RE.sub("", text)
+    cleaned = QTY_PRICE_RE.sub("", cleaned)
+    cleaned = CURRENCY_RE.sub("", cleaned)
+    cleaned = WEIGHT_ITEM_RE.sub("", cleaned)
+    alpha_chars = sum(1 for c in cleaned if c.isalpha())
+    return alpha_chars >= 3
+
+
 def _extract_items(
     lines: list[str],
     total: float | None,
     store: str = "generic",
 ) -> list[dict]:
+    """
+    Extract items from receipt lines using a multi-line buffered approach.
+
+    Many receipts (especially from smaller stores) put the item name on one
+    line and the price on the next:
+
+        QUIK TEA GINGER CHAI 8.5OZ     ← name
+        1 @ $5.99                       ← qty + unit price
+        $5.99                           ← extended price
+
+    Strategy:
+    - When we see a text-only line (has letters, no price) → buffer it as
+      the current item name.
+    - When we see a price line → associate it with the buffered name.
+    - The LAST price before the next item name wins (it's the extended price).
+    - Stop when we hit subtotal/total keywords.
+    """
     items: list[dict] = []
-    seen_total = False
+    pending_name: str | None = None
+    pending_price: float | None = None
+    pending_qty: int = 1
+
+    def _finalize_pending():
+        """Save the current pending item if we have both name and price."""
+        nonlocal pending_name, pending_price, pending_qty
+        if pending_name and pending_price is not None and pending_price > 0:
+            name = _clean_item_name(pending_name, store)
+            if name and len(name) >= 2:
+                # Sanity: individual item shouldn't exceed total
+                if total is None or pending_price <= total * 1.1:
+                    # Title-case ALL CAPS names for readability
+                    if store in ("costco", "indian_grocery") and name == name.upper() and len(name) > 3:
+                        name = name.title()
+                    items.append({
+                        "name": name,
+                        "quantity": pending_qty,
+                        "price": pending_price,
+                    })
+        pending_name = None
+        pending_price = None
+        pending_qty = 1
 
     for line in lines:
         stripped = line.strip()
-        if not stripped or len(stripped) < 3:
+        if not stripped or len(stripped) < 2:
             continue
 
+        # Stop at subtotal/total lines (items are above these)
+        if any(kw.search(stripped) for kw in SUBTOTAL_KEYWORDS + TOTAL_KEYWORDS):
+            _finalize_pending()
+            break
+
+        # Skip noise, tax, savings lines entirely
         if _is_non_item_line(stripped, store):
-            if any(kw.search(stripped) for kw in TOTAL_KEYWORDS):
-                seen_total = True
             continue
 
-        if seen_total:
-            continue
-
+        # Skip date-only lines
         if DATE_RE.search(stripped):
             non_date = DATE_RE.sub("", stripped).strip()
             if len(non_date) < 5:
                 continue
 
-        weight_match = WEIGHT_ITEM_RE.search(stripped)
-        qty_match = QTY_PRICE_RE.search(stripped)
-        price_match = PRICE_RE.search(stripped)
+        # Determine: does this line have a price? Does it have a name?
+        price = _find_best_price(stripped)
+        is_name_line = _has_item_name(stripped)
 
-        price = None
-        qty = 1
+        if is_name_line and price is None:
+            # Pure item name line (e.g. "QUIK TEA GINGER CHAI 8.5OZ")
+            # Finalize any previous pending item, then start new one
+            _finalize_pending()
+            pending_name = stripped
+            pending_price = None
+            pending_qty = 1
 
-        if weight_match:
-            try:
-                weight = float(weight_match.group(1))
-                unit_price = float(weight_match.group(2))
-                price = round(weight * unit_price, 2)
-                qty = 1
-            except ValueError:
-                pass
-            if price_match:
-                raw_p = price_match.group(1) or price_match.group(2)
-                if raw_p:
-                    try:
-                        ext_price = float(raw_p)
-                        if ext_price > 0:
-                            price = ext_price
-                    except ValueError:
-                        pass
+        elif is_name_line and price is not None:
+            # Line has BOTH name and price (e.g. "BABY SPINACH $3.49")
+            cleaned_name = _clean_item_name(stripped, store)
+            if cleaned_name and len(cleaned_name) >= 2:
+                _finalize_pending()
+                pending_name = stripped
+                pending_price = price
+                # Check for qty pattern
+                qty_match = QTY_PRICE_RE.search(stripped)
+                pending_qty = int(qty_match.group(1)) if qty_match else 1
+            else:
+                # Name is too short after cleaning – treat as price-only
+                if pending_name is not None:
+                    pending_price = price
+                    qty_match = QTY_PRICE_RE.search(stripped)
+                    if qty_match:
+                        pending_qty = int(qty_match.group(1))
 
-        elif qty_match:
-            try:
-                qty = int(qty_match.group(1))
-                unit_price = float(qty_match.group(2))
-                price = round(qty * unit_price, 2)
-            except ValueError:
-                pass
-            if price_match:
-                raw_p = price_match.group(1) or price_match.group(2)
-                if raw_p:
-                    try:
-                        ext_price = float(raw_p)
-                        if ext_price > 0:
-                            price = ext_price
-                    except ValueError:
-                        pass
+        elif price is not None:
+            # Price-only or qty+price line (e.g. "$5.99" or "1 @ $5.99")
+            # Associate with the current pending item name
+            if pending_name is not None:
+                pending_price = price  # last price wins (extended price)
+                qty_match = QTY_PRICE_RE.search(stripped)
+                if qty_match:
+                    pending_qty = int(qty_match.group(1))
 
-        elif price_match:
-            raw_p = price_match.group(1) or price_match.group(2)
-            if raw_p:
-                try:
-                    price = float(raw_p)
-                except ValueError:
-                    continue
+        # else: line has no price and no meaningful name – skip it
 
-        if price is None or price <= 0:
-            continue
-
-        if total and price > total * 1.1:
-            continue
-
-        name = _clean_item_name(stripped, store)
-
-        if not name or len(name) < 2:
-            continue
-
-        alpha_chars = sum(1 for c in name if c.isalpha())
-        if alpha_chars < max(1, len(name) * 0.25):
-            continue
-
-        if store == "costco" and name == name.upper() and len(name) > 3:
-            name = name.title()
-
-        items.append({
-            "name": name,
-            "quantity": qty,
-            "price": price,
-        })
+    # Don't forget the last pending item
+    _finalize_pending()
 
     return items
 
