@@ -50,7 +50,10 @@ logger = logging.getLogger("ocr-service")
 # Config (tunable via environment variables)
 # ---------------------------------------------------------------------------
 CONFIDENCE_THRESHOLD = float(os.getenv("OCR_CONFIDENCE_THRESHOLD", "0.15"))
-MAX_IMAGE_DIMENSION = int(os.getenv("OCR_MAX_IMAGE_DIMENSION", "3000"))
+MAX_IMAGE_DIMENSION = int(os.getenv("OCR_MAX_IMAGE_DIMENSION", "2000"))
+# Minimum detections for the primary strategy to be considered "good enough"
+# to skip the fallback pass.  Keeps total OCR to 1 pass for clear receipts.
+MIN_GOOD_DETECTIONS = int(os.getenv("OCR_MIN_GOOD_DETECTIONS", "8"))
 
 # ---------------------------------------------------------------------------
 # EasyOCR reader – loaded once at module level so the model stays warm
@@ -374,7 +377,9 @@ def _run_ocr_with_strategy(
             width_ths=0.8,
             paragraph=False,
             detail=1,
-            mag_ratio=1.5,
+            # NOTE: mag_ratio removed – it was magnifying the image by 1.5x
+            # which roughly doubled pixel count and processing time.  The
+            # default (1.0) is fine for receipt-sized text at 2000px.
             slope_ths=0.3,
         )
         results = [
@@ -382,7 +387,6 @@ def _run_ocr_with_strategy(
             for box, text, conf in results
             if conf >= CONFIDENCE_THRESHOLD and len(text.strip()) >= 1
         ]
-        # Compute average confidence
         avg_conf = (
             sum(c for _, _, c in results) / len(results) if results else 0
         )
@@ -406,40 +410,59 @@ def _score_results(results: list) -> float:
         return 0.0
     count = len(results)
     avg_conf = sum(c for _, _, c in results) / count
-    # Weighted: 60% count, 40% quality
     return count * (0.6 + 0.4 * avg_conf)
 
 
 def _best_ocr_results(img: Image.Image) -> list:
     """
-    Try multiple preprocessing strategies and return the best one,
-    scored by a combination of detection count and average confidence.
+    Fast "primary + one fallback" approach.
+
+    1. Run the **high-contrast** strategy first (best all-rounder for receipts).
+    2. If it finds >= MIN_GOOD_DETECTIONS text boxes → done (single pass).
+    3. If not, run **one** fallback (adaptive-threshold for mobile photos,
+       or thermal for faded receipts) and pick whichever scored higher.
+
+    This keeps total OCR to 1–2 passes instead of 5, cutting processing
+    time from ~10 min to ~30-60 sec on CPU-only Railway.
     """
-    strategies = [
-        (_strategy_minimal, "minimal"),
-        (_strategy_standard, "standard"),
-        (_strategy_high_contrast, "high_contrast"),
-        (_strategy_adaptive_threshold, "adaptive_threshold"),
-        (_strategy_thermal, "thermal"),
-    ]
+    import time
+    t0 = time.time()
 
-    best_results = []
-    best_score = 0.0
-    best_name = "none"
+    # --- Primary pass: high-contrast (works for most receipts) ------------
+    primary = _run_ocr_with_strategy(img, _strategy_high_contrast, "high_contrast")
+    primary_score = _score_results(primary)
 
-    for fn, name in strategies:
-        results = _run_ocr_with_strategy(img, fn, name)
-        score = _score_results(results)
-        if score > best_score:
-            best_results = results
-            best_score = score
-            best_name = name
+    elapsed = time.time() - t0
+    logger.info("Primary pass took %.1fs – %d detections", elapsed, len(primary))
 
-    logger.info(
-        "Best strategy: '%s' with %d detections (score=%.1f)",
-        best_name, len(best_results), best_score
+    # Good enough?  Skip the fallback entirely.
+    if len(primary) >= MIN_GOOD_DETECTIONS:
+        logger.info("Primary pass sufficient (%d >= %d), skipping fallback",
+                    len(primary), MIN_GOOD_DETECTIONS)
+        return primary
+
+    # --- One fallback pass ------------------------------------------------
+    # If primary found very little, image may be faded (thermal) or a raw
+    # mobile photo (adaptive-threshold works better).
+    fallback_fn = (
+        _strategy_thermal if len(primary) < 3 else _strategy_adaptive_threshold
     )
-    return best_results
+    fallback_name = "thermal" if len(primary) < 3 else "adaptive_threshold"
+
+    fallback = _run_ocr_with_strategy(img, fallback_fn, fallback_name)
+    fallback_score = _score_results(fallback)
+
+    elapsed = time.time() - t0
+    logger.info("Fallback pass took %.1fs total – %d detections", elapsed, len(fallback))
+
+    if fallback_score > primary_score:
+        logger.info("Using fallback '%s' (score %.1f > %.1f)",
+                    fallback_name, fallback_score, primary_score)
+        return fallback
+
+    logger.info("Keeping primary 'high_contrast' (score %.1f >= %.1f)",
+                primary_score, fallback_score)
+    return primary
 
 
 # ---------------------------------------------------------------------------

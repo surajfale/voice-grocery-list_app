@@ -155,16 +155,30 @@ export const runReceiptOcr = async (buffer, {
   const form = new FormData();
   form.append('file', blob, 'receipt.png');
 
+  // 90-second timeout – on CPU-only Railway, OCR takes 30-60s for most
+  // receipts.  Without a timeout the UI hangs until the platform kills
+  // the request (~10-15 min).
+  const TIMEOUT_MS = 90_000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
   let response;
   try {
     response = await fetch(`${OCR_SERVICE_URL}/ocr`, {
       method: 'POST',
-      body: form
+      body: form,
+      signal: controller.signal
     });
   } catch (networkError) {
+    clearTimeout(timer);
+    const isTimeout = networkError.name === 'AbortError';
     throw new Error(
-      `OCR service unreachable at ${OCR_SERVICE_URL}: ${networkError.message}`
+      isTimeout
+        ? `OCR service timed out after ${TIMEOUT_MS / 1000}s – the image may be too large or the service is overloaded`
+        : `OCR service unreachable at ${OCR_SERVICE_URL}: ${networkError.message}`
     );
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!response.ok) {

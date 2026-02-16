@@ -294,6 +294,16 @@ describe('runReceiptOcr (EasyOCR HTTP client v2.1)', () => {
         );
     });
 
+    it('throws a clear timeout error when the service takes too long', async () => {
+        const abortError = new Error('The operation was aborted');
+        abortError.name = 'AbortError';
+        mockFetch.mockRejectedValueOnce(abortError);
+
+        await expect(runReceiptOcr(Buffer.from('img'))).rejects.toThrow(
+            /timed out/
+        );
+    });
+
     it('throws when the service returns a non-200 status', async () => {
         mockFetch.mockResolvedValueOnce(
             makeMockResponse({ detail: 'bad image' }, 400)
