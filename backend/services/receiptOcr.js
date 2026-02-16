@@ -1,9 +1,13 @@
 /**
- * Receipt OCR client
- * ==================
- * Sends image buffers to the external EasyOCR microservice and parses
- * the structured JSON response into the same shape the rest of the app
- * expects (rawText, merchant, purchaseDate, total, currency, items).
+ * Receipt OCR client  v2.0
+ * ========================
+ * Sends image buffers to the external EasyOCR microservice (v2) and returns
+ * structured receipt data.
+ *
+ * The v2 Python service now does all the heavy lifting – structured extraction
+ * (merchant, date, total, items) happens server-side with much better accuracy.
+ * This client prefers the service's structured data but falls back to local
+ * parsing if the service returns only raw text.
  *
  * The public API of `runReceiptOcr(buffer, options)` is intentionally
  * identical to the old Tesseract.js implementation so that callers
@@ -13,12 +17,13 @@
 const OCR_SERVICE_URL = process.env.OCR_SERVICE_URL || 'http://localhost:8000';
 
 // ---------------------------------------------------------------------------
-// Receipt‑text parser (unchanged from original Tesseract version)
+// Fallback receipt-text parser (only used if the service doesn't return
+// structured fields)
 // ---------------------------------------------------------------------------
 
-const CURRENCY_REGEX = /(\$|£|€|₹)/;
-const AMOUNT_REGEX = /(\$|£|€|₹)?\s?(\d{1,6}(?:\.\d{2})?)/;
-const DATE_REGEX = /\b(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{4}[/-]\d{1,2}[/-]\d{1,2})\b/;
+const CURRENCY_REGEX = /(Rs\.?|₹|\$|£|€)/i;
+const AMOUNT_REGEX = /(?:Rs\.?|₹|\$|£|€)?\s?(\d{1,6}(?:\.\d{1,2})?)/i;
+const DATE_REGEX = /\b(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}|\d{4}[/\-.]\d{1,2}[/\-.]\d{1,2})\b/;
 
 const parseAmount = (text) => {
   const match = text.match(AMOUNT_REGEX);
@@ -26,8 +31,9 @@ const parseAmount = (text) => {
     return {};
   }
 
-  const currencySymbol = match[1] || null;
-  const amountValue = parseFloat(match[2]);
+  const currencyMatch = text.match(CURRENCY_REGEX);
+  const currencySymbol = currencyMatch ? currencyMatch[1] : null;
+  const amountValue = parseFloat(match[1]);
 
   return {
     currency: currencySymbol,
@@ -48,8 +54,8 @@ const parseItems = (lines) => {
       return;
     }
 
-    const name = line.replace(AMOUNT_REGEX, '').trim();
-    if (!name) {
+    const name = line.replace(AMOUNT_REGEX, '').replace(CURRENCY_REGEX, '').trim();
+    if (!name || name.length < 2) {
       return;
     }
 
@@ -173,14 +179,45 @@ export const runReceiptOcr = async (buffer, {
   const data = await response.json();
   const rawText = (data.raw_text || '').trim();
 
-  // Run the same structured parser on the raw text so that the caller
-  // receives merchant / date / total / items fields exactly as before.
-  const structuredData = parseReceiptText(rawText);
+  // The v2 service returns structured data directly – prefer it over
+  // local re-parsing which was the source of most accuracy problems.
+  const serviceHasStructuredData = data.merchant !== undefined
+    || data.purchase_date !== undefined
+    || data.total !== undefined
+    || (data.items && data.items.length > 0);
+
+  let result;
+
+  if (serviceHasStructuredData) {
+    // Use the service's superior extraction, normalise key names to camelCase
+    result = {
+      rawText,
+      merchant: data.merchant || null,
+      purchaseDate: data.purchase_date || null,
+      total: data.total ?? null,
+      subtotal: data.subtotal ?? null,
+      tax: data.tax ?? null,
+      savings: data.savings ?? null,
+      currency: data.currency || null,
+      items: (data.items || []).map((item) => ({
+        name: item.name,
+        quantity: item.quantity || 1,
+        price: item.price,
+        currency: data.currency || null
+      })),
+      itemCount: data.item_count ?? (data.items || []).length,
+      detectedStore: data.detected_store || 'generic'
+    };
+  } else {
+    // Fallback: re-parse the raw text locally (backward compat)
+    const structuredData = parseReceiptText(rawText);
+    result = {
+      rawText,
+      ...structuredData
+    };
+  }
 
   safeLogger({ status: 'done', progress: 1.0 });
 
-  return {
-    rawText,
-    ...structuredData
-  };
+  return result;
 };
