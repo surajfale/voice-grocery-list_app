@@ -79,6 +79,18 @@ MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB (Vision API limit)
 # ---------------------------------------------------------------------------
 # Price regexes – crafted to avoid matching phone-numbers / barcodes
 # ---------------------------------------------------------------------------
+# Matches prices WITH a currency symbol: $12.50, Rs. 45.00, ₹125, €9.99
+CURRENCY_PRICE_RE = re.compile(
+    r"(?:Rs\.?|₹|\$|£|€)\s*(\d{1,6}(?:\.\d{1,2})?)", re.IGNORECASE
+)
+
+# Matches prices that are a number with exactly 2 decimal places (e.g. 45.67)
+# This is the hallmark of a price on a receipt – item counts never have .XX
+DECIMAL_PRICE_RE = re.compile(
+    r"\b(\d{1,6}\.\d{2})\b"
+)
+
+# Legacy combined regex (used by item extraction for backward compat)
 PRICE_RE = re.compile(
     r"(?:Rs\.?|₹|\$|£|€)\s*(\d{1,6}(?:\.\d{1,2})?)"
     r"|"
@@ -87,20 +99,43 @@ PRICE_RE = re.compile(
 )
 
 AMOUNT_RE = re.compile(r"(?:Rs\.?|₹|\$|£|€)?\s?(\d{1,6}(?:\.\d{1,2})?)")
+
+# Lines that mention "total" but are NOT dollar amounts (skip these)
+TOTAL_ITEM_COUNT_RE = re.compile(
+    r"\btotal\s*(?:items?|qty|quantities?)\b"
+    r"|\b(?:items?|qty)\s*(?:sold|total|count)\b",
+    re.IGNORECASE
+)
 CURRENCY_RE = re.compile(r"(Rs\.?|₹|\$|£|€)", re.IGNORECASE)
+# Date patterns – separators (/ - .) are REQUIRED to avoid matching zip codes.
+# "02/15/2026" ✓   "2026-02-15" ✓   "08901" ✗ (zip code)
 DATE_RE = re.compile(
-    r"\b(\d{1,2}[/\-.]?\d{1,2}[/\-.]?\d{2,4}|"
-    r"\d{4}[/\-.]?\d{1,2}[/\-.]?\d{1,2})\b"
+    r"\b(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4})"
+    r"|"
+    r"\b(\d{4}[/\-.]\d{1,2}[/\-.]\d{1,2})\b"
 )
 DATE_RE_VERBOSE = re.compile(
-    r"\b(\d{1,2}[/\-.]?\d{1,2}[/\-.]?\d{2,4})\b"
+    r"\b(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4})\b"
     r"|"
-    r"\b(\d{4}[/\-.]?\d{1,2}[/\-.]?\d{1,2})\b"
+    r"\b(\d{4}[/\-.]\d{1,2}[/\-.]\d{1,2})\b"
     r"|"
-    r"\b(\w{3,9}\s+\d{1,2},?\s+\d{2,4})\b"
+    r"\b((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{1,2},?\s+\d{2,4})\b"
     r"|"
-    r"\b(\d{1,2}\s+\w{3,9}\s+\d{2,4})\b"
+    r"\b(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\s+\d{2,4})\b"
     , re.IGNORECASE
+)
+
+# Address line detection – skip these when looking for dates
+ADDRESS_RE = re.compile(
+    r"\b(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD"
+    r"|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD"
+    r"|TN|TX|UT|VT|VA|WA|WV|WI|WY)\s*\d{5}\b",
+    re.IGNORECASE
+)
+
+# Keyword that indicates a date line on receipts
+DATE_KEYWORD_RE = re.compile(
+    r"\b(?:date|dt|dated)\b", re.IGNORECASE
 )
 
 # ---------------------------------------------------------------------------
@@ -424,7 +459,28 @@ def _extract_merchant(lines: list[str], store: str = "generic") -> str | None:
 
 
 def _extract_date(lines: list[str]) -> str | None:
+    """
+    Extract the purchase date from receipt lines.
+
+    Strategy:
+    1. First look for lines that contain a "DATE" keyword (most reliable).
+    2. Then scan all lines for date patterns.
+    3. Skip lines that look like addresses (state + zip code).
+    """
+    # Pass 1: lines with explicit "DATE" keyword (highest confidence)
     for line in lines:
+        if DATE_KEYWORD_RE.search(line):
+            m = DATE_RE_VERBOSE.search(line)
+            if m:
+                for g in m.groups():
+                    if g:
+                        return g.strip()
+
+    # Pass 2: any line with a date pattern, but skip address lines
+    for line in lines:
+        # Skip lines that look like addresses ("NJ 08901", "CA 90210")
+        if ADDRESS_RE.search(line):
+            continue
         m = DATE_RE_VERBOSE.search(line)
         if m:
             for g in m.groups():
@@ -433,50 +489,80 @@ def _extract_date(lines: list[str]) -> str | None:
     return None
 
 
-def _extract_amount_from_line(line: str) -> float | None:
-    m = PRICE_RE.search(line)
-    if m:
-        raw = m.group(1) or m.group(2)
-        if raw:
-            try:
-                return float(raw)
-            except ValueError:
-                pass
-    m = AMOUNT_RE.search(line)
-    if m:
+def _find_best_price(text: str) -> float | None:
+    """
+    Find the best price-like number in a string.
+
+    Strategy (in priority order):
+    1. Currency-anchored prices ($45.67, Rs. 100) – take the LAST one
+       (prices are right-aligned on receipts).
+    2. Decimal prices (45.67) – numbers with exactly 2 decimal places
+       are almost always prices, not counts.  Take the LAST one.
+    3. Fall back to None – bare integers like "5" are probably item
+       counts, not dollar amounts.
+    """
+    # Priority 1: currency-symbol prices (most reliable)
+    currency_matches = CURRENCY_PRICE_RE.findall(text)
+    if currency_matches:
         try:
-            return float(m.group(1))
+            return float(currency_matches[-1])  # last = rightmost on receipt
         except ValueError:
             pass
+
+    # Priority 2: numbers with exactly 2 decimal places (e.g. 45.67)
+    decimal_matches = DECIMAL_PRICE_RE.findall(text)
+    if decimal_matches:
+        try:
+            return float(decimal_matches[-1])
+        except ValueError:
+            pass
+
+    # Do NOT fall back to bare integers – they're usually item counts,
+    # store numbers, or other non-price data.
     return None
 
 
+def _extract_amount_from_line(line: str) -> float | None:
+    """Extract the best price from a receipt line."""
+    return _find_best_price(line)
+
+
 def _extract_total(lines: list[str]) -> tuple[float | None, str | None]:
+    """
+    Find the total amount by checking keywords in priority order.
+    Returns (amount, currency_symbol).
+    """
     for pattern in TOTAL_KEYWORDS:
         for line in lines:
-            if pattern.search(line):
-                if any(st.search(line) for st in SUBTOTAL_KEYWORDS):
-                    continue
-                after_kw = pattern.sub("", line)
-                m = AMOUNT_RE.search(after_kw)
-                if m:
-                    try:
-                        amount = float(m.group(1))
-                        curr = CURRENCY_RE.search(line)
-                        sym = curr.group(1) if curr else None
-                        if sym and sym.lower().startswith("rs"):
-                            sym = "₹"
-                        if amount >= 0.01:
-                            return amount, sym
-                    except ValueError:
-                        pass
+            if not pattern.search(line):
+                continue
 
+            # Skip "subtotal" lines
+            if any(st.search(line) for st in SUBTOTAL_KEYWORDS):
+                continue
+
+            # Skip "total items" / "items sold" lines – those are counts
+            if TOTAL_ITEM_COUNT_RE.search(line):
+                continue
+
+            # Find the best price on this line
+            amount = _find_best_price(line)
+            if amount is not None and amount >= 0.01:
+                curr = CURRENCY_RE.search(line)
+                sym = curr.group(1) if curr else None
+                if sym and sym.lower().startswith("rs"):
+                    sym = "₹"
+                return amount, sym
+
+    # Fallback: scan from bottom up for the last line with a price
     for line in reversed(lines):
         if _is_noise(line):
             continue
         if any(kw.search(line) for kw in SAVINGS_KEYWORDS):
             continue
-        amt = _extract_amount_from_line(line)
+        if TOTAL_ITEM_COUNT_RE.search(line):
+            continue
+        amt = _find_best_price(line)
         if amt and amt >= 1.0:
             curr = CURRENCY_RE.search(line)
             sym = curr.group(1) if curr else None
@@ -488,45 +574,35 @@ def _extract_total(lines: list[str]) -> tuple[float | None, str | None]:
 
 
 def _extract_subtotal(lines: list[str]) -> float | None:
+    """Extract subtotal if present."""
     for pat in SUBTOTAL_KEYWORDS:
         for line in lines:
             if pat.search(line):
-                after_kw = pat.sub("", line)
-                m = AMOUNT_RE.search(after_kw)
-                if m:
-                    try:
-                        return float(m.group(1))
-                    except ValueError:
-                        pass
+                amount = _find_best_price(line)
+                if amount is not None and amount >= 0.01:
+                    return amount
     return None
 
 
 def _extract_tax(lines: list[str]) -> float | None:
+    """Extract sales tax if present."""
     for pat in TAX_KEYWORDS:
         for line in lines:
             if pat.search(line):
-                after_kw = pat.sub("", line)
-                m = AMOUNT_RE.search(after_kw)
-                if m:
-                    try:
-                        val = float(m.group(1))
-                        if val < 500:
-                            return val
-                    except ValueError:
-                        pass
+                amount = _find_best_price(line)
+                if amount is not None and 0.01 <= amount < 500:
+                    return amount
     return None
 
 
 def _extract_savings(lines: list[str]) -> float | None:
+    """Extract total savings/discounts if present."""
     for pat in SAVINGS_KEYWORDS:
         for line in lines:
             if pat.search(line):
-                m = AMOUNT_RE.search(pat.sub("", line))
-                if m:
-                    try:
-                        return float(m.group(1))
-                    except ValueError:
-                        pass
+                amount = _find_best_price(line)
+                if amount is not None and amount >= 0.01:
+                    return amount
     return None
 
 
@@ -817,6 +893,12 @@ async def ocr(file: UploadFile = File(...)):
     # --- split into lines ------------------------------------------------
     lines = [l.strip() for l in raw_text.split("\n") if l.strip()]
 
+    # Debug: log all OCR lines so we can see what Vision returned
+    logger.info("=== RAW OCR LINES (%d) ===", len(lines))
+    for i, line in enumerate(lines):
+        logger.info("  [%02d] %s", i, line)
+    logger.info("=== END RAW OCR LINES ===")
+
     # --- detect store type -----------------------------------------------
     store = _detect_store(lines, raw_text)
     logger.info("Detected store: %s", store)
@@ -842,17 +924,18 @@ async def ocr(file: UploadFile = File(...)):
         currency = "$"
 
     logger.info(
-        "OCR complete [%s] – %d line(s), %d item(s), total=%.2f, "
-        "subtotal=%s, tax=%s, merchant=%s, date=%s",
+        "=== EXTRACTION RESULTS [%s] ===\n"
+        "  merchant=%s | date=%s\n"
+        "  total=%.2f | subtotal=%s | tax=%s | savings=%s\n"
+        "  currency=%s | items=%d | item_count=%d",
         store,
-        len(lines),
-        len(items),
-        total or 0,
-        subtotal,
-        tax,
-        merchant,
-        purchase_date,
+        merchant, purchase_date,
+        total or 0, subtotal, tax, savings,
+        currency, len(items), item_count,
     )
+    for item in items:
+        logger.info("  ITEM: %s | qty=%s | price=%.2f",
+                     item["name"], item["quantity"], item["price"])
 
     return JSONResponse(
         content={
