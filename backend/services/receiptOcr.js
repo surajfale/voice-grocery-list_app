@@ -155,10 +155,10 @@ export const runReceiptOcr = async (buffer, {
   const form = new FormData();
   form.append('file', blob, 'receipt.png');
 
-  // 90-second timeout – on CPU-only Railway, OCR takes 30-60s for most
-  // receipts.  Without a timeout the UI hangs until the platform kills
-  // the request (~10-15 min).
-  const TIMEOUT_MS = 90_000;
+  // 120-second timeout – accounts for Railway cold starts (~30s) plus
+  // OCR processing (~15-30s on CPU).  Without a timeout the UI hangs
+  // until the platform kills the request.
+  const TIMEOUT_MS = 120_000;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 

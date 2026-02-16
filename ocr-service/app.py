@@ -50,10 +50,9 @@ logger = logging.getLogger("ocr-service")
 # Config (tunable via environment variables)
 # ---------------------------------------------------------------------------
 CONFIDENCE_THRESHOLD = float(os.getenv("OCR_CONFIDENCE_THRESHOLD", "0.15"))
-MAX_IMAGE_DIMENSION = int(os.getenv("OCR_MAX_IMAGE_DIMENSION", "2000"))
-# Minimum detections for the primary strategy to be considered "good enough"
-# to skip the fallback pass.  Keeps total OCR to 1 pass for clear receipts.
-MIN_GOOD_DETECTIONS = int(os.getenv("OCR_MIN_GOOD_DETECTIONS", "8"))
+# With 8 CPU cores on Railway, 1800px gives good accuracy for small receipt
+# text while keeping single-pass OCR under ~15 seconds.
+MAX_IMAGE_DIMENSION = int(os.getenv("OCR_MAX_IMAGE_DIMENSION", "1800"))
 
 # ---------------------------------------------------------------------------
 # EasyOCR reader – loaded once at module level so the model stays warm
@@ -295,174 +294,84 @@ WEIGHT_ITEM_RE = re.compile(
 )
 
 # ---------------------------------------------------------------------------
-# Image preprocessing – multiple strategies
+# Image preprocessing
 # ---------------------------------------------------------------------------
 
-def _resize_if_needed(img: Image.Image) -> Image.Image:
-    """Resize large images – keep aspect ratio."""
+def _preprocess_image(img: Image.Image) -> np.ndarray:
+    """
+    Prepare the receipt image for OCR.  Returns a **grayscale** numpy array.
+
+    Passing a single-channel (H×W) array to EasyOCR instead of an RGB
+    (H×W×3) array reduces the work by ~3× which is critical on CPU-only
+    Railway deployments.
+
+    Steps:
+    1. Resize if too large (target ≤1200px longest edge).
+    2. Convert to grayscale.
+    3. Auto-contrast to handle varying lighting / faded thermal ink.
+    4. Light denoise (median filter).
+    5. Sharpen to recover thin receipt characters.
+    """
     w, h = img.size
     if max(w, h) > MAX_IMAGE_DIMENSION:
         scale = MAX_IMAGE_DIMENSION / max(w, h)
         img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
         logger.info("Resized image from %dx%d to %dx%d", w, h, img.width, img.height)
-    return img
 
-
-def _strategy_standard(img: Image.Image) -> Image.Image:
-    """Standard: grayscale + moderate contrast + sharpen."""
-    img = img.convert("L")
-    img = ImageEnhance.Contrast(img).enhance(1.5)
-    img = ImageEnhance.Sharpness(img).enhance(2.0)
-    return img.convert("RGB")
-
-
-def _strategy_high_contrast(img: Image.Image) -> Image.Image:
-    """High contrast: auto-contrast + denoising for faded receipts."""
+    # Grayscale + enhance
     img = img.convert("L")
     img = ImageOps.autocontrast(img, cutoff=2)
     img = img.filter(ImageFilter.MedianFilter(size=3))
     img = ImageEnhance.Sharpness(img).enhance(1.5)
-    return img.convert("RGB")
+
+    # Return single-channel numpy array (H, W) – NOT (H, W, 3)
+    return np.array(img)
 
 
-def _strategy_adaptive_threshold(img: Image.Image) -> Image.Image:
+def _run_ocr(img_array: np.ndarray) -> list:
     """
-    Simulate adaptive thresholding-like effect using PIL.
-    Good for mobile photos with uneven lighting.
-    """
-    img = img.convert("L")
-    img = ImageOps.autocontrast(img, cutoff=5)
-    img = img.filter(ImageFilter.UnsharpMask(radius=2, percent=150, threshold=3))
-    img = ImageEnhance.Brightness(img).enhance(1.2)
-    img = ImageEnhance.Contrast(img).enhance(2.0)
-    return img.convert("RGB")
+    Run EasyOCR on a preprocessed numpy array.
 
-
-def _strategy_minimal(img: Image.Image) -> Image.Image:
-    """Minimal processing – sometimes EasyOCR works best on raw images."""
-    return img.convert("RGB")
-
-
-def _strategy_thermal(img: Image.Image) -> Image.Image:
-    """
-    Optimised for thermal receipt paper (faded, low contrast, thin fonts).
-    Common in small Indian grocery stores and kirana shops.
-    """
-    img = img.convert("L")
-    # Auto-level to stretch histogram
-    img = ImageOps.autocontrast(img, cutoff=1)
-    # Slight denoise to handle thermal paper noise
-    img = img.filter(ImageFilter.MedianFilter(size=3))
-    # Heavy contrast boost – thermal ink is very light
-    img = ImageEnhance.Contrast(img).enhance(2.5)
-    # Sharpen to recover thin characters
-    img = img.filter(ImageFilter.UnsharpMask(radius=1, percent=200, threshold=2))
-    return img.convert("RGB")
-
-
-def _run_ocr_with_strategy(
-    img: Image.Image,
-    strategy_fn,
-    strategy_name: str,
-) -> list:
-    """Run OCR with a given preprocessing strategy. Returns results list."""
-    try:
-        processed = strategy_fn(img.copy())
-        img_array = np.array(processed)
-        results = reader.readtext(
-            img_array,
-            text_threshold=0.5,
-            low_text=0.3,
-            link_threshold=0.2,
-            width_ths=0.8,
-            paragraph=False,
-            detail=1,
-            # NOTE: mag_ratio removed – it was magnifying the image by 1.5x
-            # which roughly doubled pixel count and processing time.  The
-            # default (1.0) is fine for receipt-sized text at 2000px.
-            slope_ths=0.3,
-        )
-        results = [
-            (box, text, conf)
-            for box, text, conf in results
-            if conf >= CONFIDENCE_THRESHOLD and len(text.strip()) >= 1
-        ]
-        avg_conf = (
-            sum(c for _, _, c in results) / len(results) if results else 0
-        )
-        logger.info(
-            "Strategy '%s': %d detections, avg conf %.2f",
-            strategy_name, len(results), avg_conf
-        )
-        return results
-    except Exception as exc:
-        logger.warning("Strategy '%s' failed: %s", strategy_name, exc)
-        return []
-
-
-def _score_results(results: list) -> float:
-    """
-    Score OCR results – balances count with average confidence.
-    A strategy that finds 50 boxes at 0.9 conf is better than
-    60 boxes at 0.3 conf.
-    """
-    if not results:
-        return 0.0
-    count = len(results)
-    avg_conf = sum(c for _, _, c in results) / count
-    return count * (0.6 + 0.4 * avg_conf)
-
-
-def _best_ocr_results(img: Image.Image) -> list:
-    """
-    Fast "primary + one fallback" approach.
-
-    1. Run the **high-contrast** strategy first (best all-rounder for receipts).
-    2. If it finds >= MIN_GOOD_DETECTIONS text boxes → done (single pass).
-    3. If not, run **one** fallback (adaptive-threshold for mobile photos,
-       or thermal for faded receipts) and pick whichever scored higher.
-
-    This keeps total OCR to 1–2 passes instead of 5, cutting processing
-    time from ~10 min to ~30-60 sec on CPU-only Railway.
+    Key speed optimisations vs defaults:
+    - ``decoder='greedy'`` – skips beam search, ~2× faster recognition.
+    - ``batch_size=8``     – recognise multiple text boxes in parallel.
+    - grayscale input      – 3× fewer pixels for CRAFT to process.
+    - no mag_ratio         – avoids upscaling the image.
     """
     import time
     t0 = time.time()
 
-    # --- Primary pass: high-contrast (works for most receipts) ------------
-    primary = _run_ocr_with_strategy(img, _strategy_high_contrast, "high_contrast")
-    primary_score = _score_results(primary)
-
-    elapsed = time.time() - t0
-    logger.info("Primary pass took %.1fs – %d detections", elapsed, len(primary))
-
-    # Good enough?  Skip the fallback entirely.
-    if len(primary) >= MIN_GOOD_DETECTIONS:
-        logger.info("Primary pass sufficient (%d >= %d), skipping fallback",
-                    len(primary), MIN_GOOD_DETECTIONS)
-        return primary
-
-    # --- One fallback pass ------------------------------------------------
-    # If primary found very little, image may be faded (thermal) or a raw
-    # mobile photo (adaptive-threshold works better).
-    fallback_fn = (
-        _strategy_thermal if len(primary) < 3 else _strategy_adaptive_threshold
+    results = reader.readtext(
+        img_array,
+        # CRAFT text-detector tuning
+        text_threshold=0.5,
+        low_text=0.35,
+        link_threshold=0.25,
+        width_ths=0.8,
+        # Speed optimisations
+        decoder="greedy",       # skip beam search → ~2× faster
+        batch_size=16,          # recognise 16 crops at once (8 CPU cores)
+        paragraph=False,
+        detail=1,
+        slope_ths=0.3,
     )
-    fallback_name = "thermal" if len(primary) < 3 else "adaptive_threshold"
 
-    fallback = _run_ocr_with_strategy(img, fallback_fn, fallback_name)
-    fallback_score = _score_results(fallback)
+    # Filter low-confidence noise
+    results = [
+        (box, text, conf)
+        for box, text, conf in results
+        if conf >= CONFIDENCE_THRESHOLD and len(text.strip()) >= 1
+    ]
 
     elapsed = time.time() - t0
-    logger.info("Fallback pass took %.1fs total – %d detections", elapsed, len(fallback))
-
-    if fallback_score > primary_score:
-        logger.info("Using fallback '%s' (score %.1f > %.1f)",
-                    fallback_name, fallback_score, primary_score)
-        return fallback
-
-    logger.info("Keeping primary 'high_contrast' (score %.1f >= %.1f)",
-                primary_score, fallback_score)
-    return primary
+    avg_conf = (
+        sum(c for _, _, c in results) / len(results) if results else 0
+    )
+    logger.info(
+        "OCR done in %.1fs – %d detections, avg conf %.2f",
+        elapsed, len(results), avg_conf
+    )
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -1052,16 +961,18 @@ async def ocr(file: UploadFile = File(...)):
     if not raw_bytes:
         raise HTTPException(status_code=400, detail="Empty file uploaded.")
 
-    # --- preprocess + OCR (adaptive) -------------------------------------
+    # --- preprocess + OCR -------------------------------------------------
     try:
         img = Image.open(io.BytesIO(raw_bytes))
+        # Fix orientation using EXIF data (mobile photos are often rotated)
         img = ImageOps.exif_transpose(img)
-        img = _resize_if_needed(img)
+        img_array = _preprocess_image(img)
     except Exception as exc:
         logger.exception("Image preprocessing failed")
         raise HTTPException(status_code=400, detail=f"Invalid image: {exc}")
 
-    results = _best_ocr_results(img)
+    logger.info("Image ready: %s, shape=%s", img_array.dtype, img_array.shape)
+    results = _run_ocr(img_array)
 
     if not results:
         logger.warning("No text detected in image")

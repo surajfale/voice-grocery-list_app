@@ -23,4 +23,8 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+# Use 2 workers to handle concurrent requests on 8-CPU Railway.
+# NOTE: Each EasyOCR worker uses ~500MB RAM, so 2 workers ≈ 1GB.
+# Don't go higher – EasyOCR's CRAFT detector already uses multiple
+# threads internally per worker.
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--timeout-keep-alive", "120"]
