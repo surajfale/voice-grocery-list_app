@@ -300,20 +300,15 @@ export class ReceiptRagService {
       };
     }
 
+    // If ALL receipts are pending and NONE are synced, warn but still try to search
+    // (the vector store may have chunks from a previous successful embedding run)
+    let pendingWarning = null;
     if (embeddingStatus.synced === 0 && embeddingStatus.pending > 0) {
-      return {
-        answer: `Your receipts are still being processed. ${embeddingStatus.pending} receipt(s) are pending embedding. Please wait a few minutes and try again, or trigger the embedding job manually.`,
-        sources: [],
-        contextChunks: [],
-        question: sanitizeQuestion(question),
-        diagnostic: {
-          totalReceipts: embeddingStatus.total,
-          embeddedReceipts: embeddingStatus.synced,
-          pendingReceipts: embeddingStatus.pending,
-          failedReceipts: embeddingStatus.failed
-        }
-      };
+      pendingWarning = `Note: ${embeddingStatus.pending} receipt(s) may still be processing. Results may be incomplete.`;
+    } else if (embeddingStatus.pending > 0) {
+      pendingWarning = `Note: ${embeddingStatus.pending} receipt(s) are still being processed and not included in results.`;
     }
+
 
     const retrieval = await this.retrieveContext({
       userId,
@@ -354,8 +349,13 @@ export class ReceiptRagService {
 
     const generation = await this.generateAnswer(retrieval.sanitizedQuestion, retrieval.chunks);
 
+    // Append pending warning if some receipts weren't embedded yet
+    const finalAnswer = pendingWarning
+      ? `${generation.answer}\n\n${pendingWarning}`
+      : generation.answer;
+
     return {
-      answer: generation.answer,
+      answer: finalAnswer,
       sources: generation.sources,
       usage: generation.usage,
       contextChunks: retrieval.chunks,
@@ -363,6 +363,7 @@ export class ReceiptRagService {
       diagnostic: {
         totalReceipts: embeddingStatus.total,
         embeddedReceipts: embeddingStatus.synced,
+        pendingReceipts: embeddingStatus.pending || 0,
         chunksFound: retrieval.chunks.length
       }
     };
