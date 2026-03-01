@@ -67,7 +67,7 @@ export const useReceiptChat = ({ userId, receipts = [] }) => {
   const [selectedMerchants, setSelectedMerchants] = useState([]);
   const [selectedReceiptIds, setSelectedReceiptIds] = useState([]);
   const [dateRange, setDateRange] = useState([null, null]);
-  const [topK, setTopK] = useState(5);
+  const [topK, setTopK] = useState(15);
   const [lastRequest, setLastRequest] = useState(null);
   const statusTimerRef = useRef(null);
 

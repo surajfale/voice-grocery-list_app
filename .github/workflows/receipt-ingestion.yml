@@ -34,8 +34,8 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           RAG_EMBEDDINGS_MODEL: ${{ secrets.RAG_EMBEDDINGS_MODEL || 'text-embedding-3-small' }}
           RAG_COMPLETIONS_MODEL: ${{ secrets.RAG_COMPLETIONS_MODEL || 'gpt-4o-mini' }}
-          RAG_TOP_K: ${{ secrets.RAG_TOP_K || 5 }}
+          RAG_TOP_K: ${{ secrets.RAG_TOP_K || 15 }}
           RAG_CHUNK_SIZE: ${{ secrets.RAG_CHUNK_SIZE || 512 }}
           RAG_VECTOR_INDEX: ${{ secrets.RAG_VECTOR_INDEX || 'receiptVectorIndex' }}
-          EMBEDDINGS_VERSION: ${{ secrets.EMBEDDINGS_VERSION || 1 }}
+          EMBEDDINGS_VERSION: ${{ secrets.EMBEDDINGS_VERSION || 2 }}
 

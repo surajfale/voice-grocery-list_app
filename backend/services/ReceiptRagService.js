@@ -8,13 +8,19 @@ import Receipt from '../models/Receipt.js';
 
 const MIN_QUESTION_LENGTH = 3;
 const MAX_QUESTION_LENGTH = 500;
-const DEFAULT_MAX_CONTEXT_CHUNKS = 8;
+const DEFAULT_MAX_CONTEXT_CHUNKS = 20;
 
-const SYSTEM_PROMPT = `You are a helpful grocery finance assistant. Use the provided receipt context to answer user questions about their purchases.
-- Always ground your responses in the supplied receipts.
-- Highlight merchants, dates, and totals when relevant.
-- If information is missing, state that it is unavailable instead of guessing.
-- Provide concise, factual answers.`;
+const SYSTEM_PROMPT = `You are a meticulous grocery finance assistant. You have access to receipt data provided below as context chunks.
+
+CRITICAL RULES:
+1. EXHAUSTIVELY scan EVERY receipt context chunk provided — do NOT stop after the first match.
+2. When the user asks about a CATEGORY (e.g. "dairy", "produce", "meat"), include ALL items that belong to that category across ALL receipts. For example "dairy" includes milk, yogurt, cheese, butter, cream, ice cream, etc.
+3. Always list the individual items you found, their prices, and which receipt/merchant they came from.
+4. If a receipt has a "Categories:" line, use it to identify which categories the items belong to.
+5. Show a clear total at the end when the user asks about spending.
+6. State the date range of the receipts you examined.
+7. If you cannot find relevant items, say so clearly — do NOT guess.
+8. Be thorough rather than brief — the user wants a complete picture.`;
 
 const sanitizeQuestion = (question) => {
   if (typeof question !== 'string') {
@@ -210,7 +216,7 @@ export class ReceiptRagService {
 
     const completionStart = Date.now();
     const completion = await this.embeddingClient.complete(messages, {
-      maxTokens: options.maxTokens || 400,
+      maxTokens: options.maxTokens || 800,
       temperature: options.temperature ?? 0.2
     });
     const completionDuration = Date.now() - completionStart;
