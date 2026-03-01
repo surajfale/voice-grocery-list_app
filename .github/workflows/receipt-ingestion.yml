@@ -1,9 +1,10 @@
 name: receipt-ingestion
 
 on:
-  schedule:
-    - cron: '*/15 * * * *'
+  # Cron schedule removed — embedding now happens inline on upload.
+  # Keep workflow_dispatch for manual re-processing of failed receipts.
   workflow_dispatch:
+
 
 jobs:
   ingest:

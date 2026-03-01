@@ -16,6 +16,66 @@ import ragConfig from '../config/ragConfig.js';
 import logger from '../utils/logger.js';
 import { estimateEmbeddingCost } from '../utils/costEstimator.js';
 
+/**
+ * Fire-and-forget: chunk the receipt and generate embeddings right after OCR.
+ * Errors are logged but never propagated so the upload response is unaffected.
+ */
+const embedReceiptInBackground = (receiptDoc) => {
+  // Use setImmediate so the HTTP response is sent first
+  setImmediate(async () => {
+    const startedAt = Date.now();
+    try {
+      await Receipt.updateOne({ _id: receiptDoc._id }, { $set: { embeddingStatus: 'pending' } });
+
+      const receipt = receiptDoc.toObject({ depopulate: true });
+      receipt._id = receiptDoc._id;
+      receipt.userId = receiptDoc.userId;
+
+      const chunks = receiptChunker.chunkReceipt(receipt);
+      if (!chunks.length) {
+        throw new Error('No embeddable content extracted from receipt.');
+      }
+
+      const embeddingClient = getEmbeddingClient();
+      const embeddingResult = await embeddingClient.embedBatch(chunks.map((c) => c.text));
+
+      const chunkPayloads = chunks.map((chunk, index) => ({
+        ...chunk,
+        embedding: embeddingResult.embeddings[index]
+      }));
+
+      await vectorStore.upsertChunks(chunkPayloads);
+
+      receiptDoc.embeddingStatus = 'synced';
+      receiptDoc.embeddingsVersion = ragConfig.embeddingsVersion;
+      receiptDoc.errorMessage = undefined;
+      await receiptDoc.save();
+
+      logger.info('ingest.receipt.auto_embedded', {
+        receiptId: receiptDoc._id.toString(),
+        userId: receiptDoc.userId?.toString(),
+        chunkCount: chunks.length,
+        durationMs: Date.now() - startedAt,
+        embeddingTokens: embeddingResult.usage?.total_tokens || embeddingResult.usage?.prompt_tokens || null,
+        estimatedCostUsd: estimateEmbeddingCost(embeddingResult.model || ragConfig.embeddingsModel, embeddingResult.usage)
+      });
+      console.log(`✅ Auto-embedded receipt ${receiptDoc._id} (${chunks.length} chunks, ${Date.now() - startedAt}ms)`);
+    } catch (error) {
+      await Receipt.updateOne(
+        { _id: receiptDoc._id },
+        { $set: { embeddingStatus: 'failed', errorMessage: error.message || 'Auto-embedding failed' } }
+      ).catch(() => { }); // swallow DB errors in cleanup
+      logger.error('ingest.receipt.auto_embed_failed', {
+        receiptId: receiptDoc._id.toString(),
+        userId: receiptDoc.userId?.toString(),
+        error: error.message || error,
+        durationMs: Date.now() - startedAt
+      });
+      console.error(`❌ Auto-embed failed for receipt ${receiptDoc._id}:`, error.message || error);
+    }
+  });
+};
+
 const asObject = (receipt) => {
   if (!receipt) {
     return null;
@@ -157,6 +217,10 @@ export const uploadReceipt = async (req, res) => {
       receipt.items = ocrResult.items;
       receipt.status = 'ready';
       await receipt.save();
+
+      // Trigger chunking + embedding immediately (fire-and-forget)
+      embedReceiptInBackground(receipt);
+
     } catch (ocrError) {
       console.error('OCR processing failed:', ocrError);
       receipt.status = 'error';
