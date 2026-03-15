@@ -1,6 +1,6 @@
 # 🎤 Voice Grocery List App
 
-A modern, intelligent voice-enabled grocery list application with cloud synchronization, smart categorization, and spell correction. Features **enhanced voice recognition** that understands natural speech patterns and processes items instantly.
+A modern, intelligent voice-enabled grocery list application with cloud synchronization, smart categorization, spell correction, and **AI-powered receipt analysis**. Features **enhanced voice recognition** that understands natural speech patterns, plus a full **Receipt AI** system that lets you upload receipts, extract data via OCR, and ask natural language questions about your spending history.
 
 ## 🎤 Voice Recognition Highlights
 
@@ -17,41 +17,59 @@ Say your grocery items naturally and the app intelligently separates them:
 - 📝 **Auto-correction** - Suggests corrections for misspelled items with user confirmation
 - 🏷️ **Smart Categorization** - Automatically sorts items into appropriate categories
 
+## 🤖 Receipt AI & Smart Insights
+
+Upload your grocery receipts and let AI analyze your spending. The app features a full **Retrieval-Augmented Generation (RAG)** pipeline that turns your receipts into a searchable knowledge base.
+
+### How It Works
+1. **📸 Upload** — Snap a photo or drop a receipt image (JPG, PNG, HEIC, WebP)
+2. **🔍 OCR** — Automatic text extraction captures merchant, date, total, and individual items
+3. **🧠 Embed** — Receipt content is chunked and embedded into vectors using OpenAI's `text-embedding-3-small`
+4. **💬 Ask** — Chat naturally: *"How much did I spend on dairy last month?"* and get accurate answers with receipt citations
+
+### AI Features
+- 💬 **Natural Language Q&A** — Ask questions about your spending in plain English
+- 🏷️ **Category-Aware Search** — Understands grocery categories (asking about "dairy" finds milk, yogurt, cheese, etc.)
+- 📊 **Spending Analysis** — Totals, comparisons, and breakdowns across receipts
+- 🔗 **Source Citations** — Every answer references the specific receipts it drew from
+- 📅 **Date & Merchant Filters** — Narrow your queries to specific time periods or stores
+- ⚡ **Vector Search** — Uses MongoDB Atlas Vector Search with cosine similarity for fast, accurate retrieval
+
 ## ✨ Features
 
 ### Core Features
-- 🎤 **Advanced Voice Recognition** - Add multiple items by speaking naturally with instant processing
-- 🧠 **Smart Item Parsing** - Intelligently separates space-separated items ("onion spinach milk" → 3 items)
-- 🎯 **Filler Word Filtering** - Removes "uhh", "umm", "you know" and other speech artifacts automatically
-- 🏷️ **Intelligent Categorization** - AI-powered sorting into grocery categories (Produce, Dairy, Asian Pantry, etc.)
-- ✨ **Smart Auto-correction** - Spell checking with user confirmation using comprehensive grocery database
-- 🔍 **Duplicate Detection** - Prevents adding the same items twice
-- 📱 **Responsive Design** - Optimized for desktop and mobile devices
-- 🎨 **Dynamic Theming** - Dark/light mode with customizable color schemes
- - 📤 **Share & Export** - Share lists via the Web Share API on supported devices and download lists as an image or PDF using built-in utilities (`shareList`, `downloadListAsImage`, `downloadListAsPDF`). A printable list component (`PrintableList`) is available and wired to a `printableListRef` for easy export/print workflows.
-- 🧾 **Receipt OCR Workspace** - Upload grocery receipts, run on-device Tesseract OCR, capture merchant/date/total/items, and store both text + original image in MongoDB GridFS for future analysis.
+- 🎤 **Advanced Voice Recognition** — Add multiple items by speaking naturally with instant processing
+- 🧠 **Smart Item Parsing** — Intelligently separates space-separated items ("onion spinach milk" → 3 items)
+- 🎯 **Filler Word Filtering** — Removes "uhh", "umm", "you know" and other speech artifacts automatically
+- 🏷️ **Intelligent Categorization** — AI-powered sorting into grocery categories (Produce, Dairy, Asian Pantry, etc.)
+- ✨ **Smart Auto-correction** — Spell checking with user confirmation using comprehensive grocery database
+- 🔍 **Duplicate Detection** — Prevents adding the same items twice
+- 📱 **Responsive Design** — Optimized for desktop and mobile devices
+- 🎨 **Dynamic Theming** — Dark/light mode with customizable color schemes
+- 📤 **Share & Export** — Share lists via the Web Share API on supported devices and download lists as an image or PDF
+- 🧾 **Receipt OCR** — Upload grocery receipts for automatic text extraction, item parsing, and storage
+- 🤖 **AI-Powered Receipt Chat** — Ask natural language questions about your receipts and spending history
 
 ### User Experience
-- 🔐 **Secure Authentication** - Protected user accounts with validation
-- ☁️ **Cloud Synchronization** - Access your lists from any device
-- 📅 **Date-based Organization** - Separate lists for different dates
-- ✅ **Progress Tracking** - Visual progress bars and completion status
-- 🎯 **Category Management** - Expandable/collapsible category views
-- ❓ **Built-in Help** - Comprehensive user guide and tips
+- 🔐 **Secure Authentication** — Protected user accounts with validation
+- ☁️ **Cloud Synchronization** — Access your lists from any device
+- 📅 **Date-based Organization** — Separate lists for different dates
+- ✅ **Progress Tracking** — Visual progress bars and completion status
+- 🎯 **Category Management** — Expandable/collapsible category views
+- ❓ **Built-in Help** — Comprehensive user guide and tips
 
 ### Advanced Features
-- ⚡ **Instant Voice Processing** - Items appear immediately when you stop recording
-- 🔄 **Real-time Updates** - Instant synchronization across devices
-- 🎭 **Beautiful Animations** - Smooth transitions, pulsing voice indicators, and visual feedback
-- 🛡️ **Security Headers** - Production-ready security configuration
-- 📊 **Smart Analytics** - Track shopping progress and completion rates
-- 🔧 **Enhanced Error Handling** - Clean console output with proper error management
-- 🤖 **Chat Stub for AI Insights** - Built-in chatbot UI wired to a placeholder `/api/receipts/chat` endpoint so you can plug in your own vector database/RAG pipeline to query historical receipts.
+- ⚡ **Instant Voice Processing** — Items appear immediately when you stop recording
+- 🔄 **Real-time Updates** — Instant synchronization across devices
+- 🎭 **Beautiful Animations** — Smooth transitions, pulsing voice indicators, and visual feedback
+- 🛡️ **Security Headers** — Production-ready security configuration
+- 📊 **Smart Analytics** — Track shopping progress and completion rates
+- 🔧 **Enhanced Error Handling** — Clean console output with proper error management
 
 ### Receipts Workspace
 - Switch to the **Receipts** view from the app bar to manage your uploaded receipts alongside grocery lists.
 - Drag-and-drop or select image files (JPG, PNG, HEIC, WebP) to trigger OCR, structured parsing, and storage.
-- Review detected metadata + items, preview the original image, delete entries, and ask stubbed AI questions that you can later replace with a full RAG implementation.
+- Review detected metadata + items, preview the original image, delete entries, and ask AI questions about your receipt history.
 
 ## 🔐 Security Features
 
@@ -90,6 +108,12 @@ Say your grocery items naturally and the app intelligently separates them:
 - **Helmet** for security headers
 - **Express Rate Limit** for API protection
 - **CORS** middleware for cross-origin requests
+
+### AI & Receipt Intelligence
+- **OpenAI API** — `text-embedding-3-small` for vector embeddings, `gpt-4o-mini` for answer generation
+- **MongoDB Atlas Vector Search** — Cosine similarity search with native pre-filtering (`$vectorSearch`)
+- **RAG Pipeline** — Chunking → embedding → vector store → retrieval → LLM generation
+- **Receipt OCR** — Automatic text extraction and structured parsing from receipt images
 
 ### Infrastructure
 - **Netlify** for frontend hosting with CDN
@@ -130,6 +154,12 @@ Say your grocery items naturally and the app intelligently separates them:
    RESEND_API_KEY=your_resend_api_key_here
    EMAIL_FROM=Grocery List App <onboarding@resend.dev>
    FRONTEND_URL=http://localhost:5173
+
+   # Receipt AI / RAG (optional — feature is disabled without OPENAI_API_KEY)
+   OPENAI_API_KEY=your_openai_api_key_here
+   RAG_EMBEDDINGS_MODEL=text-embedding-3-small
+   RAG_COMPLETIONS_MODEL=gpt-4o-mini
+   RAG_NUM_CANDIDATES=150
    ```
 
    **Frontend (.env in root directory):**
@@ -186,10 +216,12 @@ pnpm --filter backend start  # Production server
 - **[PWA Setup](./docs/PWA_SETUP.md)** - Install the app on your device for native-like experience
 
 ### Developer Documentation
-- **[Architecture](./docs/Architecture.md)** - Comprehensive technical architecture and design decisions
-- **[Deployment Guide](./docs/DEPLOYMENT.md)** - Step-by-step deployment instructions for Netlify + Railway
-- **[MongoDB Setup](./docs/MONGODB_SETUP.md)** - Database configuration and setup guide
-- **[Claude.md](./CLAUDE.md)** - AI assistant guidance for development
+- **[Architecture](./docs/Architecture.md)** — Comprehensive technical architecture and design decisions
+- **[Deployment Guide](./docs/DEPLOYMENT.md)** — Step-by-step deployment instructions for Netlify + Railway
+- **[MongoDB Setup](./docs/MONGODB_SETUP.md)** — Database configuration and setup guide
+- **[Atlas Vector Index](./docs/atlas_vector_index.md)** — Vector Search index setup for the Receipt AI feature
+- **[RAG Implementation](./docs/RAG_IMPLEMENTATION_TASKS.md)** — Detailed breakdown of the RAG pipeline tasks
+- **[Claude.md](./CLAUDE.md)** — AI assistant guidance for development
 
 
 ## �🛠️ Development

@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### 2026-03-15 15:29:41 - 429f104 [LOCAL]
+### 2026-03-15 15:33:16 - 0ce8a32 [LOCAL]
+
+feat(docs): enhance README with AI-powered receipt analysis details
+
+- Added new section for Receipt AI & Smart Insights
+- Included steps for how the receipt analysis works
+- Updated core features to highlight AI capabilities### 2026-03-15 15:29:41 - 429f104 [PUSHED]
 
 feat(vectorStore): enhance vector search with numCandidates config
 
