@@ -110,13 +110,12 @@ The OCR microservice runs as a **separate Railway service** in the same project.
 
 ### 2b.3 Set Environment Variables
 1. In the OCR service dashboard, go to **"Variables"** tab
-2. No mandatory environment variables are required — the defaults work. Optionally set:
-
+2. Add the following environment variable (required for text extraction):
 ```
+GOOGLE_CLOUD_API_KEY=your_google_cloud_api_key_here
 PORT=8000
 ```
-
-> Railway automatically injects `PORT` and the service respects it via `${PORT:-8000}`.
+> Railway automatically injects `PORT` and the service respects it via `${PORT:-8000}`. `GOOGLE_CLOUD_API_KEY` is required because the OCR microservice uses Google Vision API to rapidly transcribe text from images before sending it back to the node backend for LLM parsing.
 
 ### 2b.4 Generate a Public Domain
 1. In the OCR service's **"Settings"** → **"Networking"**

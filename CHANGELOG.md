@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### 2026-03-15 15:33:16 - 0ce8a32 [PUSHED]
+### 2026-03-15 16:49:47 - f6fce80 [LOCAL]
+
+feat(tests): enhance receiptOcr tests with LLM integration
+
+- Introduced mock for embedding client in tests
+- Updated test descriptions for clarity
+- Implemented default LLM mock behavior for error handling
+- Adjusted assertions to match new data structure
+- Improved documentation for environment variable requirements### 2026-03-15 15:33:16 - 0ce8a32 [PUSHED]
 
 feat(docs): enhance README with AI-powered receipt analysis details
 

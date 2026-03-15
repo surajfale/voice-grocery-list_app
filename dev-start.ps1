@@ -17,12 +17,14 @@
 param(
     [switch]$BackendOnly,
     [switch]$FrontendOnly,
+    [switch]$OcrOnly,
     [switch]$Install
 )
 
 $ErrorActionPreference = "Stop"
 $ProjectRoot = $PSScriptRoot
 $BackendDir = Join-Path $ProjectRoot "backend"
+$OcrDir = Join-Path $ProjectRoot "ocr-service"
 
 # --- Colors ---
 function Write-Step($msg)    { Write-Host "▶ $msg" -ForegroundColor Cyan }
@@ -63,6 +65,28 @@ if (-not $pnpmPath) {
 }
 $pnpmVersion = & pnpm --version 2>$null
 Write-Ok "pnpm v$pnpmVersion found"
+
+# Check Python (for OCR Service)
+Write-Step "Checking Python..."
+$pythonPath = Get-Command python -ErrorAction SilentlyContinue
+if (-not $pythonPath) {
+    # Try python3
+    $pythonPath = Get-Command python3 -ErrorAction SilentlyContinue
+    if (-not $pythonPath) {
+        Write-Warn "Python not found in PATH. OCR Service will not start."
+        $global:HasPython = $false
+    } else {
+        Set-Alias python python3
+        $global:HasPython = $true
+    }
+} else {
+    $global:HasPython = $true
+}
+
+if ($global:HasPython) {
+    $pythonVersion = & python --version 2>&1
+    Write-Ok "Python found: $pythonVersion"
+}
 
 # --- Check .env files ---
 Write-Step "Checking environment files..."
@@ -109,6 +133,13 @@ if ($Install) {
     & pnpm install
     Pop-Location
 
+    if ($global:HasPython) {
+        Write-Info "Installing OCR Service dependencies..."
+        Push-Location $OcrDir
+        & python -m pip install -r requirements.txt
+        Pop-Location
+    }
+
     Write-Ok "All dependencies installed"
 }
 
@@ -154,9 +185,15 @@ Write-Host "  Starting Services" -ForegroundColor Magenta
 Write-Host "========================================" -ForegroundColor Magenta
 Write-Host ""
 
-if (-not $FrontendOnly) {
+if (-not $FrontendOnly -and -not $OcrOnly) {
     Write-Step "Starting Backend (Express API on port 3001)..."
-    $nodeOpts = if ($dnsFixNeeded) { "`$env:NODE_OPTIONS='--require ./_dns-fix.cjs'; " } else { "" }
+    
+    # Needs to be a string that successfully passes the absolute path of dnsFixScript using single quotes
+    if ($dnsFixNeeded -and $null -ne $dnsFixScript) {
+        $nodeOpts = "`$env:NODE_OPTIONS='--require `"$dnsFixScript`"'; "
+    } else {
+        $nodeOpts = ""
+    }
     $backendCmd = "cd '$BackendDir'; ${nodeOpts}Write-Host ''; Write-Host '=== BACKEND (port 3001) ===' -ForegroundColor Cyan; Write-Host ''; pnpm dev"
     Start-Process pwsh -ArgumentList "-NoExit", "-Command", $backendCmd -WindowStyle Normal
     Write-Ok "Backend launched in new terminal"
@@ -166,9 +203,9 @@ if (-not $FrontendOnly) {
     }
 }
 
-if (-not $BackendOnly) {
+if (-not $BackendOnly -and -not $OcrOnly) {
     # Small delay so backend starts first
-    if (-not $FrontendOnly) {
+    if (-not $FrontendOnly -and -not $OcrOnly) {
         Start-Sleep -Seconds 2
     }
 
@@ -179,17 +216,57 @@ if (-not $BackendOnly) {
     Write-Info "App: http://localhost:5173"
 }
 
+if ($global:HasPython -and (-not $BackendOnly) -and (-not $FrontendOnly)) {
+    Write-Step "Starting OCR Service (Port 8000)..."
+    
+    # Check if backend/.env has GOOGLE_CLOUD_API_KEY
+    $hasVisionKey = $false
+    if (Test-Path $backendEnv) {
+        if ((Get-Content $backendEnv -Raw) -match "GOOGLE_CLOUD_API_KEY|GOOGLE_APPLICATION_CREDENTIALS") {
+            $hasVisionKey = $true
+        }
+    }
+    
+    if (-not $hasVisionKey) {
+        Write-Warn "⚠️ The OCR service requires Google Cloud Vision credentials."
+        Write-Warn "Please add GOOGLE_CLOUD_API_KEY or GOOGLE_APPLICATION_CREDENTIALS to backend/.env"
+    }
+
+    # Load environment variables into the current session so Start-Process inherits them
+    if (Test-Path $backendEnv) {
+        Get-Content $backendEnv | Where-Object { $_ -match '^([^#]+?)=(.*)$' } | ForEach-Object {
+            $name = $matches[1].Trim()
+            $val = $matches[2].Trim()
+            if ($val.StartsWith('"')) { $val = $val.Substring(1, $val.Length - 2) }
+            elseif ($val.StartsWith("'")) { $val = $val.Substring(1, $val.Length - 2) }
+            [Environment]::SetEnvironmentVariable($name, $val)
+        }
+    }
+
+    $ocrCmd = "cd '$OcrDir'; Write-Host ''; Write-Host '=== OCR SERVICE (port 8000) ===' -ForegroundColor Yellow; Write-Host ''; python app.py"
+    Start-Process pwsh -ArgumentList "-NoExit", "-Command", $ocrCmd -WindowStyle Normal
+    Write-Ok "OCR Service launched in new terminal"
+    Write-Info "OCR: http://localhost:8000/health"
+} else {
+    if (-not $global:HasPython) {
+        Write-Warn "Skipping OCR Service: Python not found."
+    }
+}
+
 # --- Summary ---
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Magenta
 Write-Host "  All Services Launched!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Magenta
 Write-Host ""
-if (-not $FrontendOnly) {
+if (-not $FrontendOnly -and -not $OcrOnly) {
     Write-Host "  Backend API:  " -NoNewline; Write-Host "http://localhost:3001/api/health" -ForegroundColor Yellow
 }
-if (-not $BackendOnly) {
+if (-not $BackendOnly -and -not $OcrOnly) {
     Write-Host "  Frontend App: " -NoNewline; Write-Host "http://localhost:5173" -ForegroundColor Yellow
+}
+if ($global:HasPython -and (-not $BackendOnly) -and (-not $FrontendOnly)) {
+    Write-Host "  OCR Service:  " -NoNewline; Write-Host "http://localhost:8000/health" -ForegroundColor Yellow
 }
 Write-Host ""
 Write-Host "  Close the terminal windows to stop the servers." -ForegroundColor Gray

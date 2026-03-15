@@ -1,163 +1,58 @@
+import { getEmbeddingClient } from '../utils/embeddingClient.js';
+import logger from '../utils/logger.js';
+
 /**
- * Receipt OCR client  v2.0
+ * Receipt OCR client v3.0 (LLM Powered)
  * ========================
- * Sends image buffers to the external EasyOCR microservice (v2) and returns
- * structured receipt data.
- *
- * The v2 Python service now does all the heavy lifting – structured extraction
- * (merchant, date, total, items) happens server-side with much better accuracy.
- * This client prefers the service's structured data but falls back to local
- * parsing if the service returns only raw text.
- *
- * The public API of `runReceiptOcr(buffer, options)` is intentionally
- * identical to the old Tesseract.js implementation so that callers
- * (receiptController, localReceiptPipeline) need zero changes.
+ * Sends image buffers to the external EasyOCR/Vision microservice to get raw text,
+ * and then uses an LLM (OpenAI) to accurately parse the structured data.
  */
 
 const OCR_SERVICE_URL = process.env.OCR_SERVICE_URL || 'http://localhost:8000';
 
-// ---------------------------------------------------------------------------
-// Fallback receipt-text parser (only used if the service doesn't return
-// structured fields)
-// ---------------------------------------------------------------------------
-
-const CURRENCY_REGEX = /(Rs\.?|₹|\$|£|€)/i;
-const AMOUNT_REGEX = /(?:Rs\.?|₹|\$|£|€)?\s?(\d{1,6}(?:\.\d{1,2})?)/i;
-const DATE_REGEX = /\b(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}|\d{4}[/\-.]\d{1,2}[/\-.]\d{1,2})\b/;
-
-const parseAmount = (text) => {
-  const match = text.match(AMOUNT_REGEX);
-  if (!match) {
-    return {};
-  }
-
-  const currencyMatch = text.match(CURRENCY_REGEX);
-  const currencySymbol = currencyMatch ? currencyMatch[1] : null;
-  const amountValue = parseFloat(match[1]);
-
-  return {
-    currency: currencySymbol,
-    amount: Number.isNaN(amountValue) ? null : amountValue
-  };
-};
-
-const parseItems = (lines) => {
-  const items = [];
-
-  lines.forEach((line) => {
-    if (!line || line.length < 3) {
-      return;
+const SYSTEM_PROMPT = `You are an expert receipt parsing assistant. Given the raw OCR text of a receipt, extract the following information and return it STRICTLY as a JSON object with no markdown formatting.
+Required JSON schema:
+{
+  "merchant": "string or null",
+  "purchaseDate": "YYYY-MM-DD string or null",
+  "subtotal": number or null,
+  "tax": number or null,
+  "savings": number or null,
+  "total": number or null,
+  "currency": "string (e.g. $, ₹) or null",
+  "itemCount": number or null,
+  "items": [
+    {
+      "name": "string",
+      "quantity": number,
+      "price": number,
+      "currency": "string"
     }
+  ]
+}
 
-    const amountData = parseAmount(line);
-    if (amountData.amount === null) {
-      return;
-    }
-
-    const name = line.replace(AMOUNT_REGEX, '').replace(CURRENCY_REGEX, '').trim();
-    if (!name || name.length < 2) {
-      return;
-    }
-
-    items.push({
-      name,
-      quantity: 1,
-      price: amountData.amount,
-      currency: amountData.currency
-    });
-  });
-
-  return items;
-};
-
-const parseReceiptText = (rawText) => {
-  if (!rawText) {
-    return {
-      merchant: null,
-      purchaseDate: null,
-      total: null,
-      currency: null,
-      items: []
-    };
-  }
-
-  const lines = rawText
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  const merchant = lines[0] || null;
-
-  const dateLine = lines.find((line) => DATE_REGEX.test(line));
-  const purchaseDate = dateLine ? dateLine.match(DATE_REGEX)?.[0] : null;
-
-  let total = null;
-  let currency = null;
-  const totalLine = lines.find((line) => /total/i.test(line));
-
-  if (totalLine) {
-    const amountData = parseAmount(totalLine);
-    total = amountData.amount;
-    currency = amountData.currency;
-  } else {
-    for (let i = lines.length - 1; i >= 0; i -= 1) {
-      const amountData = parseAmount(lines[i]);
-      if (amountData.amount) {
-        total = amountData.amount;
-        currency = amountData.currency;
-        break;
-      }
-    }
-  }
-
-  if (!currency) {
-    const symbolMatch = rawText.match(CURRENCY_REGEX);
-    currency = symbolMatch ? symbolMatch[1] : null;
-  }
-
-  return {
-    merchant,
-    purchaseDate,
-    total,
-    currency,
-    items: parseItems(lines.slice(1))
-  };
-};
-
-// ---------------------------------------------------------------------------
-// HTTP client → EasyOCR microservice
-// ---------------------------------------------------------------------------
+Important parsing rules:
+1. ONLY return valid JSON. Do not include markdown code blocks like \`\`\`json.
+2. 'total' must be the grand total charged to the customer. Usually 'subtotal' + 'tax' = 'total'.
+3. 'items' should only include actual purchased items. Exclude decorative lines, store policies, barcodes, tips, or payment card details.
+4. If an item line shows quantity and unit rate (e.g., "2 x $3.00"), the 'quantity' is 2 and the 'price' is the final extended price ($6.00).
+5. 'purchaseDate' should be formatted strictly as YYYY-MM-DD.
+6. Use context to determine missing values (e.g., if total is $5.00, use 5.0).`;
 
 /**
- * Send an image buffer to the EasyOCR microservice and return structured
- * receipt data.
- *
  * @param {Buffer} buffer  – Raw image bytes (JPEG / PNG).
  * @param {object} [options]
- * @param {string} [options.language]  – Unused in the new service but kept
- *   for API compatibility.
- * @param {Function} [options.logger]  – Optional progress callback (called
- *   with status messages).
- * @returns {Promise<{rawText:string, merchant:string|null, purchaseDate:string|null, total:number|null, currency:string|null, items:Array}>}
+ * @param {Function} [options.logger]
  */
-export const runReceiptOcr = async (buffer, {
-  language = 'eng',
-  logger
-} = {}) => {
-  const safeLogger = typeof logger === 'function'
-    ? logger
-    : () => { };
+export const runReceiptOcr = async (buffer, { logger: progressLogger } = {}) => {
+  const safeLogger = typeof progressLogger === 'function' ? progressLogger : () => {};
 
-  safeLogger({ status: 'sending image to OCR service', progress: 0.1 });
+  safeLogger({ status: 'extracting text from image via OCR service', progress: 0.2 });
 
-  // Build multipart/form-data body using the global FormData (Node 18+)
   const blob = new Blob([buffer], { type: 'image/png' });
   const form = new FormData();
   form.append('file', blob, 'receipt.png');
 
-  // 120-second timeout – accounts for Railway cold starts (~30s) plus
-  // OCR processing (~15-30s on CPU).  Without a timeout the UI hangs
-  // until the platform kills the request.
   const TIMEOUT_MS = 120_000;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -174,7 +69,7 @@ export const runReceiptOcr = async (buffer, {
     const isTimeout = networkError.name === 'AbortError';
     throw new Error(
       isTimeout
-        ? `OCR service timed out after ${TIMEOUT_MS / 1000}s – the image may be too large or the service is overloaded`
+        ? `OCR service timed out after ${TIMEOUT_MS / 1000}s`
         : `OCR service unreachable at ${OCR_SERVICE_URL}: ${networkError.message}`
     );
   } finally {
@@ -183,29 +78,49 @@ export const runReceiptOcr = async (buffer, {
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => 'unknown error');
-    throw new Error(
-      `OCR service returned HTTP ${response.status}: ${errorBody}`
-    );
+    throw new Error(`OCR service returned HTTP ${response.status}: ${errorBody}`);
   }
 
-  safeLogger({ status: 'parsing OCR response', progress: 0.8 });
+  safeLogger({ status: 'analyzing receipt text with AI', progress: 0.6 });
 
   const data = await response.json();
   const rawText = (data.raw_text || '').trim();
 
-  // The v2 service returns structured data directly – prefer it over
-  // local re-parsing which was the source of most accuracy problems.
-  const serviceHasStructuredData = data.merchant !== undefined
-    || data.purchase_date !== undefined
-    || data.total !== undefined
-    || (data.items && data.items.length > 0);
+  if (!rawText) {
+    safeLogger({ status: 'done', progress: 1.0 });
+    return { rawText: '', merchant: null, purchaseDate: null, total: null, currency: null, items: [], itemCount: 0, detectedStore: data.detected_store || 'unknown' };
+  }
 
-  let result;
+  // Pass to LLM for structured parsing
+  let jsonResult;
+  try {
+    const aiClient = getEmbeddingClient();
+    
+    // Check if the embedding client is properly configured with an API key
+    if (!aiClient.client) {
+        throw new Error("OpenAI Client is not configured.");
+    }
 
-  if (serviceHasStructuredData) {
-    // Use the service's superior extraction, normalise key names to camelCase
-    result = {
-      rawText,
+    const messages = [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: `Raw Receipt Text:\n${rawText}` }
+    ];
+
+    const aiResponse = await aiClient.complete(messages, {
+      model: 'gpt-4o-mini',
+      maxTokens: 1500,
+      temperature: 0,
+      requestOptions: {
+        response_format: { type: 'json_object' }
+      }
+    });
+
+    jsonResult = JSON.parse(aiResponse.message.content);
+    
+  } catch (error) {
+    logger.error('Failed to parse OCR via LLM, falling back to Python service output:', error);
+    // Fallback to Python's original unstructured/partially structured data
+    jsonResult = {
       merchant: data.merchant || null,
       purchaseDate: data.purchase_date || null,
       total: data.total ?? null,
@@ -219,19 +134,23 @@ export const runReceiptOcr = async (buffer, {
         price: item.price,
         currency: data.currency || null
       })),
-      itemCount: data.item_count ?? (data.items || []).length,
-      detectedStore: data.detected_store || 'generic'
-    };
-  } else {
-    // Fallback: re-parse the raw text locally (backward compat)
-    const structuredData = parseReceiptText(rawText);
-    result = {
-      rawText,
-      ...structuredData
+      itemCount: data.item_count ?? (data.items || []).length
     };
   }
 
   safeLogger({ status: 'done', progress: 1.0 });
 
-  return result;
+  return {
+    rawText,
+    merchant: jsonResult.merchant || null,
+    purchaseDate: jsonResult.purchaseDate || null,
+    subtotal: jsonResult.subtotal ?? null,
+    tax: jsonResult.tax ?? null,
+    total: jsonResult.total ?? null,
+    savings: jsonResult.savings ?? null,
+    currency: jsonResult.currency || null,
+    items: Array.isArray(jsonResult.items) ? jsonResult.items : [],
+    itemCount: jsonResult.itemCount ?? (jsonResult.items ? jsonResult.items.length : 0),
+    detectedStore: data.detected_store || 'generic'
+  };
 };
