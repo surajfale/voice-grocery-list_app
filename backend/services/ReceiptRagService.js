@@ -10,7 +10,16 @@ const MIN_QUESTION_LENGTH = 3;
 const MAX_QUESTION_LENGTH = 500;
 const DEFAULT_MAX_CONTEXT_CHUNKS = 20;
 
-const SYSTEM_PROMPT = `You are a meticulous grocery finance assistant. You have access to receipt data provided below as context chunks.
+const buildSystemPrompt = () => {
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const dayOfWeek = now.toLocaleDateString('en-US', { weekday: 'long' });
+  const monthYear = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  return `You are a meticulous grocery finance assistant. You have access to receipt data provided below as context chunks.
+
+Today's date is ${todayStr} (${dayOfWeek}). The current month is ${monthYear}.
+When the user says "this month" they mean ${monthYear}. Interpret all relative time references ("last week", "recently", "this month", "last month", etc.) based on today's date.
 
 CRITICAL RULES:
 1. EXHAUSTIVELY scan EVERY receipt context chunk provided — do NOT stop after the first match.
@@ -21,6 +30,7 @@ CRITICAL RULES:
 6. State the date range of the receipts you examined.
 7. If you cannot find relevant items, say so clearly — do NOT guess.
 8. Be thorough rather than brief — the user wants a complete picture.`;
+};
 
 const sanitizeQuestion = (question) => {
   if (typeof question !== 'string') {
@@ -203,14 +213,16 @@ export class ReceiptRagService {
       };
     }
 
+    const todayStr = new Date().toISOString().split('T')[0];
+
     const messages = [
       {
         role: 'system',
-        content: SYSTEM_PROMPT
+        content: buildSystemPrompt()
       },
       {
         role: 'user',
-        content: `Context:\n${contextText}\n\nQuestion: ${question}\n\nProvide a concise answer that references the receipts when possible.`
+        content: `Today is ${todayStr}.\n\nContext:\n${contextText}\n\nQuestion: ${question}\n\nProvide a concise answer that references the receipts when possible.`
       }
     ];
 

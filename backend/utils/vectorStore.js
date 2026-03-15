@@ -20,74 +20,40 @@ const toObjectId = (value, fieldName) => {
   throw new Error(`Invalid ObjectId provided for ${fieldName}.`);
 };
 
-const buildFilterClauses = (filters = {}) => {
-  const clauses = [];
+/**
+ * Build a standard MQL filter object for $vectorSearch.
+ * Unlike the old knnBeta (which used Atlas Search query syntax like {equals:{path,value}}),
+ * $vectorSearch uses plain MQL syntax (same as $match).
+ */
+const buildVectorSearchFilter = (filters = {}) => {
+  const mqlFilter = {};
 
   if (filters.userId) {
-    clauses.push({
-      equals: {
-        path: 'userId',
-        value: toObjectId(filters.userId, 'userId')
-      }
-    });
+    mqlFilter.userId = toObjectId(filters.userId, 'userId');
   }
 
   if (filters.receiptIds?.length) {
-    const receiptIds = filters.receiptIds.map((id) => toObjectId(id, 'receiptIds'));
-    clauses.push({
-      in: {
-        path: 'receiptId',
-        value: receiptIds
-      }
-    });
+    mqlFilter.receiptId = {
+      $in: filters.receiptIds.map((id) => toObjectId(id, 'receiptIds'))
+    };
   } else if (filters.receiptId) {
-    clauses.push({
-      equals: {
-        path: 'receiptId',
-        value: toObjectId(filters.receiptId, 'receiptId')
-      }
-    });
+    mqlFilter.receiptId = toObjectId(filters.receiptId, 'receiptId');
   }
 
   if (filters.purchaseDate) {
-    clauses.push({
-      equals: {
-        path: 'purchaseDate',
-        value: filters.purchaseDate
-      }
-    });
+    mqlFilter.purchaseDate = filters.purchaseDate;
   } else if (filters.dateRange && (filters.dateRange.start || filters.dateRange.end)) {
-    const range = {
-      path: 'purchaseDate'
-    };
+    mqlFilter.purchaseDate = {};
     if (filters.dateRange.start) {
-      range.gte = filters.dateRange.start;
+      mqlFilter.purchaseDate.$gte = filters.dateRange.start;
     }
     if (filters.dateRange.end) {
-      range.lte = filters.dateRange.end;
+      mqlFilter.purchaseDate.$lte = filters.dateRange.end;
     }
-    clauses.push({ range });
   }
 
-  return clauses;
+  return Object.keys(mqlFilter).length > 0 ? mqlFilter : undefined;
 };
-
-const formatFilter = (clauses) => {
-  if (!clauses.length) {
-    return undefined;
-  }
-
-  if (clauses.length === 1) {
-    return clauses[0];
-  }
-
-  return {
-    compound: {
-      filter: clauses
-    }
-  };
-};
-
 
 
 export const vectorStore = {
@@ -159,8 +125,7 @@ export const vectorStore = {
       throw new Error('topK must be a positive integer.');
     }
 
-    const filterClauses = buildFilterClauses(filters);
-    const formattedFilter = formatFilter(filterClauses);
+    const formattedFilter = buildVectorSearchFilter(filters);
 
     // $vectorSearch uses numCandidates for ANN breadth.
     // Higher = more accurate but slower. Default 150 is good for topK=15.

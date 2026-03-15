@@ -165,8 +165,6 @@ const ReceiptChatPanel = ({ userId, receipts, onSelectReceipt }) => {
     activeFilterChips,
     clearFilters,
     hasActiveFilters,
-    topK,
-    setTopK,
     isOnline,
     networkStatusMessage
   } = useReceiptChat({ userId, receipts });
@@ -308,25 +306,7 @@ const ReceiptChatPanel = ({ userId, receipts, onSelectReceipt }) => {
                 />
               </Grid>
             </Grid>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
-              <TextField
-                label="Top K"
-                type="number"
-                size="small"
-                value={topK}
-                onChange={(event) => {
-                  const value = Number(event.target.value);
-                  if (Number.isNaN(value)) {
-                    setTopK(5);
-                  } else {
-                    setTopK(Math.min(Math.max(value, 1), 15));
-                  }
-                }}
-                inputProps={{ min: 1, max: 15 }}
-                helperText="How many chunks to retrieve"
-                sx={{ width: 160 }}
-              />
-              <Box sx={{ flexGrow: 1 }} />
+            <Stack direction="row" justifyContent="flex-end">
               {hasActiveFilters && (
                 <Button color="inherit" onClick={clearFilters}>
                   Clear filters
