@@ -83,40 +83,12 @@ const formatFilter = (clauses) => {
 
   return {
     compound: {
-      must: clauses
+      filter: clauses
     }
   };
 };
 
-const buildMatchConditions = (filters = {}) => {
-  const match = {};
 
-  if (filters.userId) {
-    match.userId = toObjectId(filters.userId, 'userId');
-  }
-
-  if (filters.receiptIds?.length) {
-    match.receiptId = {
-      $in: filters.receiptIds.map((id) => toObjectId(id, 'receiptIds'))
-    };
-  } else if (filters.receiptId) {
-    match.receiptId = toObjectId(filters.receiptId, 'receiptId');
-  }
-
-  if (filters.purchaseDate) {
-    match.purchaseDate = filters.purchaseDate;
-  } else if (filters.dateRange && (filters.dateRange.start || filters.dateRange.end)) {
-    match.purchaseDate = {};
-    if (filters.dateRange.start) {
-      match.purchaseDate.$gte = filters.dateRange.start;
-    }
-    if (filters.dateRange.end) {
-      match.purchaseDate.$lte = filters.dateRange.end;
-    }
-  }
-
-  return Object.keys(match).length ? match : null;
-};
 
 export const vectorStore = {
   async upsertChunks(chunks = []) {
@@ -189,28 +161,29 @@ export const vectorStore = {
 
     const filterClauses = buildFilterClauses(filters);
     const formattedFilter = formatFilter(filterClauses);
-    const matchConditions = buildMatchConditions(filters);
 
-    const searchK = formattedFilter ? Math.min(topK * 5, 100) : topK;
+    // $vectorSearch uses numCandidates for ANN breadth.
+    // Higher = more accurate but slower. Default 150 is good for topK=15.
+    const numCandidates = Math.max(
+      topK,
+      ragConfig.numCandidates || topK * 10
+    );
 
-    const searchStage = {
+    const vectorSearchStage = {
       index: ragConfig.vectorIndex,
-      knnBeta: {
-        vector: queryVector,
-        path: 'embedding',
-        k: searchK
-      }
+      queryVector,
+      path: 'embedding',
+      numCandidates,
+      limit: topK
     };
 
     if (formattedFilter) {
-      searchStage.knnBeta.filter = formattedFilter;
+      vectorSearchStage.filter = formattedFilter;
     }
 
     const pipeline = [
-      { $search: searchStage },
-      ...(matchConditions ? [{ $match: matchConditions }] : []),
-      { $addFields: { score: { $meta: 'searchScore' } } },
-      { $limit: topK },
+      { $vectorSearch: vectorSearchStage },
+      { $addFields: { score: { $meta: 'vectorSearchScore' } } },
       {
         $project: {
           receiptId: 1,
@@ -232,25 +205,29 @@ export const vectorStore = {
 
       // If no results, check if chunks exist and log diagnostic info
       if (results.length === 0) {
-        const totalChunks = await ReceiptChunk.countDocuments(matchConditions || {});
-        if (matchConditions?.userId) {
-          const userChunks = await ReceiptChunk.countDocuments({ userId: matchConditions.userId });
-          console.warn(`⚠️  Vector search returned 0 results. Total chunks for userId ${matchConditions.userId}: ${userChunks}`);
+        if (filters.userId) {
+          const userChunks = await ReceiptChunk.countDocuments({
+            userId: toObjectId(filters.userId, 'userId')
+          });
+          console.warn(`⚠️  Vector search returned 0 results. Total chunks for userId ${filters.userId}: ${userChunks}`);
         } else {
+          const totalChunks = await ReceiptChunk.countDocuments({});
           console.warn(`⚠️  Vector search returned 0 results. Total chunks in database: ${totalChunks}`);
         }
       }
 
       return results;
     } catch (error) {
-      // Check if it's a MongoDB Atlas Search index error
+      // Check if it's a MongoDB Atlas Vector Search index error
       const isIndexError = error.message?.includes('index') ||
-        error.message?.includes('search') ||
-        error.code === 17106; // MongoDB Atlas Search error code
+        error.message?.includes('vectorSearch') ||
+        error.message?.includes('$vectorSearch') ||
+        error.codeName === 'InvalidPipelineOperator' ||
+        error.code === 17106;
 
       if (isIndexError) {
-        console.error(`❌ MongoDB Atlas Search index error. Index "${ragConfig.vectorIndex}" may not exist or be misconfigured.`);
-        console.error('   Please ensure the vector index is created in MongoDB Atlas.');
+        console.error(`❌ MongoDB Atlas Vector Search index error. Index "${ragConfig.vectorIndex}" may not exist or be misconfigured.`);
+        console.error('   Ensure you have a Vector Search index (not a regular Search index) in MongoDB Atlas.');
         console.error('   See docs/atlas_vector_index.md for setup instructions.');
       }
 

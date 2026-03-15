@@ -131,7 +131,7 @@ This document breaks down the RAG implementation from `RAG_IMPLEMENTATION.md` in
   - Return success/failure counts
 - Implement `searchChunks(queryVector, filters, topK)` method:
   - Build MongoDB aggregation pipeline with `$search` stage
-  - Use `knnBeta` operator for vector search
+  - Use `$vectorSearch` aggregation stage for vector search
   - Apply filters (userId, receiptId, dateRange)
   - Return chunks with scores
   - Limit to `topK` results

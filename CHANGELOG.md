@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### 2025-11-29 23:49:15 - 308558b [PUSHED]
+### 2026-03-15 15:29:41 - 429f104 [LOCAL]
+
+feat(vectorStore): enhance vector search with numCandidates config
+
+- Added numCandidates to ragConfig for better search accuracy.
+- Updated vector search implementation to use numCandidates.
+- Refactored filter handling in vectorStore for improved clarity.
+- Revised documentation to reflect changes in vector search index.### 2025-11-29 23:49:15 - 308558b [PUSHED]
 
 feat(autocomplete): add fuzzy search for historical items in input
 
