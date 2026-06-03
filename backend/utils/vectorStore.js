@@ -199,6 +199,13 @@ export const vectorStore = {
       console.error('❌ Failed to search receipt chunks:', error.message || error);
       throw new Error(`Failed to search receipt chunks: ${error.message || 'Unknown error'}`);
     }
+  },
+
+  async fetchAllChunks(userId) {
+    const normalizedUserId = toObjectId(userId, 'userId');
+    return ReceiptChunk.find({ userId: normalizedUserId })
+      .select('receiptId userId chunkIndex text merchant purchaseDate total items metadata')
+      .lean();
   }
 };
 

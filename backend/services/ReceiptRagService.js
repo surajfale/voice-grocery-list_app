@@ -8,7 +8,7 @@ import Receipt from '../models/Receipt.js';
 
 const MIN_QUESTION_LENGTH = 3;
 const MAX_QUESTION_LENGTH = 500;
-const DEFAULT_MAX_CONTEXT_CHUNKS = 20;
+const DEFAULT_MAX_CONTEXT_CHUNKS = 150;
 
 const buildSystemPrompt = () => {
   const now = new Date();
@@ -30,6 +30,15 @@ CRITICAL RULES:
 6. State the date range of the receipts you examined.
 7. If you cannot find relevant items, say so clearly — do NOT guess.
 8. Be thorough rather than brief — the user wants a complete picture.`;
+};
+
+const deduplicateChunksByReceipt = (chunks) => {
+  const seen = new Map();
+  for (const chunk of chunks) {
+    const key = chunk.receiptId?.toString();
+    if (key && !seen.has(key)) seen.set(key, chunk);
+  }
+  return Array.from(seen.values());
 };
 
 const sanitizeQuestion = (question) => {
@@ -168,24 +177,41 @@ export class ReceiptRagService {
       estimatedCostUsd: estimateEmbeddingCost(embeddingModel || ragConfig.embeddingsModel, embeddingUsage)
     });
 
+    const hasFilters =
+      (Array.isArray(receiptIds) && receiptIds.length > 0) ||
+      !!(dateRange?.start || dateRange?.end);
+
     const searchStart = Date.now();
-    const chunks = await this.vectorStore.searchChunks(
-      questionEmbedding,
-      filters,
-      topK || ragConfig.topK
-    );
-    logger.info('rag.retrieval.completed', {
-      userId: normalizedUserId.toString(),
-      durationMs: Date.now() - searchStart,
-      chunksFound: chunks.length,
-      filtersApplied: Object.keys(filters).filter((key) => Boolean(filters[key]))
-    });
+    let chunks;
+
+    if (!hasFilters) {
+      const allChunks = await this.vectorStore.fetchAllChunks(normalizedUserId);
+      chunks = deduplicateChunksByReceipt(allChunks);
+      logger.info('rag.retrieval.comprehensive', {
+        userId: normalizedUserId.toString(),
+        durationMs: Date.now() - searchStart,
+        uniqueReceipts: chunks.length
+      });
+    } else {
+      chunks = await this.vectorStore.searchChunks(
+        questionEmbedding,
+        filters,
+        topK || ragConfig.topK
+      );
+      logger.info('rag.retrieval.completed', {
+        userId: normalizedUserId.toString(),
+        durationMs: Date.now() - searchStart,
+        chunksFound: chunks.length,
+        filtersApplied: Object.keys(filters).filter((key) => Boolean(filters[key]))
+      });
+    }
 
     return {
       question,
       sanitizedQuestion,
       questionEmbedding,
-      chunks
+      chunks,
+      comprehensiveMode: !hasFilters
     };
   }
 
@@ -359,7 +385,11 @@ export class ReceiptRagService {
       };
     }
 
-    const generation = await this.generateAnswer(retrieval.sanitizedQuestion, retrieval.chunks);
+    const generation = await this.generateAnswer(
+      retrieval.sanitizedQuestion,
+      retrieval.chunks,
+      { maxTokens: retrieval.comprehensiveMode ? 1500 : 800 }
+    );
 
     // Append pending warning if some receipts weren't embedded yet
     const finalAnswer = pendingWarning
