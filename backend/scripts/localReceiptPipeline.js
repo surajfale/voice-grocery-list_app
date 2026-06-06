@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import '../utils/dnsFix.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { pathToFileURL } from 'url';

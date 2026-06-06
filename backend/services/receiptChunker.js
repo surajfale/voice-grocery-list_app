@@ -148,16 +148,33 @@ const detectCategories = (itemNames = []) => {
 };
 
 
-const splitIntoChunks = (text, chunkSize) => {
-    const words = text.split(/\s+/).filter(Boolean);
-    if (words.length === 0) {
+const splitIntoChunks = (text, maxWords) => {
+    const lines = text.split('\n');
+    if (lines.length === 0) {
         return [];
     }
 
     const chunks = [];
-    for (let i = 0; i < words.length; i += chunkSize) {
-        const segment = words.slice(i, i + chunkSize).join(' ');
-        chunks.push(segment);
+    let currentChunk = [];
+    let currentWordCount = 0;
+
+    for (const line of lines) {
+        const lineWords = line.split(/\s+/).filter(Boolean).length;
+
+        // If adding this line would exceed the limit and we already have content,
+        // flush the current chunk first
+        if (currentWordCount + lineWords > maxWords && currentChunk.length > 0) {
+            chunks.push(currentChunk.join('\n'));
+            currentChunk = [];
+            currentWordCount = 0;
+        }
+
+        currentChunk.push(line);
+        currentWordCount += lineWords;
+    }
+
+    if (currentChunk.length > 0) {
+        chunks.push(currentChunk.join('\n'));
     }
 
     return chunks;
@@ -204,9 +221,19 @@ export class ReceiptChunker {
         const formattedItems = formatItemsList(receipt.items);
         const combinedText = [normalizedText, formattedItems].filter(Boolean).join('\n\n').trim();
         const preamble = buildPreamble(receipt);
-        const itemNames = Array.isArray(receipt.items)
-            ? receipt.items.map((item) => item?.name).filter(Boolean)
+
+        // Build structured items with prices (not just names)
+        const structuredItems = Array.isArray(receipt.items)
+            ? receipt.items
+                .filter((item) => item?.name)
+                .map((item) => ({
+                    name: item.name.trim(),
+                    quantity: item.quantity || 1,
+                    price: typeof item.price === 'number' ? item.price : null,
+                    currency: item.currency || receipt.currency || 'USD'
+                }))
             : [];
+        const itemNames = structuredItems.map((item) => item.name);
 
         // Detect grocery categories from item names for better semantic retrieval
         const categories = detectCategories(itemNames);
@@ -220,7 +247,7 @@ export class ReceiptChunker {
             merchant: receipt.merchant || null,
             purchaseDate: receipt.purchaseDate || null,
             total: typeof receipt.total === 'number' ? receipt.total : null,
-            items: itemNames,
+            items: structuredItems,
             metadata: buildMetadata(receipt, chunkSize)
         };
 

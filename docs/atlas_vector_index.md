@@ -21,7 +21,7 @@ Create a **Vector Search** index (not a regular Search index) on the `receiptChu
     {
       "type": "vector",
       "path": "embedding",
-      "numDimensions": 1536,
+      "numDimensions": 3072,
       "similarity": "cosine"
     },
     {
@@ -46,7 +46,7 @@ Create a **Vector Search** index (not a regular Search index) on the `receiptChu
 
 Key details:
 - **Index type**: Vector Search (NOT regular Atlas Search)
-- **Embedding dimension**: `1536` (for `text-embedding-3-small`)
+- **Embedding dimension**: `3072` (for `text-embedding-3-large`)
 - **Similarity metric**: `cosine`
 - **Filter fields**: `userId`, `receiptId`, `purchaseDate`, `merchant` — these enable native pre-filtering in the `$vectorSearch` aggregation stage
 
@@ -111,7 +111,7 @@ Expect the aggregation to return matching chunks with `score` populated. If the 
   {
     "$vectorSearch": {
       "index": "receiptVectorIndex",
-      "queryVector": [/* sample 1536-d vector */],
+      "queryVector": [/* sample 3072-d vector */],
       "path": "embedding",
       "numCandidates": 150,
       "limit": 5,
@@ -166,3 +166,15 @@ Set via `RAG_NUM_CANDIDATES` env var (default: `150`).
 - When embeddings are re-generated (new `EMBEDDINGS_VERSION`), re-run the ingestion job to upsert updated vectors.
 - Monitor Atlas Search metrics to keep an eye on query latency and index size.
 - Backup the JSON definition in source control (`docs/atlas_vector_index.md`) for easy recreation.
+
+## 7. Upgrading from `text-embedding-3-small` to `text-embedding-3-large`
+
+If you previously used `text-embedding-3-small` (1536 dimensions):
+
+1. **Delete the old vector index** in Atlas UI (Database → Search → `receiptVectorIndex` → Delete)
+2. **Create a new index** with `numDimensions: 3072` using the JSON definition in section 2
+3. **Wait for the index to become Active**
+4. **Re-embed all receipts** — run `pnpm --filter backend ingest:receipts` or use the trigger-embedding endpoint. The bumped `EMBEDDINGS_VERSION=2` will cause all receipts to be re-processed.
+5. Old 1536-d vectors in `receiptChunks` will be overwritten by the new 3072-d vectors during re-embedding.
+
+> **Important:** The new and old vectors are NOT compatible. You must re-embed ALL receipts before queries will work correctly.

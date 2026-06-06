@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### 2026-03-15 16:49:47 - f6fce80 [LOCAL]
+### 2026-06-06 16:41:37 - 67e3243 [LOCAL]
+
+feat(receipt-processing): enhance receipt processing with new models
+
+- Added dnsFix utility for DNS handling
+- Updated embedding and completions models to larger versions
+- Improved structured item handling in receipts
+- Enhanced tests for ReceiptRagService and ReceiptChunker
+- Updated documentation for vector index changes### 2026-03-15 16:49:47 - f6fce80 [PUSHED]
 
 feat(tests): enhance receiptOcr tests with LLM integration
 

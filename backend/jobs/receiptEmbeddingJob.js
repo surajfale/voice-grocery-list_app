@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import '../utils/dnsFix.js';
 import { pathToFileURL } from 'url';
 import mongoose from 'mongoose';
 import ragConfig from '../config/ragConfig.js';

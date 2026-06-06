@@ -34,7 +34,10 @@ describe('ReceiptChunker', () => {
       expect(chunk.receiptId).toBe(baseReceipt._id);
       expect(chunk.metadata.hasContent).toBe(true);
       expect(chunk.metadata.wordCount).toBeGreaterThan(0);
-      expect(chunk.items).toEqual(['Apples', 'Spinach']);
+      expect(chunk.items).toEqual([
+        { name: 'Apples', quantity: 2, price: 3.99, currency: 'usd' },
+        { name: 'Spinach', quantity: 1, price: 4.5, currency: 'usd' }
+      ]);
     });
   });
 

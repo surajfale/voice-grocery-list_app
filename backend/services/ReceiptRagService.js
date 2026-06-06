@@ -5,6 +5,7 @@ import { vectorStore } from '../utils/vectorStore.js';
 import logger from '../utils/logger.js';
 import { estimateCompletionCost, estimateEmbeddingCost } from '../utils/costEstimator.js';
 import Receipt from '../models/Receipt.js';
+import ReceiptChunk from '../models/ReceiptChunk.js';
 
 const MIN_QUESTION_LENGTH = 3;
 const MAX_QUESTION_LENGTH = 500;
@@ -16,29 +17,58 @@ const buildSystemPrompt = () => {
   const dayOfWeek = now.toLocaleDateString('en-US', { weekday: 'long' });
   const monthYear = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-  return `You are a meticulous grocery finance assistant. You have access to receipt data provided below as context chunks.
+  return `You are a meticulous grocery finance assistant. You have access to receipt data provided below.
 
 Today's date is ${todayStr} (${dayOfWeek}). The current month is ${monthYear}.
 When the user says "this month" they mean ${monthYear}. Interpret all relative time references ("last week", "recently", "this month", "last month", etc.) based on today's date.
 
 CRITICAL RULES:
-1. EXHAUSTIVELY scan EVERY receipt context chunk provided — do NOT stop after the first match.
+1. EXHAUSTIVELY scan EVERY receipt provided — do NOT stop after the first match.
 2. When the user asks about a CATEGORY (e.g. "dairy", "produce", "meat"), include ALL items that belong to that category across ALL receipts. For example "dairy" includes milk, yogurt, cheese, butter, cream, ice cream, etc.
 3. Always list the individual items you found, their prices, and which receipt/merchant they came from.
 4. If a receipt has a "Categories:" line, use it to identify which categories the items belong to.
 5. Show a clear total at the end when the user asks about spending.
 6. State the date range of the receipts you examined.
 7. If you cannot find relevant items, say so clearly — do NOT guess.
-8. Be thorough rather than brief — the user wants a complete picture.`;
+8. Be thorough rather than brief — the user wants a complete picture.
+
+CALCULATION RULES:
+1. When computing totals, ALWAYS show your arithmetic step-by-step.
+2. Line total = quantity × unit price. If only one price is shown, that IS the line total.
+3. Never estimate or round until the final answer.
+4. If the same item appears on multiple receipts, list each separately, then sum.
+5. Cross-check your total by adding up the individual amounts you listed.
+6. If a receipt shows an item with a price but no quantity, assume quantity = 1.
+
+AGGREGATION QUERIES (e.g. "how much onion", "total spent on X"):
+1. Search ALL receipts for the item and common name variants (e.g. "onion" matches "yellow onion", "red onion", "organic onion", "onions").
+2. For EACH occurrence, list: date, merchant, item name, quantity, unit price, line total.
+3. After listing all occurrences, show a GRAND TOTAL.
+4. Use the STRUCTURED RECEIPT DATA section as the authoritative source for prices and quantities.
+
+DATA PRIORITY:
+- The "STRUCTURED RECEIPT DATA" section contains verified item names, quantities, and prices — use these for calculations.
+- The "RAW RECEIPT TEXT" sections are supplementary and may help identify items not captured in the structured data.`;
 };
 
-const deduplicateChunksByReceipt = (chunks) => {
-  const seen = new Map();
+/**
+ * Group chunks by receipt and sort by chunkIndex.
+ * Unlike deduplication, this preserves ALL chunks so no data is lost.
+ */
+const groupChunksByReceipt = (chunks) => {
+  const groups = new Map();
   for (const chunk of chunks) {
-    const key = chunk.receiptId?.toString();
-    if (key && !seen.has(key)) seen.set(key, chunk);
+    const key = chunk.receiptId?.toString() || 'unknown';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(chunk);
   }
-  return Array.from(seen.values());
+  // Sort chunks within each receipt by chunkIndex
+  const result = [];
+  for (const receiptChunks of groups.values()) {
+    receiptChunks.sort((a, b) => (a.chunkIndex || 0) - (b.chunkIndex || 0));
+    result.push(...receiptChunks);
+  }
+  return result;
 };
 
 const sanitizeQuestion = (question) => {
@@ -64,13 +94,30 @@ const ensureValidObjectId = (value, fieldName) => {
   throw new Error(`${fieldName} must be a valid ObjectId.`);
 };
 
+/**
+ * Format a single item for display — handles both structured objects
+ * and legacy plain strings.
+ */
+const formatItemEntry = (item) => {
+  if (typeof item === 'string') return item;
+  if (!item || !item.name) return null;
+
+  const parts = [item.name];
+  if (item.quantity && item.quantity !== 1) parts.push(`qty: ${item.quantity}`);
+  if (typeof item.price === 'number') parts.push(`$${item.price.toFixed(2)}`);
+  return parts.join(' — ');
+};
+
 const formatContextForPrompt = (chunks = [], maxChunks = DEFAULT_MAX_CONTEXT_CHUNKS) => {
   const limitedChunks = chunks.slice(0, maxChunks);
   return limitedChunks
     .map((chunk, index) => {
-      const items = Array.isArray(chunk.items) && chunk.items.length
-        ? chunk.items.join(', ')
-        : 'No item details';
+      // Format items with prices when available
+      let itemsStr = 'No item details';
+      if (Array.isArray(chunk.items) && chunk.items.length) {
+        const formatted = chunk.items.map(formatItemEntry).filter(Boolean);
+        itemsStr = formatted.length ? formatted.join('\n  - ') : 'No item details';
+      }
 
       const total = typeof chunk.total === 'number'
         ? `$${chunk.total.toFixed(2)}`
@@ -82,12 +129,50 @@ const formatContextForPrompt = (chunks = [], maxChunks = DEFAULT_MAX_CONTEXT_CHU
         `Merchant: ${chunk.merchant || 'Unknown merchant'}`,
         `Date: ${chunk.purchaseDate || 'Unknown date'}`,
         `Total: ${total}`,
-        `Items: ${items}`,
+        `Items:\n  - ${itemsStr}`,
         'Details:',
         chunk.text
       ].join('\n');
     })
     .join('\n\n');
+};
+
+/**
+ * Build a clean structured summary from authoritative Receipt documents.
+ * This gives the LLM an unambiguous table of items + prices to calculate from.
+ */
+const buildStructuredReceiptSummary = (receipts = []) => {
+  if (!receipts.length) return '';
+
+  const lines = ['=== STRUCTURED RECEIPT DATA (AUTHORITATIVE — use these prices for calculations) ===', ''];
+
+  for (const receipt of receipts) {
+    const merchant = receipt.merchant || 'Unknown merchant';
+    const date = receipt.purchaseDate || 'Unknown date';
+    const total = typeof receipt.total === 'number' ? `$${receipt.total.toFixed(2)}` : 'Unknown total';
+
+    lines.push(`Receipt: ${merchant} | Date: ${date} | Total: ${total}`);
+
+    if (Array.isArray(receipt.items) && receipt.items.length) {
+      for (const item of receipt.items) {
+        if (!item || !item.name) continue;
+        const parts = [`  - ${item.name.trim()}`];
+        if (item.quantity && item.quantity !== 1) parts.push(`qty: ${item.quantity}`);
+        if (typeof item.price === 'number') {
+          parts.push(`$${item.price.toFixed(2)}`);
+          if (item.quantity && item.quantity > 1) {
+            parts.push(`(line total: $${(item.price * item.quantity).toFixed(2)})`);
+          }
+        }
+        lines.push(parts.join(' — '));
+      }
+    } else {
+      lines.push('  (no itemized data available)');
+    }
+    lines.push('');
+  }
+
+  return lines.join('\n');
 };
 
 const mapChunksToSources = (chunks = []) => {
@@ -128,6 +213,11 @@ export class ReceiptRagService {
 
   /**
    * Embed a user question and run vector search with optional filters.
+   *
+   * For unfiltered queries: uses hybrid retrieval — vector search to find
+   * relevant receipts, then fetches ALL chunks for those receipts plus
+   * authoritative Receipt documents for structured item data.
+   *
    * @param {Object} params
    * @param {string} params.userId - Owner of the receipts.
    * @param {string} params.question - Natural language question.
@@ -183,14 +273,52 @@ export class ReceiptRagService {
 
     const searchStart = Date.now();
     let chunks;
+    let structuredReceipts = [];
 
     if (!hasFilters) {
-      const allChunks = await this.vectorStore.fetchAllChunks(normalizedUserId);
-      chunks = deduplicateChunksByReceipt(allChunks);
-      logger.info('rag.retrieval.comprehensive', {
+      // --- Hybrid retrieval ---
+      // Step 1: Vector search to find the most relevant chunks
+      const initialResults = await this.vectorStore.searchChunks(
+        questionEmbedding,
+        { userId: normalizedUserId },
+        ragConfig.hybridTopK
+      );
+
+      // Step 2: Collect unique receipt IDs from results
+      const relevantReceiptIds = [...new Set(
+        initialResults.map((c) => c.receiptId?.toString()).filter(Boolean)
+      )];
+
+      if (relevantReceiptIds.length > 0) {
+        // Limit to maxContextReceipts to avoid overloading the context window
+        const limitedReceiptIds = relevantReceiptIds.slice(0, ragConfig.maxContextReceipts);
+        const receiptObjectIds = limitedReceiptIds.map((id) => new mongoose.Types.ObjectId(id));
+
+        // Step 3: Fetch ALL chunks for matched receipts (so we don't miss prices in adjacent chunks)
+        const allReceiptChunks = await ReceiptChunk.find({
+          userId: normalizedUserId,
+          receiptId: { $in: receiptObjectIds }
+        }).select('receiptId userId chunkIndex text merchant purchaseDate total items metadata').lean();
+
+        chunks = groupChunksByReceipt(allReceiptChunks);
+
+        // Step 4: Fetch authoritative Receipt documents for structured item+price data
+        structuredReceipts = await Receipt.find({
+          _id: { $in: receiptObjectIds },
+          userId: normalizedUserId,
+          status: 'ready'
+        }).select('merchant purchaseDate total items currency').lean();
+      } else {
+        chunks = [];
+      }
+
+      logger.info('rag.retrieval.hybrid', {
         userId: normalizedUserId.toString(),
         durationMs: Date.now() - searchStart,
-        uniqueReceipts: chunks.length
+        initialHits: initialResults.length,
+        uniqueReceipts: [...new Set(chunks.map((c) => c.receiptId?.toString()))].length,
+        totalChunks: chunks.length,
+        structuredReceipts: structuredReceipts.length
       });
     } else {
       chunks = await this.vectorStore.searchChunks(
@@ -211,6 +339,7 @@ export class ReceiptRagService {
       sanitizedQuestion,
       questionEmbedding,
       chunks,
+      structuredReceipts,
       comprehensiveMode: !hasFilters
     };
   }
@@ -219,7 +348,7 @@ export class ReceiptRagService {
    * Call the completion model with the retrieved context.
    * @param {string} question
    * @param {Array<Object>} contextChunks
-   * @param {{maxContextChunks?: number, maxTokens?: number, temperature?: number}} options
+   * @param {{maxContextChunks?: number, maxTokens?: number, temperature?: number, structuredReceipts?: Array}} options
    */
   async generateAnswer(question, contextChunks = [], options = {}) {
     if (!question || typeof question !== 'string') {
@@ -239,7 +368,20 @@ export class ReceiptRagService {
       };
     }
 
+    // Build structured receipt summary (authoritative item+price data)
+    const structuredSummary = buildStructuredReceiptSummary(options.structuredReceipts || []);
+
     const todayStr = new Date().toISOString().split('T')[0];
+
+    // Build context: structured data first (authoritative), then raw chunks (supplementary)
+    const contextParts = [`Today is ${todayStr}.\n`];
+
+    if (structuredSummary) {
+      contextParts.push(structuredSummary);
+      contextParts.push('=== RAW RECEIPT TEXT (supplementary reference) ===\n');
+    }
+
+    contextParts.push(contextText);
 
     const messages = [
       {
@@ -248,7 +390,7 @@ export class ReceiptRagService {
       },
       {
         role: 'user',
-        content: `Today is ${todayStr}.\n\nContext:\n${contextText}\n\nQuestion: ${question}\n\nProvide a concise answer that references the receipts when possible.`
+        content: `${contextParts.join('\n')}\n\nQuestion: ${question}\n\nProvide a thorough answer. When calculating totals, show each item and its price, then the sum.`
       }
     ];
 
@@ -388,7 +530,10 @@ export class ReceiptRagService {
     const generation = await this.generateAnswer(
       retrieval.sanitizedQuestion,
       retrieval.chunks,
-      { maxTokens: retrieval.comprehensiveMode ? 1500 : 800 }
+      {
+        maxTokens: retrieval.comprehensiveMode ? 1500 : 800,
+        structuredReceipts: retrieval.structuredReceipts || []
+      }
     );
 
     // Append pending warning if some receipts weren't embedded yet
@@ -406,7 +551,8 @@ export class ReceiptRagService {
         totalReceipts: embeddingStatus.total,
         embeddedReceipts: embeddingStatus.synced,
         pendingReceipts: embeddingStatus.pending || 0,
-        chunksFound: retrieval.chunks.length
+        chunksFound: retrieval.chunks.length,
+        structuredReceiptsUsed: (retrieval.structuredReceipts || []).length
       }
     };
   }
@@ -415,4 +561,3 @@ export class ReceiptRagService {
 const receiptRagService = new ReceiptRagService();
 
 export default receiptRagService;
-

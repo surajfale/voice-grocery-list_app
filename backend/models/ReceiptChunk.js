@@ -39,7 +39,7 @@ const ReceiptChunkSchema = new Schema({
   purchaseDate: { type: String, index: true },
   total: { type: Number },
   items: {
-    type: [String],
+    type: Schema.Types.Mixed,
     default: []
   },
   metadata: {

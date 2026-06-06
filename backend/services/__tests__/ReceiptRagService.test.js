@@ -2,6 +2,37 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import mongoose from 'mongoose';
 import { ReceiptRagService } from '../ReceiptRagService.js';
 
+// Mock Receipt model to avoid real MongoDB calls
+vi.mock('../../models/Receipt.js', () => {
+  const mockReceipts = [];
+  return {
+    default: {
+      find: vi.fn(() => ({
+        lean: vi.fn(async () => mockReceipts),
+        select: vi.fn(() => ({
+          lean: vi.fn(async () => mockReceipts)
+        }))
+      })),
+      _setMockReceipts: (receipts) => {
+        mockReceipts.length = 0;
+        mockReceipts.push(...receipts);
+      }
+    }
+  };
+});
+
+// Mock ReceiptChunk model for hybrid retrieval — returns mock chunks
+let mockReceiptChunks = [];
+vi.mock('../../models/ReceiptChunk.js', () => ({
+  default: {
+    find: vi.fn(() => ({
+      select: vi.fn(() => ({
+        lean: vi.fn(async () => mockReceiptChunks)
+      }))
+    }))
+  }
+}));
+
 const objectId = () => new mongoose.Types.ObjectId().toString();
 
 describe('ReceiptRagService', () => {
@@ -9,8 +40,23 @@ describe('ReceiptRagService', () => {
   let vectorStore;
   let service;
   const userId = objectId();
+  const sharedReceiptId = objectId();
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    const sharedChunk = {
+      receiptId: sharedReceiptId,
+      merchant: 'Farmer Market',
+      purchaseDate: '2024-10-01',
+      total: 42.13,
+      chunkIndex: 0,
+      score: 0.91,
+      text: 'Sample chunk body',
+      items: [{ name: 'Apples', quantity: 2, price: 3.99, currency: 'USD' }]
+    };
+
+    // Set what ReceiptChunk.find() returns for hybrid retrieval
+    mockReceiptChunks = [sharedChunk];
+
     embeddingClient = {
       embedText: vi.fn(async () => ({
         embedding: [0.1, 0.2, 0.3],
@@ -24,19 +70,23 @@ describe('ReceiptRagService', () => {
     };
 
     vectorStore = {
-      searchChunks: vi.fn(async () => ([
-        {
-          receiptId: objectId(),
-          merchant: 'Farmer Market',
-          purchaseDate: '2024-10-01',
-          total: 42.13,
-          score: 0.91,
-          text: 'Sample chunk body'
-        }
-      ]))
+      searchChunks: vi.fn(async () => ([sharedChunk])),
+      fetchAllChunks: vi.fn(async () => ([]))
     };
 
     service = new ReceiptRagService({ embeddingClient, vectorStoreClient: vectorStore });
+
+    // Set up Receipt mock with synced receipts so checkEmbeddingStatus succeeds
+    const { default: Receipt } = await import('../../models/Receipt.js');
+    Receipt._setMockReceipts([
+      {
+        _id: new mongoose.Types.ObjectId(),
+        userId: new mongoose.Types.ObjectId(userId),
+        status: 'ready',
+        embeddingStatus: 'synced',
+        embeddingsVersion: 1
+      }
+    ]);
   });
 
   it('retrieves context with normalized filters', async () => {
@@ -108,5 +158,3 @@ describe('ReceiptRagService', () => {
     expect(response.answer).toContain('You spent $42');
   });
 });
-
-
