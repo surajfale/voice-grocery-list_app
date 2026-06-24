@@ -230,6 +230,43 @@ export class GroceryListService extends BaseService {
   }
 
   /**
+   * Move/merge one or more grocery lists into a target date.
+   * Source lists are removed after their items are merged into the target list.
+   *
+   * @param {string} userId - User ID
+   * @param {string[]} sourceDates - Date strings (YYYY-MM-DD) to move/merge from
+   * @param {string} targetDate - Date string (YYYY-MM-DD) to move/merge into
+   * @returns {Promise} Merged grocery list
+   */
+  async mergeGroceryLists(userId, sourceDates, targetDate) {
+    return this.executeWithRetry(async () => {
+      logger.groceryList('Merging grocery lists:', { sourceDates, targetDate });
+
+      const result = await this.apiService.makeRequest(`/grocery-lists/user/${userId}/merge-lists`, {
+        method: 'POST',
+        body: JSON.stringify({ sourceDates, targetDate })
+      });
+
+      if (result.success) {
+        this.cache.set(`list_${userId}_${targetDate}`, {
+          data: result.list,
+          timestamp: Date.now()
+        });
+        sourceDates.forEach(date => {
+          if (date !== targetDate) {
+            this.cache.delete(`list_${userId}_${date}`);
+          }
+        });
+
+        logger.groceryList('Lists merged successfully');
+        return this.createSuccessResponse(result.list, 'Lists merged successfully');
+      }
+
+      throw new Error(result.error || 'Failed to merge grocery lists');
+    }, { context: { userId, sourceDates, targetDate } });
+  }
+
+  /**
    * Get cached data if available and not expired
    * 
    * @param {string} key - Cache key

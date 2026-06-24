@@ -27,6 +27,11 @@ import {
   Button,
   Alert,
   AlertTitle,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Checkbox,
 } from '@mui/material';
 import {
   Delete,
@@ -49,6 +54,8 @@ import {
   ArrowDropDown,
   DeleteForever,
   ReceiptLong,
+  SwapHoriz,
+  CallMerge,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -168,6 +175,12 @@ const VoiceGroceryList = ({ user, logout }) => {
   const [downloadMenuAnchor, setDownloadMenuAnchor] = useState(null);
   const [activeView, setActiveView] = useState('lists');
   const [settingsMenuAnchor, setSettingsMenuAnchor] = useState(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedDatesForMove, setSelectedDatesForMove] = useState([]);
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+  const [moveDialogDates, setMoveDialogDates] = useState([]);
+  const [moveTargetDate, setMoveTargetDate] = useState(() => dayjs());
+  const [movingLists, setMovingLists] = useState(false);
 
   // Ref for the printable list component
   const printableListRef = useRef(null);
@@ -202,6 +215,7 @@ const VoiceGroceryList = ({ user, logout }) => {
     updateItemCount,
     clearCurrentList,
     deleteList,
+    moveListsToDate,
   } = useGroceryList(user);
 
   // Track previous all-completed state so we only trigger the congratulations
@@ -422,6 +436,44 @@ const VoiceGroceryList = ({ user, logout }) => {
   };
 
   /**
+   * Toggle selection of a date for bulk move/merge
+   *
+   * @param {string} date - Date string to toggle selection for
+   */
+  const toggleDateSelection = (date) => {
+    setSelectedDatesForMove(prev =>
+      prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]
+    );
+  };
+
+  /**
+   * Open the move/merge dialog for the given list date(s)
+   *
+   * @param {string[]} dates - Date strings of the lists to move/merge
+   */
+  const openMoveDialog = (dates) => {
+    setMoveDialogDates(dates);
+    setMoveTargetDate(dayjs());
+    setMoveDialogOpen(true);
+  };
+
+  const closeMoveDialog = () => {
+    setMoveDialogOpen(false);
+  };
+
+  /**
+   * Confirm moving/merging the selected list(s) into the chosen target date
+   */
+  const handleConfirmMove = async () => {
+    setMovingLists(true);
+    await moveListsToDate(moveDialogDates, moveTargetDate.format('YYYY-MM-DD'));
+    setMovingLists(false);
+    setMoveDialogOpen(false);
+    setSelectedDatesForMove([]);
+    setSelectMode(false);
+  };
+
+  /**
    * Toggle category expansion state
    * Expands or collapses a grocery category
    * 
@@ -582,6 +634,34 @@ const VoiceGroceryList = ({ user, logout }) => {
         </Box>
       </Box>
 
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+        <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+          Your Lists
+        </Typography>
+        <Button
+          size="small"
+          onClick={() => {
+            setSelectMode(prev => !prev);
+            setSelectedDatesForMove([]);
+          }}
+        >
+          {selectMode ? 'Cancel' : 'Select'}
+        </Button>
+      </Box>
+
+      {selectMode && selectedDatesForMove.length > 0 && (
+        <Button
+          fullWidth
+          variant="contained"
+          size="small"
+          startIcon={<CallMerge />}
+          sx={{ mb: 1 }}
+          onClick={() => openMoveDialog(selectedDatesForMove)}
+        >
+          Move/Merge {selectedDatesForMove.length} list{selectedDatesForMove.length > 1 ? 's' : ''}
+        </Button>
+      )}
+
       <List>
         {sortedDates.length > 0 ? (
           sortedDates.map(date => {
@@ -594,7 +674,7 @@ const VoiceGroceryList = ({ user, logout }) => {
               <ListItem key={date} disablePadding>
                 <ListItemButton
                   selected={date === currentDateString}
-                  onClick={() => createNewListForDate(date)}
+                  onClick={() => (selectMode ? toggleDateSelection(date) : createNewListForDate(date))}
                   sx={{
                     borderRadius: 1,
                     mb: 0.5,
@@ -608,6 +688,20 @@ const VoiceGroceryList = ({ user, logout }) => {
                     }),
                   }}
                 >
+                  {selectMode && (
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      <Checkbox
+                        edge="start"
+                        checked={selectedDatesForMove.includes(date)}
+                        tabIndex={-1}
+                        disableRipple
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleDateSelection(date);
+                        }}
+                      />
+                    </ListItemIcon>
+                  )}
                   <ListItemText
                     primary={
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -636,7 +730,20 @@ const VoiceGroceryList = ({ user, logout }) => {
                     }
                     secondary={`${allLists[date]?.length || 0} items`}
                   />
-                  {date !== currentDateString && (
+                  {!selectMode && (
+                    <IconButton
+                      edge="end"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openMoveDialog([date]);
+                      }}
+                      size="small"
+                      title="Move/merge to another date"
+                    >
+                      <SwapHoriz />
+                    </IconButton>
+                  )}
+                  {!selectMode && date !== currentDateString && (
                     <IconButton
                       edge="end"
                       onClick={(e) => {
@@ -716,6 +823,33 @@ const VoiceGroceryList = ({ user, logout }) => {
         user={user}
         loading={deletingAccount}
       />
+
+      {/* Move/Merge Lists Dialog */}
+      <Dialog open={moveDialogOpen} onClose={closeMoveDialog} maxWidth="xs" fullWidth>
+        <DialogTitle>Move/Merge to Date</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            {moveDialogDates.length > 1
+              ? `Merge ${moveDialogDates.length} lists into one date. Items already on the target date won't be duplicated.`
+              : 'Move this list to a new date. If the target date already has a list, items will be merged without duplicates.'}
+          </Typography>
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <DatePicker
+              label="Target Date"
+              value={moveTargetDate}
+              onChange={(newDate) => newDate && setMoveTargetDate(newDate)}
+              disablePast
+              slotProps={{ textField: { fullWidth: true } }}
+            />
+          </LocalizationProvider>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeMoveDialog}>Cancel</Button>
+          <Button variant="contained" onClick={handleConfirmMove} disabled={movingLists}>
+            {movingLists ? 'Moving...' : 'Confirm'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <ProjectDisclaimer />

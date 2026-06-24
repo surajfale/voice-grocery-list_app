@@ -276,6 +276,79 @@ router.delete('/user/:userId/date/:date/items', async (req, res) => {
   }
 });
 
+// Move/merge one or more grocery lists into a target date
+// Items already present on the target date (matched by text, case-insensitive) are skipped
+router.post('/user/:userId/merge-lists', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { sourceDates, targetDate } = req.body;
+
+    if (!targetDate || !Array.isArray(sourceDates) || sourceDates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'sourceDates (array) and targetDate are required'
+      });
+    }
+
+    if (isPastDate(targetDate)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot move lists to a past date. Please choose today or a future date.',
+        code: 'PAST_DATE_NOT_ALLOWED'
+      });
+    }
+
+    let targetList = await GroceryList.findOne({ userId, date: targetDate });
+    if (!targetList) {
+      targetList = new GroceryList({ userId, date: targetDate, items: [] });
+    }
+
+    const seenTexts = new Set(
+      targetList.items.map(item => item.text.toLowerCase().trim())
+    );
+
+    const uniqueSourceDates = [...new Set(sourceDates)].filter(date => date !== targetDate);
+
+    for (const sourceDate of uniqueSourceDates) {
+      const sourceList = await GroceryList.findOne({ userId, date: sourceDate });
+      if (!sourceList) {continue;}
+
+      for (const item of sourceList.items) {
+        const key = item.text.toLowerCase().trim();
+        if (seenTexts.has(key)) {continue;}
+        seenTexts.add(key);
+        targetList.items.push({
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          text: item.text,
+          category: item.category,
+          completed: item.completed,
+          count: item.count,
+          addedAt: new Date()
+        });
+      }
+
+      await GroceryList.deleteOne({ userId, date: sourceDate });
+    }
+
+    await targetList.save();
+
+    res.json({
+      success: true,
+      list: {
+        date: targetList.date,
+        items: targetList.items
+      }
+    });
+
+  } catch (error) {
+    console.error('Error merging grocery lists:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to move/merge grocery lists'
+    });
+  }
+});
+
 // Delete entire grocery list
 router.delete('/user/:userId/date/:date', async (req, res) => {
   try {
