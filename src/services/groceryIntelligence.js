@@ -72,18 +72,29 @@ class GroceryIntelligenceService {
       'Beverages': [
         'water', 'juice', 'soda', 'coffee', 'tea', 'wine', 'beer',
         'green tea', 'chai', 'lassi', 'coconut water', 'almond milk',
-        'soy milk', 'oat milk'
+        'soy milk', 'oat milk', 'chocolate milk',
+        // Fruit/vegetable juices that would otherwise lose the produce/snack
+        // ingredient word in the match (e.g. "apple" outscoring "juice")
+        'apple juice', 'orange juice', 'tomato juice', 'grapefruit juice',
+        'pineapple juice', 'carrot juice'
       ],
 
       'Snacks': [
         'chips', 'crackers', 'cookies', 'nuts', 'chocolate', 'candy',
         'pretzels', 'popcorn', 'trail mix', 'dried fruit',
-        'namkeen', 'bhujia', 'mixture', 'murukku', 'rice crackers'
+        'namkeen', 'bhujia', 'mixture', 'murukku', 'rice crackers',
+        // Flavored chips/nut butters that would otherwise match the base
+        // produce word (e.g. "potato") or Dairy's "butter"
+        'potato chips', 'banana chips', 'veggie chips', 'plantain chips',
+        'peanut butter', 'almond butter', 'cashew butter'
       ],
 
       'Bakery': [
         'bread', 'naan', 'roti', 'chapati', 'pita bread', 'bagels',
-        'croissants', 'muffins', 'cake', 'pastries'
+        'croissants', 'muffins', 'cake', 'pastries',
+        // Flavored naan that would otherwise match the flavor word
+        // (e.g. "garlic") instead of the bread itself
+        'garlic naan', 'butter naan'
       ],
 
       'Other': []
