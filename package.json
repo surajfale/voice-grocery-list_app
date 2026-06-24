@@ -9,6 +9,7 @@
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^5.18.0",
     "@mui/material": "^5.18.0",
+    "@mui/x-charts": "^6.19.8",
     "@mui/x-date-pickers": "^6.20.2",
     "dayjs": "^1.11.18",
     "fuse.js": "^7.1.0",

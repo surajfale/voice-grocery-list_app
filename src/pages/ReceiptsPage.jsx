@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
   Alert,
@@ -14,8 +14,11 @@ import {
   ListItemAvatar,
   Avatar,
   ListItemText,
+  Pagination,
   Paper,
   Stack,
+  Tab,
+  Tabs,
   Typography
 } from '@mui/material';
 import {
@@ -27,6 +30,7 @@ import {
 } from '@mui/icons-material';
 import useReceipts from '../hooks/useReceipts.js';
 import ReceiptChatPanel from '../components/receipts/ReceiptChatPanel.jsx';
+import SpendingInsights from '../components/receipts/SpendingInsights.jsx';
 
 const ALLOWED_FILE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'];
 
@@ -73,9 +77,13 @@ const formatBytes = (bytes) => {
   return `${formatted} ${units[unitIndex]}`;
 };
 
+const RECEIPTS_PER_PAGE = 5;
+
 const ReceiptsPage = ({ user }) => {
   const fileInputRef = useRef(null);
   const [localError, setLocalError] = useState('');
+  const [page, setPage] = useState(1);
+  const [activeTab, setActiveTab] = useState('receipts');
 
   const {
     receipts,
@@ -93,6 +101,19 @@ const ReceiptsPage = ({ user }) => {
   } = useReceipts(user);
 
   const displayError = localError || error;
+
+  const pageCount = Math.max(1, Math.ceil(receipts.length / RECEIPTS_PER_PAGE));
+
+  useEffect(() => {
+    if (page > pageCount) {
+      setPage(pageCount);
+    }
+  }, [page, pageCount]);
+
+  const paginatedReceipts = useMemo(() => {
+    const start = (page - 1) * RECEIPTS_PER_PAGE;
+    return receipts.slice(start, start + RECEIPTS_PER_PAGE);
+  }, [receipts, page]);
 
   const handleFiles = (fileList) => {
     const files = Array.from(fileList || []).filter(Boolean);
@@ -133,6 +154,19 @@ const ReceiptsPage = ({ user }) => {
         </Alert>
       )}
 
+      <Tabs
+        value={activeTab}
+        onChange={(_event, value) => setActiveTab(value)}
+        sx={{ borderBottom: 1, borderColor: 'divider' }}
+      >
+        <Tab label="Receipts" value="receipts" />
+        <Tab label="Spending Insights" value="insights" />
+      </Tabs>
+
+      {activeTab === 'insights' ? (
+        <SpendingInsights receipts={receipts} loading={loading} />
+      ) : (
+      <>
       <Paper
         variant="outlined"
         sx={{
@@ -208,7 +242,7 @@ const ReceiptsPage = ({ user }) => {
               </Box>
             ) : (
               <List>
-                {receipts.map((receipt) => (
+                {paginatedReceipts.map((receipt) => (
                   <ListItem
                     key={receipt._id}
                     selected={receipt._id === selectedReceiptId}
@@ -261,6 +295,18 @@ const ReceiptsPage = ({ user }) => {
                   </ListItem>
                 ))}
               </List>
+            )}
+
+            {pageCount > 1 && (
+              <Stack direction="row" justifyContent="center" sx={{ mt: 2 }}>
+                <Pagination
+                  count={pageCount}
+                  page={page}
+                  onChange={(_event, value) => setPage(value)}
+                  size="small"
+                  color="primary"
+                />
+              </Stack>
             )}
           </Paper>
         </Grid>
@@ -416,6 +462,8 @@ const ReceiptsPage = ({ user }) => {
         receipts={receipts}
         onSelectReceipt={selectReceipt}
       />
+      </>
+      )}
     </Box>
   );
 };

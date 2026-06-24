@@ -7,6 +7,7 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Collapse,
   Divider,
   Grid,
   IconButton,
@@ -19,6 +20,8 @@ import {
 import {
   AutoAwesome as AutoAwesomeIcon,
   ContentCopy as ContentCopyIcon,
+  ExpandLess as ExpandLessIcon,
+  ExpandMore as ExpandMoreIcon,
   FilterAlt as FilterAltIcon,
   History as HistoryIcon,
   OpenInNew as OpenInNewIcon,
@@ -143,6 +146,7 @@ SourceCard.defaultProps = {
 
 const ReceiptChatPanel = ({ userId, receipts, onSelectReceipt }) => {
   const [copiedEntryId, setCopiedEntryId] = useState(null);
+  const [expandedSources, setExpandedSources] = useState({});
   const {
     question,
     setQuestion,
@@ -200,6 +204,10 @@ const ReceiptChatPanel = ({ userId, receipts, onSelectReceipt }) => {
     await navigator.clipboard.writeText(text);
     setCopiedEntryId(entryId);
     setTimeout(() => setCopiedEntryId(null), 2000);
+  }, []);
+
+  const toggleSources = useCallback((entryId) => {
+    setExpandedSources((prev) => ({ ...prev, [entryId]: !prev[entryId] }));
   }, []);
 
   const canSubmit = question.trim().length >= 3 && !isLoading && isOnline;
@@ -427,16 +435,24 @@ const ReceiptChatPanel = ({ userId, receipts, onSelectReceipt }) => {
                   )}
                   {entry.sources?.length > 0 && (
                     <Box>
-                      <Typography variant="subtitle2" gutterBottom>
-                        Sources
-                      </Typography>
-                      <Grid container spacing={2}>
-                        {entry.sources.map((source) => (
-                          <Grid item xs={12} sm={6} md={4} key={`${entry.id}-${source.receiptId}`}>
-                            <SourceCard source={source} onSelectReceipt={onSelectReceipt} />
-                          </Grid>
-                        ))}
-                      </Grid>
+                      <Button
+                        size="small"
+                        color="inherit"
+                        onClick={() => toggleSources(entry.id)}
+                        endIcon={expandedSources[entry.id] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                        sx={{ pl: 0 }}
+                      >
+                        Sources ({entry.sources.length})
+                      </Button>
+                      <Collapse in={Boolean(expandedSources[entry.id])} unmountOnExit>
+                        <Grid container spacing={2} sx={{ mt: 1 }}>
+                          {entry.sources.map((source) => (
+                            <Grid item xs={12} sm={6} md={4} key={`${entry.id}-${source.receiptId}`}>
+                              <SourceCard source={source} onSelectReceipt={onSelectReceipt} />
+                            </Grid>
+                          ))}
+                        </Grid>
+                      </Collapse>
                     </Box>
                   )}
                 </Stack>
