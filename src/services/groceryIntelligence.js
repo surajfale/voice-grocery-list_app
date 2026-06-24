@@ -362,34 +362,51 @@ class GroceryIntelligenceService {
   }
 
   /**
-   * Categorize item based on keyword matching
+   * Escape a string for safe use inside a RegExp
+   */
+  escapeRegExp(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /**
+   * Categorize item based on keyword matching.
+   *
+   * Matches require a word-start boundary (not a raw substring) so e.g.
+   * "steak" doesn't accidentally match "tea" mid-word, while still matching
+   * plurals like "bananas" against the keyword "banana" (no trailing
+   * boundary requirement). When multiple keywords match (e.g. both "milk"
+   * and "soy milk"), the longest/most specific keyword wins instead of
+   * whichever category happens to be iterated first.
    */
   categorizeItem(itemText) {
     const text = itemText.toLowerCase();
+
+    let bestMatch = null;
 
     for (const [category, items] of Object.entries(this.groceryDatabase)) {
       if (category === 'Other') {continue;}
 
       for (const item of items) {
-        // Exact match
-        if (text === item.toLowerCase()) {
-          return category;
-        }
+        const keyword = item.toLowerCase();
+        if (keyword.length <= 2) {continue;}
 
-        // Partial match for compound items
-        if (text.includes(item.toLowerCase())) {
-          // Only match if the input contains the full item name
-          // e.g., "almond milk" contains "milk", but "milk" doesn't contain "coconut milk"
-          if (text.length > 2 && item.length > 2) {
-            return category;
-          }
+        // eslint-disable-next-line security/detect-non-literal-regexp -- keyword is escaped and sourced from the internal groceryDatabase, not user input
+        const pattern = new RegExp(`\\b${this.escapeRegExp(keyword)}`);
+        if (!pattern.test(text)) {continue;}
+
+        if (!bestMatch || keyword.length > bestMatch.keywordLength) {
+          bestMatch = { category, keywordLength: keyword.length };
         }
       }
     }
 
+    if (bestMatch) {
+      return bestMatch.category;
+    }
+
     // Try keyword-based categorization for unknown items
     if (this.containsKeywords(text, ['rice', 'dal', 'lentil', 'flour', 'spice', 'masala', 'powder'])) {
-      return text.includes('rice') ? 'Asian Pantry' : 'Indian Pantry';
+      return this.containsKeywords(text, ['rice']) ? 'Asian Pantry' : 'Indian Pantry';
     }
 
     if (this.containsKeywords(text, ['milk', 'cheese', 'yogurt', 'cream'])) {
@@ -404,18 +421,18 @@ class GroceryIntelligenceService {
       return 'Meat & Seafood';
     }
 
-    if (this.containsKeywords(text, ['milk', 'cheese', 'yogurt', 'cream'])) {
-      return 'Dairy';
-    }
-
     return 'Other';
   }
 
   /**
-   * Check if text contains any of the given keywords
+   * Check if text contains any of the given keywords (word-boundary safe)
    */
   containsKeywords(text, keywords) {
-    return keywords.some(keyword => text.includes(keyword));
+    return keywords.some((keyword) => {
+      // eslint-disable-next-line security/detect-non-literal-regexp -- keyword is a hardcoded literal from the call sites above, not user input
+      const pattern = new RegExp(`\\b${this.escapeRegExp(keyword)}`);
+      return pattern.test(text);
+    });
   }
 
   /**
