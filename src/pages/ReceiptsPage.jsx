@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
   Alert,
@@ -14,6 +14,7 @@ import {
   ListItemAvatar,
   Avatar,
   ListItemText,
+  Pagination,
   Paper,
   Stack,
   Typography
@@ -73,9 +74,12 @@ const formatBytes = (bytes) => {
   return `${formatted} ${units[unitIndex]}`;
 };
 
+const RECEIPTS_PER_PAGE = 5;
+
 const ReceiptsPage = ({ user }) => {
   const fileInputRef = useRef(null);
   const [localError, setLocalError] = useState('');
+  const [page, setPage] = useState(1);
 
   const {
     receipts,
@@ -93,6 +97,19 @@ const ReceiptsPage = ({ user }) => {
   } = useReceipts(user);
 
   const displayError = localError || error;
+
+  const pageCount = Math.max(1, Math.ceil(receipts.length / RECEIPTS_PER_PAGE));
+
+  useEffect(() => {
+    if (page > pageCount) {
+      setPage(pageCount);
+    }
+  }, [page, pageCount]);
+
+  const paginatedReceipts = useMemo(() => {
+    const start = (page - 1) * RECEIPTS_PER_PAGE;
+    return receipts.slice(start, start + RECEIPTS_PER_PAGE);
+  }, [receipts, page]);
 
   const handleFiles = (fileList) => {
     const files = Array.from(fileList || []).filter(Boolean);
@@ -208,7 +225,7 @@ const ReceiptsPage = ({ user }) => {
               </Box>
             ) : (
               <List>
-                {receipts.map((receipt) => (
+                {paginatedReceipts.map((receipt) => (
                   <ListItem
                     key={receipt._id}
                     selected={receipt._id === selectedReceiptId}
@@ -261,6 +278,18 @@ const ReceiptsPage = ({ user }) => {
                   </ListItem>
                 ))}
               </List>
+            )}
+
+            {pageCount > 1 && (
+              <Stack direction="row" justifyContent="center" sx={{ mt: 2 }}>
+                <Pagination
+                  count={pageCount}
+                  page={page}
+                  onChange={(_event, value) => setPage(value)}
+                  size="small"
+                  color="primary"
+                />
+              </Stack>
             )}
           </Paper>
         </Grid>
