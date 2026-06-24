@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import serviceManager from '../services/ServiceManager.js';
 import useErrorHandler from './useErrorHandler.js';
 import logger from '../utils/logger.js';
@@ -141,10 +141,8 @@ export const useReceipts = (user) => {
     }
   }, [selectedReceiptId, refreshSelectedReceipt]);
 
-  const latestReceipts = useMemo(() => receipts.slice(0, 20), [receipts]);
-
   return {
-    receipts: latestReceipts,
+    receipts,
     selectedReceipt,
     selectedReceiptId,
     loading,

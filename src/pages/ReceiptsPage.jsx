@@ -17,6 +17,8 @@ import {
   Pagination,
   Paper,
   Stack,
+  Tab,
+  Tabs,
   Typography
 } from '@mui/material';
 import {
@@ -28,6 +30,7 @@ import {
 } from '@mui/icons-material';
 import useReceipts from '../hooks/useReceipts.js';
 import ReceiptChatPanel from '../components/receipts/ReceiptChatPanel.jsx';
+import SpendingInsights from '../components/receipts/SpendingInsights.jsx';
 
 const ALLOWED_FILE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'];
 
@@ -80,6 +83,7 @@ const ReceiptsPage = ({ user }) => {
   const fileInputRef = useRef(null);
   const [localError, setLocalError] = useState('');
   const [page, setPage] = useState(1);
+  const [activeTab, setActiveTab] = useState('receipts');
 
   const {
     receipts,
@@ -150,6 +154,19 @@ const ReceiptsPage = ({ user }) => {
         </Alert>
       )}
 
+      <Tabs
+        value={activeTab}
+        onChange={(_event, value) => setActiveTab(value)}
+        sx={{ borderBottom: 1, borderColor: 'divider' }}
+      >
+        <Tab label="Receipts" value="receipts" />
+        <Tab label="Spending Insights" value="insights" />
+      </Tabs>
+
+      {activeTab === 'insights' ? (
+        <SpendingInsights receipts={receipts} loading={loading} />
+      ) : (
+      <>
       <Paper
         variant="outlined"
         sx={{
@@ -445,6 +462,8 @@ const ReceiptsPage = ({ user }) => {
         receipts={receipts}
         onSelectReceipt={selectReceipt}
       />
+      </>
+      )}
     </Box>
   );
 };
