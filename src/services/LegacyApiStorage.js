@@ -232,14 +232,29 @@ class LegacyApiStorageService {
   async deleteGroceryList(userId, date) {
     try {
       const result = await serviceManager.getService('groceryList').deleteGroceryList(userId, date);
-      
+
       if (result.success) {
         return { success: true };
       }
-      
+
       return { success: false, error: result.error };
     } catch (error) {
       logger.error('Error deleting grocery list:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async mergeGroceryLists(userId, sourceDates, targetDate) {
+    try {
+      const result = await serviceManager.getService('groceryList').mergeGroceryLists(userId, sourceDates, targetDate);
+
+      if (result.success) {
+        return { success: true, list: result.data };
+      }
+
+      return { success: false, error: result.error };
+    } catch (error) {
+      logger.error('Error merging grocery lists:', error);
       return { success: false, error: error.message };
     }
   }

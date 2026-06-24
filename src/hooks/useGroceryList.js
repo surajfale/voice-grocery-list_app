@@ -437,6 +437,47 @@ export const useGroceryList = (user) => {
   }, [user, currentDateString, setError]);
   // include setError for stable reference
 
+  // Move/merge one or more lists into a target date (no-duplicate merge if target already has items)
+  const moveListsToDate = useCallback(async (sourceDates, targetDate) => {
+    if (!user?._id) {return;}
+
+    const today = dayjs().startOf('day');
+    if (dayjs(targetDate).isBefore(today)) {
+      setError('Cannot move lists to a past date. Please choose today or a future date.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await apiStorage.mergeGroceryLists(user._id, sourceDates, targetDate);
+
+      if (result.success) {
+        setAllLists(prev => {
+          const newLists = { ...prev };
+          sourceDates.forEach(date => {
+            if (date !== targetDate) {
+              delete newLists[date];
+            }
+          });
+          newLists[targetDate] = result.list.items;
+          return newLists;
+        });
+
+        // If the current list was moved away, switch to the target date
+        if (sourceDates.includes(currentDateString) && targetDate !== currentDateString) {
+          setCurrentDate(dayjs(targetDate));
+        }
+      } else {
+        setError(result.error || 'Failed to move/merge lists');
+      }
+    } catch (error) {
+      logger.error('Error moving/merging lists:', error);
+      setError('Failed to move/merge lists. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [user, currentDateString, setError]);
+
   // Load user's grocery lists on component mount and when user changes
   useEffect(() => {
     const loadUserLists = async () => {
@@ -556,5 +597,6 @@ export const useGroceryList = (user) => {
     updateItemCount,
     clearCurrentList,
     deleteList,
+    moveListsToDate,
   };
 };
