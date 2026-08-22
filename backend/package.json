@@ -4,6 +4,9 @@
   "description": "Backend API for Voice Grocery List App",
   "main": "server.js",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
