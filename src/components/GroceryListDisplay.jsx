@@ -15,6 +15,7 @@ import {
   MenuItem,
   Menu,
   TextField,
+  useTheme,
 } from '@mui/material';
 import { ExpandLess, ExpandMore, Edit, Delete, Check, Close } from '@mui/icons-material';
 
@@ -35,6 +36,8 @@ const GroceryListDisplay = memo(({
   const [editedTextValue, setEditedTextValue] = useState('');
   const [countMenuAnchor, setCountMenuAnchor] = useState(null);
   const [countMenuItemId, setCountMenuItemId] = useState(null);
+  const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
 
   const handleUpdateCategory = async (id, newCategory) => {
     await onUpdateCategory(id, newCategory);
@@ -106,9 +109,9 @@ const GroceryListDisplay = memo(({
               sx={{
                 height: 'fit-content',
                 borderRadius: '20px',
-                background: 'rgba(255, 255, 255, 0.95)',
+                background: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
                 backdropFilter: 'blur(12px)',
-                border: '1px solid rgba(226, 232, 240, 0.6)',
+                border: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.6)' : 'rgba(226, 232, 240, 0.6)'}`,
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 '&:hover': {
                   transform: 'translateY(-4px)',
