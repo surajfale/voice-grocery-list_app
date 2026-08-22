@@ -1,6 +1,8 @@
 import { BaseService } from './BaseService.js';
 import logger from '../utils/logger.js';
 
+const TOKEN_STORAGE_KEY = 'groceryListToken';
+
 /**
  * API Service Class
  * Handles all HTTP API communications with the backend
@@ -9,7 +11,7 @@ import logger from '../utils/logger.js';
 export class ApiService extends BaseService {
   constructor() {
     super('API');
-    
+
     this.apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
     this.defaultHeaders = {
       'Content-Type': 'application/json',
@@ -30,11 +32,21 @@ export class ApiService extends BaseService {
    */
   async makeRequest(endpoint, options = {}) {
     const url = `${this.apiBaseUrl}${endpoint}`;
-    
+
+    const authHeaders = {};
+    try {
+      const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+      if (token) {
+        authHeaders['Authorization'] = `Bearer ${token}`;
+      }
+    } catch {
+      // localStorage unavailable (e.g. private browsing) - proceed unauthenticated
+    }
+
     const requestOptions = {
       method: 'GET',
-      headers: { ...this.defaultHeaders },
-      ...options
+      ...options,
+      headers: { ...this.defaultHeaders, ...authHeaders, ...(options.headers || {}) }
     };
 
     // Add timeout if AbortController is available (browser environments)

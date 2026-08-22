@@ -10,6 +10,10 @@ import authRoutes from './routes/auth.js';
 import groceryListRoutes from './routes/groceryLists.js';
 import receiptRoutes from './routes/receipts.js';
 
+if (!process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET is not set. Refusing to start without a session signing secret.');
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 

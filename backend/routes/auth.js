@@ -13,6 +13,7 @@ import {
   registrationLimiter,
   accountDeletionLimiter
 } from '../middleware/rateLimiter.js';
+import { generateAuthToken, authenticate, requireOwnUserId } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -105,7 +106,8 @@ router.post('/register', registrationLimiter, async (req, res) => {
 
     res.status(201).json({
       success: true,
-      user: userResponse
+      user: userResponse,
+      token: generateAuthToken(user._id)
     });
 
   } catch (error) {
@@ -163,7 +165,8 @@ router.post('/login', loginLimiter, async (req, res) => {
 
     res.json({
       success: true,
-      user: userResponse
+      user: userResponse,
+      token: generateAuthToken(user._id)
     });
 
   } catch (error) {
@@ -176,7 +179,7 @@ router.post('/login', loginLimiter, async (req, res) => {
 });
 
 // Get user profile
-router.get('/profile/:userId', async (req, res) => {
+router.get('/profile/:userId', authenticate, requireOwnUserId, async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -441,7 +444,7 @@ router.post('/reset-password', passwordResetCompletionLimiter, async (req, res) 
 });
 
 // Delete user account (with rate limiting)
-router.delete('/account', accountDeletionLimiter, async (req, res) => {
+router.delete('/account', accountDeletionLimiter, authenticate, async (req, res) => {
   try {
     const { userId, password } = req.body;
     const clientIP = getClientIP(req);
@@ -452,6 +455,14 @@ router.delete('/account', accountDeletionLimiter, async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'User ID and password are required for account deletion'
+      });
+    }
+
+    if (userId !== req.userId) {
+      console.warn(`⚠️ Account deletion attempt for another user's account from IP: ${clientIP}`);
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied: Cannot delete another user\'s account'
       });
     }
 

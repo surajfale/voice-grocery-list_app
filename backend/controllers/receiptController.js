@@ -86,7 +86,7 @@ const asObject = (receipt) => {
 
 const ensureValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
-const normalizeUserId = (req) => req.body.userId || req.query.userId || req.params.userId;
+const normalizeUserId = (req) => req.userId;
 
 const RECEIPT_FIELD_NAMES = ['receipt', 'receiptImages', 'receipts'];
 
@@ -245,7 +245,7 @@ export const uploadReceipt = async (req, res) => {
 
 export const listReceipts = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.userId;
 
     if (!userId || !ensureValidObjectId(userId)) {
       return res.status(400).json({
