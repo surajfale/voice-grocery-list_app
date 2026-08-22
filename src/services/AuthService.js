@@ -30,8 +30,9 @@ export class AuthService extends BaseService {
         method: 'POST',
         body: JSON.stringify(userData)
       });
-      
+
       if (result.success) {
+        this.storeUserData(result.user, result.token);
         logger.auth('User registration successful');
         return this.createSuccessResponse(result.user, 'User registered successfully');
       }

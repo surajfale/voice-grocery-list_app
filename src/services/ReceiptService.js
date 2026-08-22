@@ -1,6 +1,8 @@
 import { BaseService } from './BaseService.js';
 import ApiService from './ApiService.js';
 
+const TOKEN_STORAGE_KEY = 'groceryListToken';
+
 export class ReceiptService extends BaseService {
   constructor() {
     super('Receipt');
@@ -9,9 +11,11 @@ export class ReceiptService extends BaseService {
     this.apiBaseUrl = this.apiService.apiBaseUrl;
   }
 
-  getImageUrl(receiptId, userId) {
-    const params = new globalThis.URLSearchParams({ userId });
-    return `${this.apiBaseUrl}/receipts/${receiptId}/image?${params.toString()}`;
+  getImageUrl(receiptId) {
+    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+    const params = new globalThis.URLSearchParams(token ? { token } : {});
+    const query = params.toString();
+    return `${this.apiBaseUrl}/receipts/${receiptId}/image${query ? `?${query}` : ''}`;
   }
 
   async uploadReceipt(userId, files) {
@@ -32,8 +36,10 @@ export class ReceiptService extends BaseService {
         formData.append('receiptImages', file);
       });
 
+      const token = localStorage.getItem(TOKEN_STORAGE_KEY);
       const response = await fetch(`${this.apiBaseUrl}/receipts`, {
         method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData
       });
 

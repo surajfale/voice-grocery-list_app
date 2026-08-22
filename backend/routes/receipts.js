@@ -13,6 +13,7 @@ import {
 } from '../controllers/receiptController.js';
 import { receiptChatIpLimiter, receiptChatUserLimiter } from '../middleware/rateLimiter.js';
 import validateChatRequest from '../middleware/validateChatRequest.js';
+import { authenticate, authenticateFlexible, requireOwnUserId } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -40,21 +41,22 @@ const upload = multer({
   }
 });
 
-router.post('/', upload.any(), uploadReceipt);
-router.get('/user/:userId', listReceipts);
+router.post('/', authenticate, upload.any(), uploadReceipt);
+router.get('/user/:userId', authenticate, requireOwnUserId, listReceipts);
 router.post(
   '/chat',
+  authenticate,
   receiptChatIpLimiter,
   receiptChatUserLimiter,
   validateChatRequest,
   chatAboutReceipts
 );
-router.post('/embedding/status', checkEmbeddingStatus);
-router.post('/embedding/trigger', triggerEmbedding);
-router.get('/embedding/chunks', checkChunks);
-router.get('/:receiptId', getReceipt);
-router.get('/:receiptId/image', streamReceiptImage);
-router.delete('/:receiptId', deleteReceipt);
+router.post('/embedding/status', authenticate, checkEmbeddingStatus);
+router.post('/embedding/trigger', authenticate, triggerEmbedding);
+router.get('/embedding/chunks', authenticate, checkChunks);
+router.get('/:receiptId', authenticate, getReceipt);
+router.get('/:receiptId/image', authenticateFlexible, streamReceiptImage);
+router.delete('/:receiptId', authenticate, deleteReceipt);
 
 router.use((error, _req, res, _next) => {
   if (error instanceof multer.MulterError) {

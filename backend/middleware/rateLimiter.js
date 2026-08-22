@@ -147,11 +147,11 @@ export const receiptChatUserLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
-    const userId = req.body?.userId || 'anonymous';
+    const userId = req.userId || 'anonymous';
     return `${userId}-${req.ip}`;
   },
   handler: (req, res) => {
-    console.warn(`⚠️ Chat rate limit exceeded for user=${req.body?.userId} ip=${req.ip}`);
+    console.warn(`⚠️ Chat rate limit exceeded for user=${req.userId} ip=${req.ip}`);
     res.status(429).json({
       success: false,
       error: 'You have reached the chat rate limit. Please wait a few minutes before trying again.'

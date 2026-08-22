@@ -1,10 +1,13 @@
 import express from 'express';
 import request from 'supertest';
+import jwt from 'jsonwebtoken';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import receiptsRouter from '../receipts.js';
 import { chatMock } from '../../services/ReceiptRagService.js';
 import { limiterState } from '../../middleware/rateLimiter.js';
 import mongoose from 'mongoose';
+
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret';
 
 vi.mock('../../services/ReceiptRagService.js', () => {
   const chatMock = vi.fn();
@@ -53,6 +56,7 @@ const buildApp = () => {
 describe('Receipts chat route', () => {
   const app = buildApp();
   const userId = new mongoose.Types.ObjectId().toString();
+  const authToken = jwt.sign({ userId }, process.env.JWT_SECRET);
 
   beforeEach(() => {
     chatMock.mockReset();
@@ -72,6 +76,7 @@ describe('Receipts chat route', () => {
 
     const res = await request(app)
       .post('/api/receipts/chat')
+      .set('Authorization', `Bearer ${authToken}`)
       .send({ userId, question: 'What did I spend?' })
       .expect(200);
 
@@ -89,6 +94,7 @@ describe('Receipts chat route', () => {
   it('validates request payload', async () => {
     const res = await request(app)
       .post('/api/receipts/chat')
+      .set('Authorization', `Bearer ${authToken}`)
       .send({ userId, question: 'hi' })
       .expect(400);
 
@@ -101,6 +107,7 @@ describe('Receipts chat route', () => {
 
     const res = await request(app)
       .post('/api/receipts/chat')
+      .set('Authorization', `Bearer ${authToken}`)
       .send({ userId, question: 'Tell me everything' })
       .expect(500);
 
@@ -121,11 +128,13 @@ describe('Receipts chat route', () => {
 
     await request(app)
       .post('/api/receipts/chat')
+      .set('Authorization', `Bearer ${authToken}`)
       .send({ userId, question: 'First question' })
       .expect(200);
 
     const res = await request(app)
       .post('/api/receipts/chat')
+      .set('Authorization', `Bearer ${authToken}`)
       .send({ userId, question: 'Second question' })
       .expect(429);
 

@@ -42,10 +42,12 @@ export const AuthProvider = ({ children }) => {
               setIsAuthenticated(true);
             } else {
               localStorage.removeItem('groceryListUser');
+              localStorage.removeItem('groceryListToken');
             }
           } catch (error) {
             logger.error('Auth check error:', error);
             localStorage.removeItem('groceryListUser');
+            localStorage.removeItem('groceryListToken');
           }
         }
       } catch (error) {
@@ -124,6 +126,7 @@ export const AuthProvider = ({ children }) => {
     try {
       logger.auth('User logging out');
       localStorage.removeItem('groceryListUser');
+      localStorage.removeItem('groceryListToken');
       setUser(null);
       setIsAuthenticated(false);
       // Clear any cached data on logout for security
@@ -144,6 +147,7 @@ export const AuthProvider = ({ children }) => {
       if (result.success) {
         // Clear user data and log out
         localStorage.removeItem('groceryListUser');
+        localStorage.removeItem('groceryListToken');
         setUser(null);
         setIsAuthenticated(false);
         await apiStorage.clearCache();

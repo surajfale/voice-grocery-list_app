@@ -78,12 +78,13 @@ const normalizeDateRange = (range) => {
 export const validateChatRequest = (req, res, next) => {
   try {
     const {
-      userId,
       question,
       receiptIds,
       dateRange,
       topK
     } = req.body || {};
+
+    const userId = req.userId;
 
     if (!userId || !isValidObjectId(userId)) {
       return res.status(400).json({

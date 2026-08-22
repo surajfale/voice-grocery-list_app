@@ -1,6 +1,10 @@
 import express from 'express';
 import GroceryList from '../models/GroceryList.js';
+import { authenticate, requireOwnUserId } from '../middleware/auth.js';
 const router = express.Router();
+
+router.use(authenticate);
+router.use('/user/:userId', requireOwnUserId);
 
 /**
  * Helper function to check if a date is in the past
