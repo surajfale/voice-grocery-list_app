@@ -101,6 +101,13 @@ const CorrectionDialog = memo(({
               key={index}
               sx={{
                 borderRadius: '16px',
+                opacity: 0,
+                animation: 'correctionCardEnter 200ms cubic-bezier(0.4, 0, 0.2, 1) forwards',
+                animationDelay: `${index * 40}ms`,
+                '@keyframes correctionCardEnter': {
+                  '0%': { opacity: 0, transform: 'scale(0.97)' },
+                  '100%': { opacity: 1, transform: 'scale(1)' },
+                },
                 '&:hover': {
                   transform: 'translateY(-2px)',
                   borderColor: alpha(palette.primary.main, 0.2),

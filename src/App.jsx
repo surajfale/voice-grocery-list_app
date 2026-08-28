@@ -175,6 +175,8 @@ const VoiceGroceryList = ({ user, logout }) => {
   const [showOnlyRemaining, setShowOnlyRemaining] = useState(false);
   const [downloadMenuAnchor, setDownloadMenuAnchor] = useState(null);
   const [activeView, setActiveView] = useState('lists');
+  const [displayedView, setDisplayedView] = useState('lists');
+  const [viewContentVisible, setViewContentVisible] = useState(true);
   const [settingsMenuAnchor, setSettingsMenuAnchor] = useState(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedDatesForMove, setSelectedDatesForMove] = useState([]);
@@ -190,6 +192,17 @@ const VoiceGroceryList = ({ user, logout }) => {
   const muiTheme = useTheme();
   const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
   const isReceiptsView = activeView === 'receipts';
+
+  // Cross-fade the main content when switching between Lists and Receipts
+  useEffect(() => {
+    if (activeView === displayedView) { return undefined; }
+    setViewContentVisible(false);
+    const timeout = setTimeout(() => {
+      setDisplayedView(activeView);
+      setViewContentVisible(true);
+    }, 120);
+    return () => clearTimeout(timeout);
+  }, [activeView, displayedView]);
 
   // Use the custom hook for grocery list management
   const {
@@ -1179,8 +1192,15 @@ const VoiceGroceryList = ({ user, logout }) => {
             <Toolbar sx={{ minHeight: '72px' }} />
 
             <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3, md: 4 }, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-              <Box sx={{ flexGrow: 1, width: '100%' }}>
-                {isReceiptsView ? (
+              <Box
+                sx={{
+                  flexGrow: 1,
+                  width: '100%',
+                  opacity: viewContentVisible ? 1 : 0,
+                  transition: viewContentVisible ? 'opacity 200ms ease-out' : 'opacity 120ms ease-out',
+                }}
+              >
+                {displayedView === 'receipts' ? (
                   <ReceiptsPage user={user} />
                 ) : (
                   <>

@@ -43,8 +43,28 @@ const GroceryListDisplay = memo(({
   const [editedTextValue, setEditedTextValue] = useState('');
   const [countMenuAnchor, setCountMenuAnchor] = useState(null);
   const [countMenuItemId, setCountMenuItemId] = useState(null);
+  const [removingIds, setRemovingIds] = useState(() => new Set());
   const theme = useTheme();
   const { palette } = theme;
+
+  // Play an exit transition before the item actually leaves the data
+  const requestRemoveItem = (id) => {
+    setRemovingIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  };
+
+  const handleItemExited = (id) => {
+    onRemoveItem(id);
+    setRemovingIds(prev => {
+      if (!prev.has(id)) { return prev; }
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  };
 
   const handleUpdateCategory = async (id, newCategory) => {
     await onUpdateCategory(id, newCategory);
@@ -82,7 +102,7 @@ const GroceryListDisplay = memo(({
   const handleCountChange = async (newCount) => {
     if (newCount === 0) {
       // Remove item when count is 0
-      await onRemoveItem(countMenuItemId);
+      requestRemoveItem(countMenuItemId);
     } else {
       await onUpdateCount(countMenuItemId, newCount);
     }
@@ -224,8 +244,13 @@ const GroceryListDisplay = memo(({
                 <Collapse in={isExpanded}>
                   <Box sx={{ mt: 2 }}>
                     {categoryItems.map((item, _index) => (
-                      <Box
+                      <Collapse
                         key={item.id}
+                        in={!removingIds.has(item.id)}
+                        timeout={200}
+                        onExited={() => handleItemExited(item.id)}
+                      >
+                      <Box
                         sx={{
                           display: 'flex',
                           alignItems: 'center',
@@ -241,6 +266,11 @@ const GroceryListDisplay = memo(({
                             ? alpha(palette.success.main, 0.2)
                             : 'divider',
                           transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          animation: 'groceryItemEnter 180ms cubic-bezier(0.4, 0, 0.2, 1)',
+                          '@keyframes groceryItemEnter': {
+                            '0%': { opacity: 0, transform: 'translateY(-4px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' },
+                          },
                           '&:hover': {
                             transform: 'translateX(4px)',
                             backgroundColor: item.completed
@@ -292,12 +322,15 @@ const GroceryListDisplay = memo(({
                             backgroundColor: alpha(palette.primary.main, 0.1),
                             color: 'primary.main',
                             flexShrink: 0,
-                            transition: 'background-color 0.2s ease',
+                            transition: 'background-color 0.2s ease, transform 120ms ease-out',
                             userSelect: 'none',
                             opacity: loading || editingText === item.id ? 0.5 : 1,
                             pointerEvents: loading || editingText === item.id ? 'none' : 'auto',
                             '&:hover': loading || editingText === item.id ? {} : {
                               backgroundColor: alpha(palette.primary.main, 0.2),
+                            },
+                            '&:active': loading || editingText === item.id ? {} : {
+                              transform: 'scale(0.95)',
                             },
                           }}
                         >
@@ -437,7 +470,7 @@ const GroceryListDisplay = memo(({
 
                               <IconButton
                                 size="small"
-                                onClick={() => onRemoveItem(item.id)}
+                                onClick={() => requestRemoveItem(item.id)}
                                 disabled={loading}
                                 sx={{
                                   width: 28,
@@ -456,6 +489,7 @@ const GroceryListDisplay = memo(({
                           )}
                         </Box>
                       </Box>
+                      </Collapse>
                     ))}
                   </Box>
                 </Collapse>
