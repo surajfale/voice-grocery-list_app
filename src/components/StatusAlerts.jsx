@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import PropTypes from 'prop-types';
 import { Alert, Box, Typography } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 
 const StatusAlerts = memo(({ 
   isListening, 
@@ -9,6 +10,8 @@ const StatusAlerts = memo(({
   error = '', 
   onClearError = null 
 }) => {
+  const { palette } = useTheme();
+
   return (
     <>
       {/* Error Display */}
@@ -29,18 +32,18 @@ const StatusAlerts = memo(({
           sx={{
             mb: 2,
             borderRadius: '16px',
-            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
-            border: '1px solid rgba(99, 102, 241, 0.2)',
+            backgroundColor: alpha(palette.primary.main, 0.1),
+            border: `1px solid ${alpha(palette.primary.main, 0.2)}`,
             '& .MuiAlert-icon': {
               color: 'primary.main',
             },
             animation: 'glow 2s ease-in-out infinite alternate',
             '@keyframes glow': {
               '0%': {
-                boxShadow: '0 2px 10px rgba(99, 102, 241, 0.2)',
+                boxShadow: `0 2px 10px ${alpha(palette.primary.main, 0.2)}`,
               },
               '100%': {
-                boxShadow: '0 4px 20px rgba(99, 102, 241, 0.4)',
+                boxShadow: `0 4px 20px ${alpha(palette.primary.main, 0.4)}`,
               },
             },
           }}
@@ -51,7 +54,7 @@ const StatusAlerts = memo(({
                 width: 8,
                 height: 8,
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+                backgroundColor: palette.error.main,
                 animation: 'pulse 1s infinite',
                 '@keyframes pulse': {
                   '0%, 100%': { opacity: 1 },
@@ -73,8 +76,8 @@ const StatusAlerts = memo(({
           sx={{
             mb: 2,
             borderRadius: '16px',
-            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(52, 211, 153, 0.1) 100%)',
-            border: '1px solid rgba(16, 185, 129, 0.2)',
+            backgroundColor: alpha(palette.success.main, 0.1),
+            border: `1px solid ${alpha(palette.success.main, 0.2)}`,
             '& .MuiAlert-icon': {
               color: 'success.main',
             },
@@ -100,7 +103,7 @@ const StatusAlerts = memo(({
               sx={{
                 fontWeight: 600,
                 color: 'success.dark',
-                background: 'rgba(16, 185, 129, 0.1)',
+                backgroundColor: alpha(palette.success.main, 0.1),
                 px: 1,
                 py: 0.5,
                 borderRadius: 1,

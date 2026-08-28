@@ -1,11 +1,15 @@
 import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import PropTypes from 'prop-types';
 import { Fab, Box } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import { Mic, MicOff } from '@mui/icons-material';
 import logger from '../utils/logger.js';
 import groceryIntelligence from '../services/groceryIntelligence.js';
 
 const VoiceRecognition = memo(({ onItemsDetected, disabled = false }) => {
+  const theme = useTheme();
+  const activeColor = theme.palette.error.main;
+  const idleColor = theme.palette.primary.main;
   const [isListening, setIsListening] = useState(false);
   const [_transcript, setTranscript] = useState('');
   const [fullTranscript, setFullTranscript] = useState('');
@@ -258,7 +262,7 @@ const VoiceRecognition = memo(({ onItemsDetected, disabled = false }) => {
               width: 80,
               height: 80,
               borderRadius: '50%',
-              border: '2px solid rgba(239, 68, 68, 0.3)',
+              border: `2px solid ${alpha(activeColor, 0.3)}`,
               animation: 'pulse 2s infinite',
               '@keyframes pulse': {
                 '0%': {
@@ -281,7 +285,7 @@ const VoiceRecognition = memo(({ onItemsDetected, disabled = false }) => {
               width: 100,
               height: 100,
               borderRadius: '50%',
-              border: '2px solid rgba(239, 68, 68, 0.2)',
+              border: `2px solid ${alpha(activeColor, 0.2)}`,
               animation: 'pulse 2s infinite 0.5s',
               '@keyframes pulse': {
                 '0%': {
@@ -305,21 +309,19 @@ const VoiceRecognition = memo(({ onItemsDetected, disabled = false }) => {
         sx={{
           width: 64,
           height: 64,
-          background: isListening
-            ? 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)'
-            : 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
+          backgroundColor: isListening ? activeColor : idleColor,
           boxShadow: isListening
-            ? '0 8px 32px rgba(239, 68, 68, 0.4)'
-            : '0 8px 32px rgba(99, 102, 241, 0.4)',
+            ? `0 8px 32px ${alpha(activeColor, 0.4)}`
+            : `0 8px 32px ${alpha(idleColor, 0.4)}`,
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           '&:hover': {
             transform: 'scale(1.1)',
             boxShadow: isListening
-              ? '0 12px 40px rgba(239, 68, 68, 0.5)'
-              : '0 12px 40px rgba(99, 102, 241, 0.5)',
-            background: isListening
-              ? 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)'
-              : 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
+              ? `0 12px 40px ${alpha(activeColor, 0.5)}`
+              : `0 12px 40px ${alpha(idleColor, 0.5)}`,
+            backgroundColor: isListening
+              ? theme.palette.error.dark
+              : theme.palette.primary.dark,
           },
           '&:active': {
             transform: 'scale(0.95)',
@@ -359,7 +361,7 @@ const VoiceRecognition = memo(({ onItemsDetected, disabled = false }) => {
             position: 'absolute',
             bottom: 80,
             right: 0,
-            background: 'rgba(239, 68, 68, 0.95)',
+            backgroundColor: alpha(activeColor, 0.95),
             color: 'white',
             px: 2,
             py: 1,

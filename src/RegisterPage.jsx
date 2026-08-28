@@ -23,6 +23,7 @@ import {
   Email,
   PersonAdd,
 } from '@mui/icons-material';
+import { alpha, useTheme } from '@mui/material/styles';
 import { useAuth } from './AuthContext';
 import PasswordRequirements from './components/PasswordRequirements';
 import { validatePassword } from './utils/passwordValidator';
@@ -40,6 +41,8 @@ const RegisterPage = ({ onSwitchToLogin }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
+  const theme = useTheme();
+  const { palette } = theme;
 
   const handleInputChange = (field) => (e) => {
     setFormData({
@@ -125,7 +128,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)',
+        background: `radial-gradient(circle at 50% 0%, ${alpha(palette.primary.main, 0.15)} 0%, transparent 60%), ${palette.background.default}`,
         p: 2,
       }}
     >
@@ -135,8 +138,6 @@ const RegisterPage = ({ onSwitchToLogin }) => {
           sx={{
             p: 4,
             borderRadius: 3,
-            background: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(10px)',
           }}
         >
           {/* Header */}
@@ -161,11 +162,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
                 component="h1"
                 sx={{
                   fontWeight: 'bold',
-                  background: 'linear-gradient(45deg, #2196f3, #4caf50)',
-                  backgroundClip: 'text',
-                  textFillColor: 'transparent',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
+                  color: 'primary.main',
                 }}
               >
                 Grocery List
@@ -180,14 +177,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
           </Box>
 
           {/* Project Disclaimer Alert */}
-          <Alert
-            severity="info"
-            sx={{
-              mb: 3,
-              border: '1px solid #29b6f6',
-              backgroundColor: 'rgba(41, 182, 246, 0.1)'
-            }}
-          >
+          <Alert severity="info" sx={{ mb: 3 }}>
             <Typography variant="body2">
               <strong>Note:</strong> This is a personal learning project. Service availability is not guaranteed and data may be reset.
             </Typography>
@@ -217,18 +207,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
                       </InputAdornment>
                     ),
                   }}
-                  sx={{
-                    mb: 2,
-                    '& .MuiInputBase-input': {
-                      color: '#000000',
-                    },
-                    '& .MuiInputLabel-root': {
-                      color: '#666666',
-                    },
-                    '& .MuiInputLabel-root.Mui-focused': {
-                      color: '#2196f3',
-                    },
-                  }}
+                  sx={{ mb: 2 }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -245,18 +224,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
                       </InputAdornment>
                     ),
                   }}
-                  sx={{
-                    mb: 2,
-                    '& .MuiInputBase-input': {
-                      color: '#000000',
-                    },
-                    '& .MuiInputLabel-root': {
-                      color: '#666666',
-                    },
-                    '& .MuiInputLabel-root.Mui-focused': {
-                      color: '#2196f3',
-                    },
-                  }}
+                  sx={{ mb: 2 }}
                 />
               </Grid>
             </Grid>
@@ -275,18 +243,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
                   </InputAdornment>
                 ),
               }}
-              sx={{
-                mb: 2,
-                '& .MuiInputBase-input': {
-                  color: '#000000',
-                },
-                '& .MuiInputLabel-root': {
-                  color: '#666666',
-                },
-                '& .MuiInputLabel-root.Mui-focused': {
-                  color: '#2196f3',
-                },
-              }}
+              sx={{ mb: 2 }}
             />
 
             <TextField
@@ -313,18 +270,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
                   </InputAdornment>
                 ),
               }}
-              sx={{
-                mb: 2,
-                '& .MuiInputBase-input': {
-                  color: '#000000',
-                },
-                '& .MuiInputLabel-root': {
-                  color: '#666666',
-                },
-                '& .MuiInputLabel-root.Mui-focused': {
-                  color: '#2196f3',
-                },
-              }}
+              sx={{ mb: 2 }}
             />
 
             {/* Password Requirements */}
@@ -354,18 +300,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
                   </InputAdornment>
                 ),
               }}
-              sx={{
-                mb: 3,
-                '& .MuiInputBase-input': {
-                  color: '#000000',
-                },
-                '& .MuiInputLabel-root': {
-                  color: '#666666',
-                },
-                '& .MuiInputLabel-root.Mui-focused': {
-                  color: '#2196f3',
-                },
-              }}
+              sx={{ mb: 3 }}
             />
 
             <Button
@@ -379,10 +314,6 @@ const RegisterPage = ({ onSwitchToLogin }) => {
                 py: 1.5,
                 fontSize: '1.1rem',
                 fontWeight: 'bold',
-                background: 'linear-gradient(45deg, #2196f3, #4caf50)',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #1976d2, #388e3c)',
-                },
                 mb: 2
               }}
             >

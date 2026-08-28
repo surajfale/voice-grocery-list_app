@@ -10,10 +10,12 @@ import {
   Autocomplete,
   Chip,
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import { Add } from '@mui/icons-material';
 import Fuse from 'fuse.js';
 
 const ManualInput = memo(({ onAddItems, historicalItems = [], loading = false, disabled = false }) => {
+  const theme = useTheme();
   const [selectedItems, setSelectedItems] = useState([]);
   const [inputValue, setInputValue] = useState('');
 
@@ -61,9 +63,6 @@ const ManualInput = memo(({ onAddItems, historicalItems = [], loading = false, d
         p: { xs: 3, sm: 4 },
         mb: 4,
         borderRadius: '20px',
-        background: 'rgba(255, 255, 255, 0.9)',
-        backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(226, 232, 240, 0.6)',
       }}
     >
       <Box sx={{ mb: 3 }}>
@@ -71,12 +70,8 @@ const ManualInput = memo(({ onAddItems, historicalItems = [], loading = false, d
           variant="h5"
           sx={{
             fontWeight: 700,
-            color: 'text.primary',
+            color: 'primary.main',
             mb: 1,
-            background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
           }}
         >
           Add to Your List
@@ -133,7 +128,7 @@ const ManualInput = memo(({ onAddItems, historicalItems = [], loading = false, d
                   fontSize: '1rem',
                   minHeight: '56px',
                   '&.Mui-focused': {
-                    boxShadow: '0 0 0 3px rgba(99, 102, 241, 0.1)',
+                    boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.1)}`,
                   },
                 },
               }}
@@ -148,16 +143,9 @@ const ManualInput = memo(({ onAddItems, historicalItems = [], loading = false, d
             minHeight: '56px',
             px: 3,
             borderRadius: '16px',
-            background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
-            boxShadow: '0 4px 16px rgba(99, 102, 241, 0.3)',
+            boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.3)}`,
             '&:hover': {
-              background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
-              boxShadow: '0 6px 20px rgba(99, 102, 241, 0.4)',
-              transform: 'translateY(-1px)',
-            },
-            '&:disabled': {
-              background: 'rgba(148, 163, 184, 0.3)',
-              color: 'rgba(148, 163, 184, 0.8)',
+              boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.4)}`,
             },
           }}
         >

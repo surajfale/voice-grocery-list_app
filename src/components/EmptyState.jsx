@@ -5,18 +5,19 @@ import {
   Box,
   Typography,
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import { ShoppingCart, Mic, Edit } from '@mui/icons-material';
 
 const EmptyState = memo(({ currentDateString, formatDateDisplay }) => {
+  const theme = useTheme();
+  const { primary, success } = theme.palette;
+
   return (
     <Paper
       sx={{
         p: 6,
         textAlign: 'center',
         borderRadius: '20px',
-        background: 'rgba(255, 255, 255, 0.9)',
-        backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(226, 232, 240, 0.6)',
         animation: 'fadeInUp 0.6s ease-out',
         '@keyframes fadeInUp': {
           '0%': {
@@ -35,13 +36,13 @@ const EmptyState = memo(({ currentDateString, formatDateDisplay }) => {
           width: 80,
           height: 80,
           borderRadius: '50%',
-          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
+          backgroundColor: alpha(primary.main, 0.1),
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           mx: 'auto',
           mb: 3,
-          border: '2px solid rgba(99, 102, 241, 0.2)',
+          border: `2px solid ${alpha(primary.main, 0.2)}`,
           animation: 'float 3s ease-in-out infinite',
           '@keyframes float': {
             '0%, 100%': {
@@ -53,15 +54,7 @@ const EmptyState = memo(({ currentDateString, formatDateDisplay }) => {
           },
         }}
       >
-        <ShoppingCart
-          sx={{
-            fontSize: 40,
-            background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}
-        />
+        <ShoppingCart sx={{ fontSize: 40, color: primary.main }} />
       </Box>
 
       <Typography
@@ -69,10 +62,7 @@ const EmptyState = memo(({ currentDateString, formatDateDisplay }) => {
         sx={{
           fontWeight: 700,
           mb: 1,
-          background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
-          backgroundClip: 'text',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
+          color: 'text.primary',
         }}
       >
         Your list is empty
@@ -95,8 +85,8 @@ const EmptyState = memo(({ currentDateString, formatDateDisplay }) => {
             px: 2,
             py: 1,
             borderRadius: '12px',
-            background: 'rgba(99, 102, 241, 0.08)',
-            border: '1px solid rgba(99, 102, 241, 0.2)',
+            backgroundColor: alpha(primary.main, 0.08),
+            border: `1px solid ${alpha(primary.main, 0.2)}`,
           }}
         >
           <Mic sx={{ fontSize: 16, color: 'primary.main' }} />
@@ -112,8 +102,8 @@ const EmptyState = memo(({ currentDateString, formatDateDisplay }) => {
             px: 2,
             py: 1,
             borderRadius: '12px',
-            background: 'rgba(16, 185, 129, 0.08)',
-            border: '1px solid rgba(16, 185, 129, 0.2)',
+            backgroundColor: alpha(success.main, 0.08),
+            border: `1px solid ${alpha(success.main, 0.2)}`,
           }}
         >
           <Edit sx={{ fontSize: 16, color: 'success.main' }} />

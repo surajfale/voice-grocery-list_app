@@ -20,10 +20,12 @@ import {
   ArrowBack,
   CheckCircle,
 } from '@mui/icons-material';
+import { alpha, useTheme } from '@mui/material/styles';
 import PasswordRequirements from './components/PasswordRequirements';
 import { validatePassword } from './utils/passwordValidator';
 
 const ResetPasswordPage = ({ token, onBackToLogin }) => {
+  const { palette } = useTheme();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -136,10 +138,10 @@ const ResetPasswordPage = ({ token, onBackToLogin }) => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)',
+          bgcolor: 'background.default',
         }}
       >
-        <Typography variant="h6" color="white">
+        <Typography variant="h6" color="text.secondary">
           Validating reset token...
         </Typography>
       </Box>
@@ -153,7 +155,7 @@ const ResetPasswordPage = ({ token, onBackToLogin }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)',
+        background: `radial-gradient(circle at 50% 0%, ${alpha(palette.primary.main, 0.15)} 0%, transparent 60%), ${palette.background.default}`,
         p: 2,
       }}
     >
@@ -163,8 +165,6 @@ const ResetPasswordPage = ({ token, onBackToLogin }) => {
           sx={{
             p: 4,
             borderRadius: 3,
-            background: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(10px)',
           }}
         >
           {/* Header */}
@@ -189,11 +189,7 @@ const ResetPasswordPage = ({ token, onBackToLogin }) => {
                 component="h1"
                 sx={{
                   fontWeight: 'bold',
-                  background: 'linear-gradient(45deg, #2196f3, #4caf50)',
-                  backgroundClip: 'text',
-                  textFillColor: 'transparent',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
+                  color: 'primary.main',
                 }}
               >
                 Grocery List
@@ -253,18 +249,7 @@ const ResetPasswordPage = ({ token, onBackToLogin }) => {
                     </InputAdornment>
                   ),
                 }}
-                sx={{
-                  mb: 2,
-                  '& .MuiInputBase-input': {
-                    color: '#000000',
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: '#666666',
-                  },
-                  '& .MuiInputLabel-root.Mui-focused': {
-                    color: '#2196f3',
-                  },
-                }}
+                sx={{ mb: 2 }}
               />
 
               {/* Password Requirements */}
@@ -295,18 +280,7 @@ const ResetPasswordPage = ({ token, onBackToLogin }) => {
                     </InputAdornment>
                   ),
                 }}
-                sx={{
-                  mb: 3,
-                  '& .MuiInputBase-input': {
-                    color: '#000000',
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: '#666666',
-                  },
-                  '& .MuiInputLabel-root.Mui-focused': {
-                    color: '#2196f3',
-                  },
-                }}
+                sx={{ mb: 3 }}
               />
 
               <Button
@@ -320,10 +294,6 @@ const ResetPasswordPage = ({ token, onBackToLogin }) => {
                   py: 1.5,
                   fontSize: '1.1rem',
                   fontWeight: 'bold',
-                  background: 'linear-gradient(45deg, #2196f3, #4caf50)',
-                  '&:hover': {
-                    background: 'linear-gradient(45deg, #1976d2, #388e3c)',
-                  },
                   mb: 2
                 }}
               >

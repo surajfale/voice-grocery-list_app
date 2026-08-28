@@ -20,6 +20,7 @@ import {
   Lock,
   Login,
 } from '@mui/icons-material';
+import { alpha, useTheme } from '@mui/material/styles';
 import { useAuth } from './AuthContext';
 
 const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
@@ -29,6 +30,8 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const theme = useTheme();
+  const { palette } = theme;
 
   // Debug: Log whenever error state changes
   React.useEffect(() => {
@@ -80,7 +83,7 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)',
+        background: `radial-gradient(circle at 50% 0%, ${alpha(palette.primary.main, 0.15)} 0%, transparent 60%), ${palette.background.default}`,
         p: 2,
       }}
     >
@@ -90,8 +93,6 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
           sx={{
             p: 4,
             borderRadius: 3,
-            background: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(10px)',
           }}
         >
           {/* Header */}
@@ -116,11 +117,7 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
                 component="h1"
                 sx={{
                   fontWeight: 'bold',
-                  background: 'linear-gradient(45deg, #2196f3, #4caf50)',
-                  backgroundClip: 'text',
-                  textFillColor: 'transparent',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
+                  color: 'primary.main',
                 }}
               >
                 Grocery List
@@ -135,14 +132,7 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
           </Box>
 
           {/* Project Disclaimer Alert */}
-          <Alert
-            severity="warning"
-            sx={{
-              mb: 3,
-              border: '1px solid #ed6c02',
-              backgroundColor: 'rgba(237, 108, 2, 0.1)'
-            }}
-          >
+          <Alert severity="warning" sx={{ mb: 3 }}>
             <Typography variant="body2">
               <strong>Note:</strong> This is a personal learning project. Service availability is not guaranteed and data may be reset.
             </Typography>
@@ -172,18 +162,7 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
                   </InputAdornment>
                 ),
               }}
-              sx={{
-                mb: 2,
-                '& .MuiInputBase-input': {
-                  color: '#000000',
-                },
-                '& .MuiInputLabel-root': {
-                  color: '#666666',
-                },
-                '& .MuiInputLabel-root.Mui-focused': {
-                  color: '#2196f3',
-                },
-              }}
+              sx={{ mb: 2 }}
             />
 
             <TextField
@@ -211,18 +190,7 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
                   </InputAdornment>
                 ),
               }}
-              sx={{
-                mb: 1,
-                '& .MuiInputBase-input': {
-                  color: '#000000',
-                },
-                '& .MuiInputLabel-root': {
-                  color: '#666666',
-                },
-                '& .MuiInputLabel-root.Mui-focused': {
-                  color: '#2196f3',
-                },
-              }}
+              sx={{ mb: 1 }}
             />
 
             {/* Forgot Password Link */}
@@ -256,10 +224,6 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
                 py: 1.5,
                 fontSize: '1.1rem',
                 fontWeight: 'bold',
-                background: 'linear-gradient(45deg, #2196f3, #4caf50)',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #1976d2, #388e3c)',
-                },
                 mb: 2
               }}
             >

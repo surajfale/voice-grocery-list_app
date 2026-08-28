@@ -16,6 +16,7 @@ import {
   AppBar,
   Toolbar,
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import {
   ArrowBack,
   Mic,
@@ -29,12 +30,15 @@ import {
 } from '@mui/icons-material';
 
 const HelpPage = ({ onBack }) => {
+  const theme = useTheme();
+  const { palette } = theme;
+
   const features = [
     {
       icon: <VoiceChat />,
       title: 'Voice Recognition',
       description: 'Say multiple items at once and our AI will automatically separate and categorize them',
-      color: '#6366F1',
+      color: palette.primary.main,
       tips: [
         'Speak clearly and at normal pace',
         'You can say multiple items in one session',
@@ -46,7 +50,7 @@ const HelpPage = ({ onBack }) => {
       icon: <AutoFixHigh />,
       title: 'Smart Auto-correction',
       description: 'AI automatically detects and suggests corrections for misspelled items',
-      color: '#F59E0B',
+      color: palette.warning.main,
       tips: [
         'Common misspellings are automatically detected',
         'You can choose to keep original or use corrections',
@@ -58,7 +62,7 @@ const HelpPage = ({ onBack }) => {
       icon: <Category />,
       title: 'Intelligent Categorization',
       description: 'Items are automatically sorted into relevant categories like Produce, Dairy, etc.',
-      color: '#10B981',
+      color: palette.success.main,
       tips: [
         'Supports 8+ categories including Asian & Indian Pantry',
         'Click edit icon to manually change categories',
@@ -70,7 +74,7 @@ const HelpPage = ({ onBack }) => {
       icon: <DateRange />,
       title: 'Date-based Lists',
       description: 'Each date gets its own separate grocery list for better organization',
-      color: '#8B5CF6',
+      color: palette.secondary.main,
       tips: [
         'Switch between dates using the sidebar',
         'Create lists for future shopping trips',
@@ -110,18 +114,9 @@ const HelpPage = ({ onBack }) => {
   ];
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       {/* Help Page Header */}
-      <AppBar
-        position="sticky"
-        elevation={0}
-        sx={{
-          background: 'rgba(255, 255, 255, 0.9)',
-          backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid rgba(226, 232, 240, 0.8)',
-          color: 'text.primary',
-        }}
-      >
+      <AppBar position="sticky" elevation={0}>
         <Toolbar>
           <IconButton
             edge="start"
@@ -130,7 +125,7 @@ const HelpPage = ({ onBack }) => {
               mr: 2,
               borderRadius: '12px',
               '&:hover': {
-                backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                backgroundColor: alpha(palette.primary.main, 0.08),
               },
             }}
           >
@@ -143,7 +138,7 @@ const HelpPage = ({ onBack }) => {
                 width: 40,
                 height: 40,
                 borderRadius: '12px',
-                background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
+                backgroundColor: palette.primary.main,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -172,7 +167,7 @@ const HelpPage = ({ onBack }) => {
             p: 4,
             mb: 4,
             borderRadius: '20px',
-            background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
+            backgroundColor: palette.primary.main,
             color: 'white',
             position: 'relative',
             overflow: 'hidden',
@@ -250,13 +245,11 @@ const HelpPage = ({ onBack }) => {
                 sx={{
                   height: '100%',
                   borderRadius: '20px',
-                  background: 'rgba(255, 255, 255, 0.95)',
-                  backdropFilter: 'blur(12px)',
-                  border: '1px solid rgba(226, 232, 240, 0.6)',
                   transition: 'all 0.3s ease',
                   '&:hover': {
                     transform: 'translateY(-4px)',
-                    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.08)',
+                    boxShadow: `0 20px 40px ${alpha(feature.color, 0.15)}`,
+                    borderColor: alpha(feature.color, 0.3),
                   },
                 }}
               >
@@ -267,7 +260,7 @@ const HelpPage = ({ onBack }) => {
                         width: 48,
                         height: 48,
                         borderRadius: '12px',
-                        background: `linear-gradient(135deg, ${feature.color} 0%, ${feature.color}CC 100%)`,
+                        backgroundColor: feature.color,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -323,9 +316,6 @@ const HelpPage = ({ onBack }) => {
             p: 4,
             mb: 4,
             borderRadius: '20px',
-            background: 'rgba(255, 255, 255, 0.9)',
-            backdropFilter: 'blur(12px)',
-            border: '1px solid rgba(226, 232, 240, 0.6)',
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
@@ -334,7 +324,7 @@ const HelpPage = ({ onBack }) => {
                 width: 40,
                 height: 40,
                 borderRadius: '12px',
-                background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+                backgroundColor: palette.primary.main,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -358,8 +348,8 @@ const HelpPage = ({ onBack }) => {
                   sx={{
                     p: 2,
                     borderRadius: '12px',
-                    background: 'rgba(99, 102, 241, 0.05)',
-                    border: '1px solid rgba(99, 102, 241, 0.1)',
+                    backgroundColor: alpha(palette.primary.main, 0.05),
+                    border: `1px solid ${alpha(palette.primary.main, 0.1)}`,
                   }}
                 >
                   <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'primary.dark' }}>
@@ -376,9 +366,6 @@ const HelpPage = ({ onBack }) => {
           sx={{
             p: 4,
             borderRadius: '20px',
-            background: 'rgba(255, 255, 255, 0.9)',
-            backdropFilter: 'blur(12px)',
-            border: '1px solid rgba(226, 232, 240, 0.6)',
           }}
         >
           <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
@@ -406,8 +393,8 @@ const HelpPage = ({ onBack }) => {
                   sx={{
                     p: 2,
                     borderRadius: '12px',
-                    border: '1px solid rgba(226, 232, 240, 0.6)',
-                    background: 'rgba(248, 250, 252, 0.8)',
+                    border: '1px solid',
+                    borderColor: 'divider',
                   }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>

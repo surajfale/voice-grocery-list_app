@@ -9,6 +9,7 @@ import {
   TextField,
   Typography
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { BarChart } from '@mui/x-charts/BarChart';
 import { LineChart } from '@mui/x-charts/LineChart';
 import groceryIntelligence from '../../services/groceryIntelligence.js';
@@ -28,6 +29,7 @@ const getMonthKey = (receipt) => {
 const getStoreName = (receipt) => receipt.merchant?.trim() || UNKNOWN_STORE;
 
 const SpendingInsights = ({ receipts, loading }) => {
+  const { palette } = useTheme();
   const [selectedStore, setSelectedStore] = useState('all');
 
   const readyReceipts = useMemo(
@@ -165,7 +167,7 @@ const SpendingInsights = ({ receipts, loading }) => {
           <LineChart
             height={300}
             xAxis={[{ scaleType: 'point', data: monthlyTrend.map((entry) => entry.month) }]}
-            series={[{ data: monthlyTrend.map((entry) => entry.total), label: 'Spend', color: '#6366F1' }]}
+            series={[{ data: monthlyTrend.map((entry) => entry.total), label: 'Spend', color: palette.primary.main }]}
           />
         ) : (
           <Typography variant="body2" color="text.secondary">
@@ -185,7 +187,7 @@ const SpendingInsights = ({ receipts, loading }) => {
                 height={320}
                 layout="horizontal"
                 yAxis={[{ scaleType: 'band', data: storeTotals.map((entry) => entry.store) }]}
-                series={[{ data: storeTotals.map((entry) => entry.total), label: 'Total', color: '#22C55E' }]}
+                series={[{ data: storeTotals.map((entry) => entry.total), label: 'Total', color: palette.success.main }]}
                 margin={{ left: 110 }}
               />
             ) : (
@@ -203,7 +205,7 @@ const SpendingInsights = ({ receipts, loading }) => {
                 height={320}
                 layout="horizontal"
                 yAxis={[{ scaleType: 'band', data: categoryTotals.map((entry) => entry.category) }]}
-                series={[{ data: categoryTotals.map((entry) => entry.total), label: 'Total', color: '#F59E0B' }]}
+                series={[{ data: categoryTotals.map((entry) => entry.total), label: 'Total', color: palette.warning.main }]}
                 margin={{ left: 130 }}
               />
             ) : (

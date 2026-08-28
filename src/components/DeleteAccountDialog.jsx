@@ -28,6 +28,7 @@ import {
   Visibility,
   VisibilityOff,
 } from '@mui/icons-material';
+import { alpha, useTheme } from '@mui/material/styles';
 import { useThemeContext } from '../contexts/ThemeContext';
 
 /**
@@ -39,6 +40,8 @@ import { useThemeContext } from '../contexts/ThemeContext';
  */
 const DeleteAccountDialog = ({ open, onClose, onDeleteAccount, user, loading }) => {
   const _themeContext = useThemeContext();
+  const theme = useTheme();
+  const { palette } = theme;
   const [step, setStep] = useState(1); // 1: warning, 2: re-auth, 3: final confirmation
   const [confirmChecks, setConfirmChecks] = useState({
     dataLoss: false,
@@ -99,8 +102,6 @@ const DeleteAccountDialog = ({ open, onClose, onDeleteAccount, user, loading }) 
       sx={{
         '& .MuiDialog-paper': {
           borderRadius: '24px',
-          backdropFilter: 'blur(20px)',
-          boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)',
         },
       }}
     >
@@ -120,11 +121,11 @@ const DeleteAccountDialog = ({ open, onClose, onDeleteAccount, user, loading }) 
               width: 40,
               height: 40,
               borderRadius: '12px',
-              background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+              backgroundColor: palette.error.main,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+              boxShadow: `0 4px 12px ${alpha(palette.error.main, 0.3)}`,
             }}
           >
             <DeleteForever sx={{ color: 'white', fontSize: 20 }} />
@@ -147,7 +148,7 @@ const DeleteAccountDialog = ({ open, onClose, onDeleteAccount, user, loading }) 
           sx={{
             borderRadius: '12px',
             '&:hover': {
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              backgroundColor: alpha(palette.error.main, 0.1),
               color: 'error.main',
             },
           }}
@@ -174,9 +175,9 @@ const DeleteAccountDialog = ({ open, onClose, onDeleteAccount, user, loading }) 
                 p: 2,
                 mb: 3,
                 borderRadius: '12px',
-                background: 'rgba(239, 68, 68, 0.05)',
+                backgroundColor: alpha(palette.error.main, 0.05),
                 border: '1px solid',
-                borderColor: 'rgba(239, 68, 68, 0.2)',
+                borderColor: alpha(palette.error.main, 0.2),
               }}
             >
               <List dense>
@@ -327,9 +328,9 @@ const DeleteAccountDialog = ({ open, onClose, onDeleteAccount, user, loading }) 
                 p: 3,
                 mb: 2,
                 borderRadius: '12px',
-                background: 'rgba(16, 185, 129, 0.05)',
+                backgroundColor: alpha(palette.success.main, 0.05),
                 border: '1px solid',
-                borderColor: 'rgba(16, 185, 129, 0.2)',
+                borderColor: alpha(palette.success.main, 0.2),
                 textAlign: 'center',
               }}
             >
@@ -372,12 +373,12 @@ const DeleteAccountDialog = ({ open, onClose, onDeleteAccount, user, loading }) 
               borderRadius: '12px',
               px: 3,
               py: 1.5,
-              background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+              backgroundColor: palette.error.main,
               '&:hover': {
-                background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
+                backgroundColor: palette.error.dark,
               },
               '&:disabled': {
-                background: 'rgba(239, 68, 68, 0.3)',
+                backgroundColor: alpha(palette.error.main, 0.3),
               },
             }}
           >
@@ -395,12 +396,12 @@ const DeleteAccountDialog = ({ open, onClose, onDeleteAccount, user, loading }) 
               borderRadius: '12px',
               px: 3,
               py: 1.5,
-              background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+              backgroundColor: palette.error.main,
               '&:hover': {
-                background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
+                backgroundColor: palette.error.dark,
               },
               '&:disabled': {
-                background: 'rgba(239, 68, 68, 0.3)',
+                backgroundColor: alpha(palette.error.main, 0.3),
               },
             }}
           >
