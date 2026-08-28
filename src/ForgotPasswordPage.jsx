@@ -17,8 +17,10 @@ import {
   ArrowBack,
   Send,
 } from '@mui/icons-material';
+import { alpha, useTheme } from '@mui/material/styles';
 
 const ForgotPasswordPage = ({ onBackToLogin }) => {
+  const { palette } = useTheme();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -72,7 +74,7 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #1e3c72 0%, #2a5298 100%)',
+        background: `radial-gradient(circle at 50% 0%, ${alpha(palette.primary.main, 0.15)} 0%, transparent 60%), ${palette.background.default}`,
         p: 2,
       }}
     >
@@ -82,8 +84,6 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
           sx={{
             p: 4,
             borderRadius: 3,
-            background: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(10px)',
           }}
         >
           {/* Header */}
@@ -108,11 +108,7 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
                 component="h1"
                 sx={{
                   fontWeight: 'bold',
-                  background: 'linear-gradient(45deg, #2196f3, #4caf50)',
-                  backgroundClip: 'text',
-                  textFillColor: 'transparent',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
+                  color: 'primary.main',
                 }}
               >
                 Grocery List
@@ -166,18 +162,7 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
                   </InputAdornment>
                 ),
               }}
-              sx={{
-                mb: 3,
-                '& .MuiInputBase-input': {
-                  color: '#000000',
-                },
-                '& .MuiInputLabel-root': {
-                  color: '#666666',
-                },
-                '& .MuiInputLabel-root.Mui-focused': {
-                  color: '#2196f3',
-                },
-              }}
+              sx={{ mb: 3 }}
             />
 
             <Button
@@ -191,10 +176,6 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
                 py: 1.5,
                 fontSize: '1.1rem',
                 fontWeight: 'bold',
-                background: 'linear-gradient(45deg, #2196f3, #4caf50)',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #1976d2, #388e3c)',
-                },
                 mb: 2
               }}
             >

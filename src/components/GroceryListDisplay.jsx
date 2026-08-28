@@ -16,7 +16,15 @@ import {
   Menu,
   TextField,
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import { ExpandLess, ExpandMore, Edit, Delete, Check, Close } from '@mui/icons-material';
+
+const getCategoryAccent = (category, palette) => {
+  if (category === 'Other') { return palette.warning.main; }
+  if (category === 'Produce') { return palette.success.main; }
+  if (category === 'Asian Pantry' || category === 'Indian Pantry') { return palette.secondary.main; }
+  return palette.primary.main;
+};
 
 const GroceryListDisplay = memo(({
   groupedItems,
@@ -35,6 +43,8 @@ const GroceryListDisplay = memo(({
   const [editedTextValue, setEditedTextValue] = useState('');
   const [countMenuAnchor, setCountMenuAnchor] = useState(null);
   const [countMenuItemId, setCountMenuItemId] = useState(null);
+  const theme = useTheme();
+  const { palette } = theme;
 
   const handleUpdateCategory = async (id, newCategory) => {
     await onUpdateCategory(id, newCategory);
@@ -100,20 +110,17 @@ const GroceryListDisplay = memo(({
     <>
     <Grid container spacing={3}>
       {processedGroupedItems.map(({ category, categoryItems, isExpanded, completedCount, progress }) => {
+        const accent = getCategoryAccent(category, palette);
         return (
           <Grid item xs={12} md={6} key={category}>
             <Card
               sx={{
                 height: 'fit-content',
                 borderRadius: '20px',
-                background: 'rgba(255, 255, 255, 0.95)',
-                backdropFilter: 'blur(12px)',
-                border: '1px solid rgba(226, 232, 240, 0.6)',
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 '&:hover': {
                   transform: 'translateY(-4px)',
-                  boxShadow: '0 20px 40px rgba(0, 0, 0, 0.08)',
-                  borderColor: 'rgba(99, 102, 241, 0.3)',
+                  borderColor: alpha(accent, 0.3),
                 },
               }}
             >
@@ -127,14 +134,8 @@ const GroceryListDisplay = memo(({
                           width: 12,
                           height: 12,
                           borderRadius: '50%',
-                          background: category === 'Other'
-                            ? 'linear-gradient(135deg, #F59E0B 0%, #F97316 100%)'
-                            : category === 'Produce'
-                            ? 'linear-gradient(135deg, #10B981 0%, #34D399 100%)'
-                            : category === 'Asian Pantry' || category === 'Indian Pantry'
-                            ? 'linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%)'
-                            : 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
-                          boxShadow: '0 2px 8px rgba(99, 102, 241, 0.3)',
+                          backgroundColor: accent,
+                          boxShadow: `0 2px 8px ${alpha(accent, 0.35)}`,
                         }}
                       />
                       <Typography
@@ -156,10 +157,10 @@ const GroceryListDisplay = memo(({
                         sx={{
                           fontSize: '0.75rem',
                           fontWeight: 600,
-                          background: progress === 100
-                            ? 'linear-gradient(135deg, #10B981 0%, #34D399 100%)'
-                            : 'rgba(99, 102, 241, 0.1)',
-                          color: progress === 100 ? 'white' : 'primary.main',
+                          backgroundColor: progress === 100
+                            ? alpha(palette.success.main, 0.16)
+                            : alpha(accent, 0.1),
+                          color: progress === 100 ? palette.success.main : accent,
                           border: 'none',
                         }}
                       />
@@ -172,15 +173,15 @@ const GroceryListDisplay = memo(({
                           borderRadius: '8px',
                           transition: 'all 0.2s ease',
                           '&:hover': {
-                            backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                            backgroundColor: alpha(accent, 0.08),
                             transform: 'scale(1.1)',
                           },
                         }}
                       >
                         {isExpanded ? (
-                          <ExpandLess sx={{ color: 'primary.main' }} />
+                          <ExpandLess sx={{ color: accent }} />
                         ) : (
-                          <ExpandMore sx={{ color: 'primary.main' }} />
+                          <ExpandMore sx={{ color: accent }} />
                         )}
                       </IconButton>
                     </Box>
@@ -192,7 +193,7 @@ const GroceryListDisplay = memo(({
                       sx={{
                         height: 4,
                         borderRadius: 2,
-                        backgroundColor: 'rgba(226, 232, 240, 0.6)',
+                        backgroundColor: 'divider',
                         overflow: 'hidden',
                       }}
                     >
@@ -200,9 +201,7 @@ const GroceryListDisplay = memo(({
                         sx={{
                           height: '100%',
                           width: `${progress}%`,
-                          background: progress === 100
-                            ? 'linear-gradient(90deg, #10B981 0%, #34D399 100%)'
-                            : 'linear-gradient(90deg, #6366F1 0%, #8B5CF6 100%)',
+                          backgroundColor: progress === 100 ? palette.success.main : accent,
                           transition: 'width 0.3s ease',
                         }}
                       />
@@ -234,21 +233,21 @@ const GroceryListDisplay = memo(({
                           p: 1.25,
                           mb: 1,
                           borderRadius: '12px',
-                          background: item.completed
-                            ? 'rgba(16, 185, 129, 0.08)'
+                          backgroundColor: item.completed
+                            ? alpha(palette.success.main, 0.08)
                             : 'background.default',
                           border: '1px solid',
                           borderColor: item.completed
-                            ? 'rgba(16, 185, 129, 0.2)'
+                            ? alpha(palette.success.main, 0.2)
                             : 'divider',
                           transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                           '&:hover': {
                             transform: 'translateX(4px)',
                             backgroundColor: item.completed
-                              ? 'rgba(16, 185, 129, 0.12)'
+                              ? alpha(palette.success.main, 0.12)
                               : 'action.hover',
                             borderColor: item.completed
-                              ? 'rgba(16, 185, 129, 0.3)'
+                              ? alpha(palette.success.main, 0.3)
                               : 'primary.main',
                           },
                         }}
@@ -290,7 +289,7 @@ const GroceryListDisplay = memo(({
                             px: 1.5,
                             borderRadius: '14px',
                             cursor: loading || editingText === item.id ? 'default' : 'pointer',
-                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            backgroundColor: alpha(palette.primary.main, 0.1),
                             color: 'primary.main',
                             flexShrink: 0,
                             transition: 'background-color 0.2s ease',
@@ -298,7 +297,7 @@ const GroceryListDisplay = memo(({
                             opacity: loading || editingText === item.id ? 0.5 : 1,
                             pointerEvents: loading || editingText === item.id ? 'none' : 'auto',
                             '&:hover': loading || editingText === item.id ? {} : {
-                              backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                              backgroundColor: alpha(palette.primary.main, 0.2),
                             },
                           }}
                         >
@@ -366,7 +365,7 @@ const GroceryListDisplay = memo(({
                                   borderRadius: '8px',
                                   color: 'success.main',
                                   '&:hover': {
-                                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                    backgroundColor: alpha(palette.success.main, 0.1),
                                   },
                                 }}
                               >
@@ -382,7 +381,7 @@ const GroceryListDisplay = memo(({
                                   borderRadius: '8px',
                                   color: 'text.secondary',
                                   '&:hover': {
-                                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                    backgroundColor: alpha(palette.error.main, 0.1),
                                     color: 'error.main',
                                   },
                                 }}
@@ -426,8 +425,8 @@ const GroceryListDisplay = memo(({
                                     color: item.category === 'Other' ? 'warning.main' : 'text.secondary',
                                     '&:hover': {
                                       backgroundColor: item.category === 'Other'
-                                        ? 'rgba(245, 158, 11, 0.1)'
-                                        : 'rgba(99, 102, 241, 0.08)',
+                                        ? alpha(palette.warning.main, 0.1)
+                                        : alpha(palette.primary.main, 0.08),
                                       color: item.category === 'Other' ? 'warning.dark' : 'primary.main',
                                     },
                                   }}
@@ -446,7 +445,7 @@ const GroceryListDisplay = memo(({
                                   borderRadius: '8px',
                                   color: 'text.secondary',
                                   '&:hover': {
-                                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                    backgroundColor: alpha(palette.error.main, 0.1),
                                     color: 'error.main',
                                   },
                                 }}
@@ -476,7 +475,6 @@ const GroceryListDisplay = memo(({
         sx: {
           mt: 1,
           borderRadius: '12px',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
         }
       }}
     >

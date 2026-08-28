@@ -24,10 +24,13 @@ import {
   DarkMode,
   CheckCircle,
 } from '@mui/icons-material';
+import { alpha, useTheme } from '@mui/material/styles';
 import { useThemeContext, colorThemes } from '../contexts/ThemeContext';
 
 const ThemeSettings = ({ open, onClose }) => {
   const { mode, colorTheme, toggleMode, changeColorTheme } = useThemeContext();
+  const muiTheme = useTheme();
+  const { palette } = muiTheme;
 
   const handleColorThemeChange = (newTheme) => {
     changeColorTheme(newTheme);
@@ -42,8 +45,6 @@ const ThemeSettings = ({ open, onClose }) => {
       sx={{
         '& .MuiDialog-paper': {
           borderRadius: '24px',
-          backdropFilter: 'blur(20px)',
-          boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)',
         },
       }}
     >
@@ -63,11 +64,11 @@ const ThemeSettings = ({ open, onClose }) => {
               width: 40,
               height: 40,
               borderRadius: '12px',
-              background: 'linear-gradient(135deg, #8B5CF6 0%, #EC4899 100%)',
+              backgroundColor: palette.primary.main,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+              boxShadow: `0 4px 12px ${alpha(palette.primary.main, 0.3)}`,
             }}
           >
             <Palette sx={{ color: 'white', fontSize: 20 }} />
@@ -87,7 +88,7 @@ const ThemeSettings = ({ open, onClose }) => {
           sx={{
             borderRadius: '12px',
             '&:hover': {
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              backgroundColor: alpha(palette.error.main, 0.1),
               color: 'error.main',
             },
           }}
@@ -106,7 +107,6 @@ const ThemeSettings = ({ open, onClose }) => {
           <Card
             sx={{
               borderRadius: '16px',
-              background: 'background.paper',
               border: '1px solid',
               borderColor: 'divider',
             }}
@@ -119,9 +119,7 @@ const ThemeSettings = ({ open, onClose }) => {
                       width: 48,
                       height: 48,
                       borderRadius: '12px',
-                      background: mode === 'dark'
-                        ? 'linear-gradient(135deg, #1E293B 0%, #334155 100%)'
-                        : 'linear-gradient(135deg, #FFF 0%, #F8FAFC 100%)',
+                      backgroundColor: mode === 'dark' ? '#1E293B' : '#F8FAFC',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -156,9 +154,7 @@ const ThemeSettings = ({ open, onClose }) => {
                       onChange={toggleMode}
                       sx={{
                         '& .MuiSwitch-thumb': {
-                          background: mode === 'dark'
-                            ? 'linear-gradient(135deg, #1E293B 0%, #334155 100%)'
-                            : 'linear-gradient(135deg, #F59E0B 0%, #F97316 100%)',
+                          backgroundColor: mode === 'dark' ? '#1E293B' : '#F59E0B',
                         },
                         '& .MuiSwitch-track': {
                           backgroundColor: mode === 'dark' ? '#475569' : '#E2E8F0',
@@ -195,12 +191,11 @@ const ThemeSettings = ({ open, onClose }) => {
                     cursor: 'pointer',
                     border: '2px solid',
                     borderColor: colorTheme === key ? theme.primary : 'transparent',
-                    background: 'background.paper',
                     transition: 'all 0.2s ease',
                     position: 'relative',
                     '&:hover': {
                       transform: 'translateY(-2px)',
-                      boxShadow: '0 8px 25px rgba(0, 0, 0, 0.15)',
+                      boxShadow: `0 8px 25px ${alpha(theme.primary, 0.25)}`,
                       borderColor: theme.primary,
                     },
                   }}
@@ -282,8 +277,8 @@ const ThemeSettings = ({ open, onClose }) => {
           <Card
             sx={{
               borderRadius: '16px',
-              background: `linear-gradient(135deg, ${colorThemes[colorTheme].primary}15 0%, ${colorThemes[colorTheme].secondary}15 100%)`,
-              border: `1px solid ${colorThemes[colorTheme].primary}30`,
+              backgroundColor: alpha(palette.primary.main, 0.06),
+              border: `1px solid ${alpha(palette.primary.main, 0.2)}`,
             }}
           >
             <CardContent sx={{ p: 3 }}>
@@ -291,7 +286,7 @@ const ThemeSettings = ({ open, onClose }) => {
                 <Chip
                   label="Sample Category"
                   sx={{
-                    background: `linear-gradient(135deg, ${colorThemes[colorTheme].primary} 0%, ${colorThemes[colorTheme].secondary} 100%)`,
+                    backgroundColor: palette.primary.main,
                     color: 'white',
                     fontWeight: 600,
                   }}
@@ -305,7 +300,6 @@ const ThemeSettings = ({ open, onClose }) => {
                 sx={{
                   p: 2,
                   borderRadius: '12px',
-                  background: 'background.paper',
                   border: '1px solid',
                   borderColor: 'divider',
                 }}
@@ -327,11 +321,11 @@ const ThemeSettings = ({ open, onClose }) => {
             borderRadius: '12px',
             px: 4,
             py: 1.5,
-            background: `linear-gradient(135deg, ${colorThemes[colorTheme].primary} 0%, ${colorThemes[colorTheme].secondary} 100%)`,
-            boxShadow: `0 4px 12px ${colorThemes[colorTheme].primary}50`,
+            backgroundColor: palette.primary.main,
+            boxShadow: `0 4px 12px ${alpha(palette.primary.main, 0.3)}`,
             '&:hover': {
-              background: `linear-gradient(135deg, ${colorThemes[colorTheme].primaryDark} 0%, ${colorThemes[colorTheme].secondaryDark} 100%)`,
-              boxShadow: `0 6px 16px ${colorThemes[colorTheme].primary}70`,
+              backgroundColor: palette.primary.dark,
+              boxShadow: `0 6px 16px ${alpha(palette.primary.main, 0.4)}`,
             },
           }}
         >

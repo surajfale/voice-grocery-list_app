@@ -9,6 +9,7 @@ import {
   Fade,
   IconButton
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import {
   CheckCircle,
   Close,
@@ -17,6 +18,10 @@ import {
 } from '@mui/icons-material';
 
 const CongratulationsDialog = ({ open, onClose, itemCount, currentDate }) => {
+  const theme = useTheme();
+  const { palette } = theme;
+  const isDark = palette.mode === 'dark';
+
   const congratsMessages = [
     "🎉 Shopping list complete!",
     "✨ All done! Great job!",
@@ -26,6 +31,13 @@ const CongratulationsDialog = ({ open, onClose, itemCount, currentDate }) => {
   ];
 
   const randomMessage = congratsMessages[Math.floor(Math.random() * congratsMessages.length)];
+  const confettiColors = [
+    palette.warning.main,
+    palette.success.main,
+    palette.primary.main,
+    palette.secondary.main,
+    palette.primary.light,
+  ];
 
   return (
     <Dialog
@@ -39,8 +51,9 @@ const CongratulationsDialog = ({ open, onClose, itemCount, currentDate }) => {
       PaperProps={{
         sx: {
           borderRadius: '24px',
-          background: 'linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 50%, #F0FDF4 100%)',
-          boxShadow: '0 25px 50px rgba(0, 0, 0, 0.15)',
+          background: isDark
+            ? `linear-gradient(135deg, ${alpha(palette.success.main, 0.12)} 0%, ${palette.background.paper} 60%)`
+            : `linear-gradient(135deg, ${alpha(palette.primary.main, 0.06)} 0%, ${alpha(palette.success.main, 0.08)} 100%)`,
           overflow: 'visible',
         }
       }}
@@ -54,9 +67,9 @@ const CongratulationsDialog = ({ open, onClose, itemCount, currentDate }) => {
           right: 12,
           top: 12,
           zIndex: 1,
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          backgroundColor: alpha(palette.background.paper, 0.9),
           '&:hover': {
-            backgroundColor: 'rgba(255, 255, 255, 1)',
+            backgroundColor: palette.background.paper,
             transform: 'scale(1.1)',
           },
           transition: 'all 0.2s ease',
@@ -90,8 +103,8 @@ const CongratulationsDialog = ({ open, onClose, itemCount, currentDate }) => {
           <Celebration
             sx={{
               fontSize: 48,
-              color: '#F59E0B',
-              filter: 'drop-shadow(0 4px 8px rgba(245, 158, 11, 0.3))',
+              color: palette.warning.main,
+              filter: `drop-shadow(0 4px 8px ${alpha(palette.warning.main, 0.3)})`,
             }}
           />
         </Box>
@@ -103,25 +116,22 @@ const CongratulationsDialog = ({ open, onClose, itemCount, currentDate }) => {
               width: 120,
               height: 120,
               borderRadius: '50%',
-              background: 'linear-gradient(135deg, #10B981 0%, #34D399 100%)',
+              backgroundColor: palette.success.main,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto',
-              boxShadow: '0 20px 40px rgba(16, 185, 129, 0.3)',
+              boxShadow: `0 20px 40px ${alpha(palette.success.main, 0.3)}`,
               animation: 'pulse 2s infinite',
               '@keyframes pulse': {
                 '0%': {
                   transform: 'scale(1)',
-                  boxShadow: '0 20px 40px rgba(16, 185, 129, 0.3)',
                 },
                 '50%': {
                   transform: 'scale(1.05)',
-                  boxShadow: '0 25px 50px rgba(16, 185, 129, 0.4)',
                 },
                 '100%': {
                   transform: 'scale(1)',
-                  boxShadow: '0 20px 40px rgba(16, 185, 129, 0.3)',
                 },
               },
             }}
@@ -135,10 +145,7 @@ const CongratulationsDialog = ({ open, onClose, itemCount, currentDate }) => {
           variant="h4"
           sx={{
             fontWeight: 700,
-            background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-            backgroundClip: 'text',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            color: 'success.main',
             mb: 2,
             fontSize: { xs: '1.75rem', sm: '2rem' },
           }}
@@ -160,11 +167,11 @@ const CongratulationsDialog = ({ open, onClose, itemCount, currentDate }) => {
         {/* Stats box */}
         <Box
           sx={{
-            background: 'rgba(255, 255, 255, 0.8)',
+            backgroundColor: alpha(palette.background.paper, 0.8),
             borderRadius: '16px',
             p: 2,
             mb: 3,
-            border: '1px solid rgba(16, 185, 129, 0.2)',
+            border: `1px solid ${alpha(palette.success.main, 0.2)}`,
             backdropFilter: 'blur(10px)',
           }}
         >
@@ -188,15 +195,15 @@ const CongratulationsDialog = ({ open, onClose, itemCount, currentDate }) => {
             borderRadius: '16px',
             px: 4,
             py: 1.5,
-            background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-            boxShadow: '0 8px 24px rgba(16, 185, 129, 0.4)',
+            backgroundColor: palette.success.main,
+            boxShadow: `0 8px 24px ${alpha(palette.success.main, 0.4)}`,
             textTransform: 'none',
             fontSize: '1.1rem',
             fontWeight: 600,
             '&:hover': {
-              background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+              backgroundColor: palette.success.dark,
               transform: 'translateY(-2px)',
-              boxShadow: '0 12px 32px rgba(16, 185, 129, 0.5)',
+              boxShadow: `0 12px 32px ${alpha(palette.success.main, 0.5)}`,
             },
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
@@ -225,7 +232,7 @@ const CongratulationsDialog = ({ open, onClose, itemCount, currentDate }) => {
                 width: 6,
                 height: 6,
                 borderRadius: '50%',
-                background: ['#F59E0B', '#10B981', '#6366F1', '#EC4899', '#8B5CF6'][i % 5],
+                backgroundColor: confettiColors[i % confettiColors.length],
                 left: `${Math.random() * 100}%`,
                 animationDelay: `${Math.random() * 2}s`,
                 animation: 'confetti 3s infinite linear',

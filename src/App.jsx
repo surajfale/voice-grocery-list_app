@@ -33,6 +33,7 @@ import {
   DialogActions,
   Checkbox,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import {
   Delete,
   CalendarToday,
@@ -570,21 +571,21 @@ const VoiceGroceryList = ({ user, logout }) => {
                   }),
                   // Highlight past dates WITH existing lists
                   ...(isPast && hasExistingList && {
-                    backgroundColor: 'rgba(33, 150, 243, 0.15)',
-                    border: '2px solid #2196f3',
+                    backgroundColor: alpha(muiTheme.palette.info.main, 0.15),
+                    border: `2px solid ${muiTheme.palette.info.main}`,
                     fontWeight: 700,
-                    color: '#2196f3',
+                    color: muiTheme.palette.info.main,
                     '&:hover': {
-                      backgroundColor: 'rgba(33, 150, 243, 0.25)',
+                      backgroundColor: alpha(muiTheme.palette.info.main, 0.25),
                     },
                   }),
                   // Highlight today
                   ...(isToday && {
-                    backgroundColor: 'rgba(76, 175, 80, 0.15)',
-                    border: '2px solid #4caf50',
+                    backgroundColor: alpha(muiTheme.palette.success.main, 0.15),
+                    border: `2px solid ${muiTheme.palette.success.main}`,
                     fontWeight: 700,
                     '&:hover': {
-                      backgroundColor: 'rgba(76, 175, 80, 0.25)',
+                      backgroundColor: alpha(muiTheme.palette.success.main, 0.25),
                     },
                   }),
                   // Badge indicator for dates with lists
@@ -616,11 +617,11 @@ const VoiceGroceryList = ({ user, logout }) => {
         </Typography>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(76, 175, 80, 0.4)', border: '2px solid #4caf50' }} />
+            <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: alpha(muiTheme.palette.success.main, 0.4), border: `2px solid ${muiTheme.palette.success.main}` }} />
             <Typography variant="caption" color="text.secondary">Today</Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'rgba(33, 150, 243, 0.4)', border: '2px solid #2196f3' }} />
+            <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: alpha(muiTheme.palette.info.main, 0.4), border: `2px solid ${muiTheme.palette.info.main}` }} />
             <Typography variant="caption" color="text.secondary">Past (with list)</Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -680,10 +681,12 @@ const VoiceGroceryList = ({ user, logout }) => {
                     mb: 0.5,
                     // Style past dates with existing lists
                     ...(isPastDate && hasItems && {
-                      backgroundColor: date === currentDateString ? 'rgba(33, 150, 243, 0.25)' : 'rgba(33, 150, 243, 0.08)',
-                      borderLeft: '4px solid #2196f3',
+                      backgroundColor: date === currentDateString
+                        ? alpha(muiTheme.palette.info.main, 0.25)
+                        : alpha(muiTheme.palette.info.main, 0.08),
+                      borderLeft: `4px solid ${muiTheme.palette.info.main}`,
                       '&:hover': {
-                        backgroundColor: 'rgba(33, 150, 243, 0.15)',
+                        backgroundColor: alpha(muiTheme.palette.info.main, 0.15),
                       },
                     }),
                   }}
@@ -708,7 +711,7 @@ const VoiceGroceryList = ({ user, logout }) => {
                         <Typography
                           sx={{
                             fontWeight: date === currentDateString ? 700 : 500,
-                            color: isPastDate && hasItems ? '#2196f3' : 'text.primary',
+                            color: isPastDate && hasItems ? muiTheme.palette.info.main : 'text.primary',
                           }}
                         >
                           {formatDateDisplay(date)}
@@ -720,7 +723,7 @@ const VoiceGroceryList = ({ user, logout }) => {
                             sx={{
                               height: '18px',
                               fontSize: '0.7rem',
-                              backgroundColor: '#2196f3',
+                              backgroundColor: muiTheme.palette.info.main,
                               color: 'white',
                               fontWeight: 600,
                             }}
@@ -860,7 +863,6 @@ const VoiceGroceryList = ({ user, logout }) => {
             elevation={0}
             sx={{
               zIndex: (theme) => theme.zIndex.drawer + 1,
-              borderBottom: '1px solid rgba(226, 232, 240, 0.8)',
             }}
           >
             <Toolbar sx={{ minHeight: '72px', px: { xs: 1, sm: 3 } }}>
@@ -874,7 +876,7 @@ const VoiceGroceryList = ({ user, logout }) => {
                     p: 1.5,
                     borderRadius: '12px',
                     '&:hover': {
-                      backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                      backgroundColor: alpha(muiTheme.palette.primary.main, 0.08),
                     }
                   }}
                 >
@@ -889,12 +891,12 @@ const VoiceGroceryList = ({ user, logout }) => {
                     width: { xs: 32, sm: 40 },
                     height: { xs: 32, sm: 40 },
                     borderRadius: '12px',
-                    background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
+                    backgroundColor: muiTheme.palette.primary.main,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     mr: { xs: 1, sm: 2 },
-                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                    boxShadow: `0 4px 12px ${alpha(muiTheme.palette.primary.main, 0.3)}`,
                   }}
                 >
                   <ShoppingCart sx={{ color: 'white', fontSize: { xs: 16, sm: 20 } }} />
@@ -906,10 +908,7 @@ const VoiceGroceryList = ({ user, logout }) => {
                     sx={{
                       fontWeight: 700,
                       fontSize: '1.25rem',
-                      background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
-                      backgroundClip: 'text',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
+                      color: 'primary.main',
                       lineHeight: 1.2,
                     }}
                   >
@@ -939,12 +938,12 @@ const VoiceGroceryList = ({ user, logout }) => {
                   sx={{
                     display: { xs: 'none', md: 'flex' },
                     mr: 2,
-                    borderColor: 'rgba(99, 102, 241, 0.2)',
+                    borderColor: alpha(muiTheme.palette.primary.main, 0.2),
                     color: 'text.secondary',
                     fontWeight: 600,
                     '&:hover': {
                       borderColor: 'primary.main',
-                      backgroundColor: 'rgba(99, 102, 241, 0.04)',
+                      backgroundColor: alpha(muiTheme.palette.primary.main, 0.04),
                     }
                   }}
                 />
@@ -974,7 +973,7 @@ const VoiceGroceryList = ({ user, logout }) => {
                   borderRadius: '12px',
                   color: 'text.secondary',
                   '&:hover': {
-                    backgroundColor: 'rgba(99, 102, 241, 0.08)',
+                    backgroundColor: alpha(muiTheme.palette.primary.main, 0.08),
                     color: 'primary.main',
                     transform: 'scale(1.05)',
                   },
@@ -1025,10 +1024,10 @@ const VoiceGroceryList = ({ user, logout }) => {
                     sx={{
                       width: { xs: 32, sm: 44 },
                       height: { xs: 32, sm: 44 },
-                      background: 'linear-gradient(135deg, #10B981 0%, #34D399 100%)',
+                      backgroundColor: muiTheme.palette.success.main,
                       fontSize: { xs: '0.75rem', sm: '1.1rem' },
                       fontWeight: 600,
-                      boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                      boxShadow: `0 4px 12px ${alpha(muiTheme.palette.success.main, 0.3)}`,
                     }}
                   >
                     {user.firstName[0]}{user.lastName[0]}
@@ -1174,7 +1173,7 @@ const VoiceGroceryList = ({ user, logout }) => {
               flexDirection: 'column',
               p: { xs: 2, sm: 3, md: 4 },
               minHeight: '100vh',
-              background: 'linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%)',
+              bgcolor: 'background.default',
             }}
           >
             <Toolbar sx={{ minHeight: '72px' }} />

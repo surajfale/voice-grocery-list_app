@@ -221,7 +221,7 @@ const createCustomTheme = (mode, colorTheme) => {
             backgroundImage: 'none',
             boxShadow: isDark
               ? '0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.3)'
-              : '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+              : `0 1px 3px 0 ${colors.primary}14, 0 1px 2px 0 ${colors.primary}0d`,
             borderRadius: '12px',
             border: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.8)' : 'rgba(226, 232, 240, 0.8)'}`,
             backdropFilter: 'blur(8px)',
@@ -239,17 +239,16 @@ const createCustomTheme = (mode, colorTheme) => {
             fontSize: '0.875rem',
             boxShadow: 'none',
             transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            '&:hover': {
-              boxShadow: isDark
-                ? '0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3)'
-                : '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-              transform: 'translateY(-1px)',
+            '&:active': {
+              transform: 'scale(0.98)',
             },
           },
           contained: {
-            background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 100%)`,
+            backgroundColor: colors.primary,
             '&:hover': {
-              background: `linear-gradient(135deg, ${colors.primaryDark} 0%, ${colors.secondaryDark} 100%)`,
+              backgroundColor: colors.primaryDark,
+              boxShadow: `0 4px 12px -2px ${colors.primary}66`,
+              transform: 'translateY(-1px)',
             },
           },
           outlined: {
@@ -257,8 +256,13 @@ const createCustomTheme = (mode, colorTheme) => {
             color: isDark ? '#CBD5E1' : '#64748B',
             '&:hover': {
               borderColor: colors.primary,
-              backgroundColor: `${colors.primary}20`,
+              backgroundColor: `${colors.primary}14`,
               color: isDark ? '#F8FAFC' : colors.primary,
+            },
+          },
+          text: {
+            '&:hover': {
+              backgroundColor: `${colors.primary}14`,
             },
           },
         },
@@ -266,13 +270,14 @@ const createCustomTheme = (mode, colorTheme) => {
       MuiFab: {
         styleOverrides: {
           root: {
-            boxShadow: `0 10px 25px ${colors.primary}50`,
-            background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 100%)`,
+            backgroundColor: colors.primary,
+            color: '#FFFFFF',
+            boxShadow: `0 8px 20px -4px ${colors.primary}66`,
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             '&:hover': {
-              boxShadow: `0 20px 40px ${colors.primary}70`,
-              transform: 'translateY(-2px) scale(1.05)',
-              background: `linear-gradient(135deg, ${colors.primaryDark} 0%, ${colors.secondaryDark} 100%)`,
+              backgroundColor: colors.primaryDark,
+              boxShadow: `0 12px 28px -4px ${colors.primary}80`,
+              transform: 'translateY(-2px)',
             },
           },
         },
@@ -290,7 +295,7 @@ const createCustomTheme = (mode, colorTheme) => {
               transform: 'translateY(-2px)',
               boxShadow: isDark
                 ? '0 10px 25px rgba(0, 0, 0, 0.4)'
-                : '0 10px 25px rgba(0, 0, 0, 0.08)',
+                : `0 10px 25px -4px ${colors.primary}26`,
               borderColor: `${colors.primary}60`,
             },
           },
@@ -317,7 +322,7 @@ const createCustomTheme = (mode, colorTheme) => {
             fontSize: '0.75rem',
           },
           colorPrimary: {
-            background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.secondary} 100%)`,
+            backgroundColor: colors.primary,
             color: '#FFFFFF',
           },
         },

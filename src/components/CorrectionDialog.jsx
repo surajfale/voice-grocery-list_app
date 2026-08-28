@@ -12,15 +12,19 @@ import {
   CardContent,
   Chip,
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import { Edit } from '@mui/icons-material';
 
-const CorrectionDialog = memo(({ 
-  open, 
-  corrections, 
-  onAccept, 
-  onReject, 
-  onClose 
+const CorrectionDialog = memo(({
+  open,
+  corrections,
+  onAccept,
+  onReject,
+  onClose
 }) => {
+  const theme = useTheme();
+  const { palette } = theme;
+
   if (!open || corrections.length === 0) {return null;}
 
   return (
@@ -36,10 +40,6 @@ const CorrectionDialog = memo(({
       sx={{
         '& .MuiDialog-paper': {
           borderRadius: '24px',
-          background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(226, 232, 240, 0.8)',
-          boxShadow: '0 25px 50px rgba(0, 0, 0, 0.15)',
         },
       }}
     >
@@ -50,7 +50,8 @@ const CorrectionDialog = memo(({
           alignItems: 'center',
           gap: 2,
           pb: 1,
-          borderBottom: '1px solid rgba(226, 232, 240, 0.6)',
+          borderBottom: '1px solid',
+          borderBottomColor: 'divider',
         }}
       >
         <Box
@@ -58,11 +59,11 @@ const CorrectionDialog = memo(({
             width: 40,
             height: 40,
             borderRadius: '12px',
-            background: 'linear-gradient(135deg, #F59E0B 0%, #F97316 100%)',
+            backgroundColor: palette.warning.main,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
+            boxShadow: `0 4px 12px ${alpha(palette.warning.main, 0.3)}`,
           }}
         >
           <Edit sx={{ color: 'white', fontSize: 20 }} />
@@ -86,8 +87,8 @@ const CorrectionDialog = memo(({
             mb: 3,
             p: 2,
             borderRadius: '12px',
-            background: 'rgba(99, 102, 241, 0.05)',
-            border: '1px solid rgba(99, 102, 241, 0.1)',
+            backgroundColor: alpha(palette.primary.main, 0.05),
+            border: `1px solid ${alpha(palette.primary.main, 0.1)}`,
           }}
         >
           💡 We detected some items that might have spelling mistakes or could be auto-corrected.
@@ -100,13 +101,9 @@ const CorrectionDialog = memo(({
               key={index}
               sx={{
                 borderRadius: '16px',
-                background: 'rgba(248, 250, 252, 0.8)',
-                border: '1px solid rgba(226, 232, 240, 0.6)',
-                transition: 'all 0.2s ease',
                 '&:hover': {
                   transform: 'translateY(-2px)',
-                  boxShadow: '0 8px 25px rgba(0, 0, 0, 0.08)',
-                  borderColor: 'rgba(99, 102, 241, 0.2)',
+                  borderColor: alpha(palette.primary.main, 0.2),
                 },
               }}
             >
@@ -115,7 +112,7 @@ const CorrectionDialog = memo(({
                   <Typography
                     variant="caption"
                     sx={{
-                      backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                      backgroundColor: alpha(palette.primary.main, 0.1),
                       color: 'primary.main',
                       px: 1,
                       py: 0.5,
@@ -132,7 +129,7 @@ const CorrectionDialog = memo(({
                     sx={{
                       fontSize: '0.7rem',
                       fontWeight: 600,
-                      background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
+                      backgroundColor: palette.primary.main,
                       color: 'white',
                       border: 'none',
                     }}
@@ -149,8 +146,8 @@ const CorrectionDialog = memo(({
                       sx={{
                         p: 1.5,
                         borderRadius: '8px',
-                        background: 'rgba(239, 68, 68, 0.1)',
-                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        backgroundColor: alpha(palette.error.main, 0.1),
+                        border: `1px solid ${alpha(palette.error.main, 0.2)}`,
                       }}
                     >
                       <Typography
@@ -173,7 +170,7 @@ const CorrectionDialog = memo(({
                       width: 32,
                       height: 32,
                       borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
+                      backgroundColor: palette.primary.main,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -194,8 +191,8 @@ const CorrectionDialog = memo(({
                       sx={{
                         p: 1.5,
                         borderRadius: '8px',
-                        background: 'rgba(16, 185, 129, 0.1)',
-                        border: '1px solid rgba(16, 185, 129, 0.2)',
+                        backgroundColor: alpha(palette.success.main, 0.1),
+                        border: `1px solid ${alpha(palette.success.main, 0.2)}`,
                       }}
                     >
                       <Typography
@@ -225,11 +222,11 @@ const CorrectionDialog = memo(({
             borderRadius: '12px',
             px: 3,
             py: 1,
-            borderColor: 'rgba(239, 68, 68, 0.3)',
+            borderColor: alpha(palette.error.main, 0.3),
             color: 'error.main',
             '&:hover': {
               borderColor: 'error.main',
-              backgroundColor: 'rgba(239, 68, 68, 0.04)',
+              backgroundColor: alpha(palette.error.main, 0.04),
             },
           }}
         >
@@ -242,11 +239,11 @@ const CorrectionDialog = memo(({
             borderRadius: '12px',
             px: 3,
             py: 1,
-            background: 'linear-gradient(135deg, #10B981 0%, #34D399 100%)',
-            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+            backgroundColor: palette.success.main,
+            boxShadow: `0 4px 12px ${alpha(palette.success.main, 0.3)}`,
             '&:hover': {
-              background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
-              boxShadow: '0 6px 16px rgba(16, 185, 129, 0.4)',
+              backgroundColor: palette.success.dark,
+              boxShadow: `0 6px 16px ${alpha(palette.success.main, 0.4)}`,
             },
           }}
         >
