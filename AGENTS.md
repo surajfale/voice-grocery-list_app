@@ -12,6 +12,8 @@ This document provides comprehensive documentation for all service agents (servi
   - [Auth Service](#auth-service)
   - [Grocery List Service](#grocery-list-service)
   - [Grocery Intelligence Service](#grocery-intelligence-service)
+  - [Receipt Service](#receipt-service)
+  - [Receipt RAG Client](#receipt-rag-client)
 - [Base Service](#base-service)
 - [Agent Communication](#agent-communication)
 - [Error Handling](#error-handling)
@@ -36,7 +38,10 @@ ServiceManager (Orchestrator)
 ├── ApiService (HTTP Communication)
 ├── AuthService (Authentication)
 ├── GroceryListService (List Management)
-└── GroceryIntelligenceService (NLP & Categorization)
+├── GroceryIntelligenceService (NLP & Categorization)
+└── ReceiptService (Receipt Upload & Retrieval)
+
+ReceiptRagClient (RAG Chat — used directly by useReceiptChat, not ServiceManager-registered)
 ```
 
 All services extend `BaseService` which provides:
@@ -88,6 +93,7 @@ Services are accessible via:
 - `serviceManager.authService` - Authentication
 - `serviceManager.groceryListService` - List operations
 - `serviceManager.groceryIntelligenceService` - Intelligence features
+- `serviceManager.receiptService` - Receipt upload/retrieval
 
 Or via the registry:
 ```javascript
@@ -95,7 +101,10 @@ serviceManager.services.api
 serviceManager.services.auth
 serviceManager.services.groceryList
 serviceManager.services.intelligence
+serviceManager.services.receipt
 ```
+
+`ReceiptRagClient` (the RAG chat client) is imported directly as a singleton (`src/services/ReceiptRagClient.js`) rather than registered on `ServiceManager` — see [Receipt RAG Client](#receipt-rag-client).
 
 ## Individual Agents
 
@@ -324,6 +333,78 @@ const cleaned = GroceryIntelligenceService.filterFillerWords('uhh you know onion
    - Preserves actual grocery items
    - Improves voice recognition accuracy
 
+### Receipt Service
+
+**Location**: `src/services/ReceiptService.js`
+**Extends**: `BaseService`
+**Dependencies**: `ApiService`
+**Purpose**: Handles receipt upload, listing, retrieval, and deletion
+
+#### Responsibilities
+
+- Upload one or more receipt images (multipart `FormData`)
+- List a user's receipts and fetch a single receipt's parsed data
+- Build authenticated image URLs for streaming the original upload
+- Delete a receipt and its stored file
+
+#### Key Methods
+
+```javascript
+// Upload receipt image(s)
+await receiptService.uploadReceipt(userId, files)
+
+// List receipts for a user
+await receiptService.listReceipts(userId)
+
+// Get a single receipt
+await receiptService.getReceipt(receiptId, userId)
+
+// Delete a receipt
+await receiptService.deleteReceipt(receiptId, userId)
+
+// Build a streamable image URL (adds auth token as query param)
+receiptService.getImageUrl(receiptId)
+```
+
+#### Features
+
+- **Backend-agnostic upload**: sends raw `FormData` directly (bypasses `ApiService.makeRequest` for uploads so multipart headers stay correct)
+- **Token-aware image URLs**: appends the localStorage auth token as a query param since `<img>`/streamed responses can't carry an `Authorization` header
+- **Retry logic**: inherited from `BaseService` for list/get/delete operations
+
+### Receipt RAG Client
+
+**Location**: `src/services/ReceiptRagClient.js`
+**Extends**: `BaseService`
+**Dependencies**: `ApiService`
+**Purpose**: Talks to the backend's Retrieval-Augmented Generation endpoint to answer natural-language questions about a user's receipts
+
+**Not registered on `ServiceManager`** — imported directly as a singleton and used by the `useReceiptChat` hook.
+
+#### Responsibilities
+
+- Sanitize and send chat payloads (`question`, `receiptIds`, `dateRange`, `topK`) to `POST /api/receipts/chat`
+- Surface the grounded answer, cited sources, retrieved context chunks, and token/cost usage
+- Propagate backend errors (validation, rate limiting) in the standard service response shape
+
+#### Key Methods
+
+```javascript
+// Ask a question about the user's receipts
+await receiptRagClient.chat({
+  userId,
+  question: 'What did I spend on coffee last month?',
+  dateRange: { start: '2024-10-01', end: '2024-10-31' },
+  topK: 5
+})
+```
+
+#### Features
+
+- **Payload sanitization**: drops empty/invalid fields before sending (see `sanitizePayload` in the source)
+- **Grounded responses**: answers include `sources` and `contextChunks` for UI citation display
+- **Backend-enforced limits**: per-user and per-IP rate limiting; question length and `topK` bounds are validated server-side (see `docs/API.md`)
+
 ## Base Service
 
 **Location**: `src/services/BaseService.js`  
@@ -398,7 +479,10 @@ ServiceManager
   ├── ApiService (no dependencies)
   ├── AuthService → ApiService
   ├── GroceryListService → ApiService
-  └── GroceryIntelligenceService (standalone)
+  ├── GroceryIntelligenceService (standalone)
+  └── ReceiptService → ApiService
+
+ReceiptRagClient → ApiService (standalone singleton, outside ServiceManager)
 ```
 
 ### Communication Patterns
@@ -504,18 +588,21 @@ const status = serviceManager.getServiceStatus()
 }
 ```
 
+> **Note**: `ServiceManager.healthCheck()` currently checks `api`, `auth`, `groceryList`, and `intelligence` explicitly and does not include `receipt` — unlike `getServiceStatus()`/`getServiceStats()`, which iterate the full `services` registry automatically. Account for this if you rely on `healthCheck()` to gate receipt-dependent UI.
+
 ### Service Statistics
 
 ```javascript
 const stats = serviceManager.getServiceStats()
 // Returns:
 {
-  totalServices: 4,
-  healthyServices: 4,
-  onlineServices: 4,
+  totalServices: 5,
+  healthyServices: 5,
+  onlineServices: 5,
   services: {
     api: { healthy: true, online: true },
     auth: { healthy: true, online: true },
+    receipt: { healthy: true, online: true },
     // ...
   }
 }

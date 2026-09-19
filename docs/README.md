@@ -18,6 +18,11 @@ Welcome to the Voice Grocery List App documentation! This folder contains compre
 | **[Architecture](./Architecture.md)** | Technical architecture and system design | Understanding the codebase |
 | **[Deployment Guide](./DEPLOYMENT.md)** | Production deployment instructions | Deploying to production |
 | **[MongoDB Setup](./MONGODB_SETUP.md)** | Database configuration guide | Setting up the database |
+| **[API Reference: Receipt Chat](./API.md)** | `/api/receipts/chat` RAG endpoint contract | Integrating with the receipts RAG API |
+| **[Atlas Vector Search Setup](./atlas_vector_index.md)** | Vector index config for receipt embeddings | Setting up receipt search |
+| **[Ingestion Job Setup](./INGESTION_JOB_SETUP.md)** | Scheduling the receipt embedding job | Running receipts RAG in production |
+| **[RAG Implementation Tasks](./RAG_IMPLEMENTATION_TASKS.md)** | Receipts RAG feature build notes | Understanding how RAG was implemented |
+| **[RAG Testing Checklist](./RAG_TESTING_CHECKLIST.md)** | QA checklist for the receipts RAG feature | Testing receipts/RAG changes |
 
 ### AI Development
 
@@ -35,6 +40,7 @@ Welcome to the Voice Grocery List App documentation! This folder contains compre
 1. Read [Architecture](./Architecture.md) to understand the system
 2. Follow [Deployment Guide](./DEPLOYMENT.md) to deploy your own instance
 3. Configure database using [MongoDB Setup](./MONGODB_SETUP.md)
+4. Setting up receipts/RAG? See [Atlas Vector Search Setup](./atlas_vector_index.md), [API Reference](./API.md), and [Ingestion Job Setup](./INGESTION_JOB_SETUP.md)
 
 ## 📖 Document Summaries
 
@@ -67,11 +73,12 @@ Progressive Web App guide covering:
 ### Architecture
 Technical architecture documentation covering:
 - System overview and principles
-- Complete tech stack
+- Complete tech stack (including the OpenAI-powered RAG stack)
 - Architecture diagrams
 - Frontend architecture (components, services, state)
 - Backend architecture (API, middleware, auth)
-- Database schema
+- Receipt OCR & RAG pipeline (upload → OCR → chunk/embed → chat)
+- Database schema (including Receipts/ReceiptChunks + Atlas Vector Search)
 - Security architecture
 - PWA implementation
 - Deployment architecture
@@ -126,6 +133,9 @@ Database configuration guide covering:
 #### Set up the database
 → [MongoDB Setup](./MONGODB_SETUP.md)
 
+#### Set up receipts + AI chat over receipts
+→ [Atlas Vector Search Setup](./atlas_vector_index.md) → [API Reference](./API.md) → [Ingestion Job Setup](./INGESTION_JOB_SETUP.md)
+
 #### Customize the PWA
 → [PWA Setup](./PWA_SETUP.md) → Customization section
 
@@ -151,6 +161,10 @@ Found an error or want to improve the docs?
 - Test all instructions before publishing
 
 ## 📝 Documentation Changelog
+
+### Version 2.1 (September 2026)
+- Documented the Receipts OCR & RAG feature (upload, OCR, chunking/embedding, chat) across CLAUDE.md, AGENTS.md, and Architecture.md
+- Linked the existing API.md, atlas_vector_index.md, INGESTION_JOB_SETUP.md, RAG_IMPLEMENTATION_TASKS.md, and RAG_TESTING_CHECKLIST.md into this index
 
 ### Version 2.0 (October 2024)
 - Created structured `/docs` folder
@@ -183,6 +197,6 @@ Need help? Here's where to go:
 
 ---
 
-**Documentation Version**: 2.0
-**Last Updated**: October 2024
+**Documentation Version**: 2.1
+**Last Updated**: September 2026
 **Maintained By**: Development Team
