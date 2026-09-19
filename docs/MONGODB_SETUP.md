@@ -91,6 +91,14 @@ pnpm --filter backend start
 4. Try registering a new account
 5. Try logging in and creating grocery lists
 
+## Step 11: Set Up Receipts (GridFS + Vector Search)
+
+The receipts feature stores uploaded images in MongoDB **GridFS** and receipt-chunk embeddings in a **collection with an Atlas Vector Search index**. No extra setup is needed for GridFS (it's created automatically on first upload), but the Vector Search index must be created manually:
+
+1. Follow [Atlas Vector Search Setup](./atlas_vector_index.md) to create the `receiptVectorIndex` index on the `receiptChunks` collection
+2. Add the RAG environment variables (`OPENAI_API_KEY`, `RAG_EMBEDDINGS_MODEL`, `RAG_COMPLETIONS_MODEL`, `RAG_TOP_K`, `RAG_CHUNK_SIZE`, `RAG_VECTOR_INDEX`, `EMBEDDINGS_VERSION`) to your backend `.env` — see `backend/.env.example`
+3. Without these, receipt upload/OCR still works, but embedding and RAG chat are disabled (the backend logs a warning instead of failing)
+
 ## Troubleshooting
 
 - **MongoDB connection error**: Check your connection string and ensure your IP is whitelisted

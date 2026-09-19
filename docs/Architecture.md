@@ -49,13 +49,25 @@ The Voice Grocery List App is a full-stack Progressive Web Application (PWA) tha
 |------------|---------|---------|
 | Node.js | 18+ | JavaScript runtime |
 | Express | 4.21.1 | Web framework |
-| MongoDB Atlas | Cloud | NoSQL database |
+| MongoDB Atlas | Cloud | NoSQL database, GridFS (files), Atlas Vector Search (embeddings) |
 | Mongoose | 8.7.1 | MongoDB ODM |
 | bcryptjs | 2.4.3 | Password hashing |
+| jsonwebtoken | 9.0.2 | JWT session issuance/verification |
+| Multer | 2.2.0 | Multipart receipt image uploads |
+| OpenAI SDK | 4.74.1 | Receipt OCR text structuring, embeddings, RAG chat completions |
 | Resend | 4.0.1 | Transactional email service |
 | Helmet | 8.0.0 | Security headers middleware |
 | Express Rate Limit | 7.4.1 | Rate limiting/throttling |
 | CORS | 2.8.5 | Cross-origin request handling |
+
+### AI / RAG Stack
+
+| Component | Purpose |
+|-----------|---------|
+| EasyOCR/Vision microservice (`OCR_SERVICE_URL`) | Raw text extraction from receipt photos (separate service, not part of this repo's deploy) |
+| OpenAI chat completion (`RAG_COMPLETIONS_MODEL`) | Structures raw OCR text into merchant/date/items/totals JSON; answers RAG chat questions |
+| OpenAI embeddings (`RAG_EMBEDDINGS_MODEL`) | Embeds receipt chunks and chat questions for vector search |
+| MongoDB Atlas Vector Search (`RAG_VECTOR_INDEX`) | `$vectorSearch` over `receiptChunks`, filterable by user/receipt/date/merchant |
 
 ### Development & Deployment
 
@@ -66,6 +78,8 @@ The Voice Grocery List App is a full-stack Progressive Web Application (PWA) tha
 - **Version Control**: Git + GitHub
 
 ## Architecture Diagram
+
+> An explorable, higher-level version of this diagram (pan/zoom, search, light/dark, primary-path tracing) lives at [`docs/diagrams/architecture.html`](./diagrams/architecture.html) — open it directly in a browser.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -132,17 +146,32 @@ The Voice Grocery List App is a full-stack Progressive Web Application (PWA) tha
 │  │  Routes Layer                                             │   │
 │  │  ├─ /api/auth (register, login, password reset)          │   │
 │  │  ├─ /api/grocery-lists (CRUD operations)                 │   │
+│  │  ├─ /api/receipts (upload, list, get, delete, chat)      │   │
 │  │  └─ /api/health (health check)                           │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │  Controllers                                               │   │
+│  │  └─ receiptController.js (upload/list/get/delete/chat)   │   │
 │  └──────────────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │  Models Layer (Mongoose)                                  │   │
 │  │  ├─ User.js                                               │   │
-│  │  └─ GroceryList.js                                        │   │
+│  │  ├─ GroceryList.js                                        │   │
+│  │  ├─ Receipt.js (metadata, GridFS fileId, OCR fields)      │   │
+│  │  └─ ReceiptChunk.js (chunk text + embedding vector)       │   │
 │  └──────────────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │  Services                                                  │   │
 │  │  ├─ Email Service (Resend API)                           │   │
-│  │  └─ Authentication Service                                │   │
+│  │  ├─ Authentication Service (JWT)                          │   │
+│  │  ├─ Receipt OCR (EasyOCR microservice + OpenAI parsing)  │   │
+│  │  ├─ Receipt Chunker (splits parsed receipts for embedding)│   │
+│  │  ├─ Receipt RAG Service ($vectorSearch + OpenAI chat)    │   │
+│  │  └─ Embedding Client (OpenAI embeddings, retry/backoff)  │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │  Jobs                                                       │   │
+│  │  └─ receiptEmbeddingJob.js (scheduled chunk + embed)      │   │
 │  └──────────────────────────────────────────────────────────┘   │
 └───────────────────────────┬──────────────────────────────────────┘
                             │
@@ -153,23 +182,33 @@ The Voice Grocery List App is a full-stack Progressive Web Application (PWA) tha
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │  Collections                                              │   │
 │  │  ├─ users (authentication, profile)                      │   │
-│  │  └─ grocerylists (items, dates, categories)              │   │
+│  │  ├─ grocerylists (items, dates, categories)              │   │
+│  │  ├─ receipts (metadata + GridFS file reference)          │   │
+│  │  └─ receiptchunks (chunk text + embedding vector)        │   │
 │  └──────────────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │  Features                                                  │   │
 │  │  ├─ Replication (high availability)                      │   │
 │  │  ├─ Encryption at rest                                   │   │
-│  │  └─ Automated backups                                    │   │
+│  │  ├─ Automated backups                                    │   │
+│  │  ├─ GridFS (receipt image storage)                       │   │
+│  │  └─ Atlas Vector Search (`receiptVectorIndex`)           │   │
 │  └──────────────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────────────┘
 
 External Services:
-┌────────────────┐
-│ Resend API     │ ← Email delivery (welcome, password reset)
-└────────────────┘
-┌────────────────┐
-│ Web Speech API │ ← Browser voice recognition
-└────────────────┘
+┌────────────────────────┐
+│ Resend API              │ ← Email delivery (welcome, password reset)
+└────────────────────────┘
+┌────────────────────────┐
+│ Web Speech API          │ ← Browser voice recognition
+└────────────────────────┘
+┌────────────────────────┐
+│ OpenAI API              │ ← Receipt OCR parsing, embeddings, RAG chat completions
+└────────────────────────┘
+┌────────────────────────┐
+│ EasyOCR/Vision service  │ ← Raw text extraction from receipt photos (separate microservice)
+└────────────────────────┘
 ```
 
 ## Frontend Architecture
@@ -197,6 +236,8 @@ App.jsx (Root)
 │   │   │   │       ├── EmptyState
 │   │   │   │       ├── SettingsPage
 │   │   │   │       ├── HelpPage
+│   │   │   │       ├── ReceiptChatPanel
+│   │   │   │       ├── SpendingInsights
 │   │   │   │       └── Footer
 ```
 
@@ -209,7 +250,11 @@ ServiceManager
 ├── AuthService (authentication, user management)
 ├── GroceryListService (CRUD operations, business logic)
 ├── ApiService (low-level HTTP communication)
-└── groceryIntelligence (NLP, categorization, spell check)
+├── groceryIntelligence (NLP, categorization, spell check)
+└── ReceiptService (upload, list, retrieve, delete receipts)
+
+// Not ServiceManager-registered — imported directly as a singleton
+ReceiptRagClient (RAG chat over a user's receipts)
 ```
 
 **Key Design Decisions:**
@@ -243,6 +288,8 @@ ServiceManager
 - `useGroceryList` - List operations and state
 - `useErrorHandler` - Error management
 - `useNetworkStatus` - Online/offline detection
+- `useReceipts` - Receipt list/upload/selection state
+- `useReceiptChat` - RAG chat state (question history, filters, streaming stages)
 
 ### Voice Recognition Architecture
 
@@ -320,6 +367,19 @@ Request
 | `/:id` | DELETE | Delete list | Yes |
 | `/date/:date` | GET | Get list by date | Yes |
 
+#### Receipt Routes (`/api/receipts`)
+
+| Endpoint | Method | Purpose | Auth Required |
+|----------|--------|---------|---------------|
+| `/` | POST | Upload receipt image(s) (multipart, up to 10 files/10MB each) | Yes |
+| `/user/:userId` | GET | List a user's receipts (newest first) | Yes |
+| `/:receiptId` | GET | Get a single receipt's parsed data | Yes |
+| `/:receiptId/image` | GET | Stream the original uploaded image (GridFS) | Yes |
+| `/:receiptId` | DELETE | Delete a receipt and its stored file | Yes |
+| `/chat` | POST | Ask a RAG-grounded question about a user's receipts | Yes (rate-limited per-user/IP) |
+
+See `docs/API.md` for the full `/chat` request/response contract.
+
 #### Health Check (`/api/health`)
 
 | Endpoint | Method | Purpose |
@@ -370,6 +430,31 @@ Email Service (Resend API)
 └── Reset Confirmation Email
     ├─ Trigger: Successful password reset
     └─ Content: Security tips, account info
+```
+
+### Receipt OCR & RAG Pipeline
+
+```
+1. Upload
+   ├─ Client: POST /api/receipts (multipart images)
+   ├─ Server: Stitch multi-page uploads, store buffer in GridFS
+   └─ Database: Create Receipt document (fileId, contentHash, embeddingStatus: pending)
+
+2. OCR + Structuring
+   ├─ Server: Send image(s) to external EasyOCR/Vision microservice (OCR_SERVICE_URL) for raw text
+   ├─ Server: OpenAI chat completion structures raw text → { merchant, purchaseDate, items, totals }
+   └─ Database: Update Receipt with parsed fields
+
+3. Chunking + Embedding (receiptEmbeddingJob.js, scheduled or `pnpm --filter backend ingest:receipts`)
+   ├─ Server: Chunk parsed receipt text (receiptChunker.js)
+   ├─ Server: Embed each chunk via OpenAI (embeddingClient.js, RAG_EMBEDDINGS_MODEL)
+   └─ Database: Insert ReceiptChunk documents; mark Receipt embeddingStatus: completed|failed
+
+4. RAG Chat
+   ├─ Client: POST /api/receipts/chat { question, receiptIds?, dateRange?, topK? }
+   ├─ Server: Embed the question, run $vectorSearch against receiptChunks (receiptVectorIndex)
+   ├─ Server: OpenAI chat completion (RAG_COMPLETIONS_MODEL) answers grounded in retrieved chunks
+   └─ Response: { answer, sources, contextChunks, usage }
 ```
 
 ## Database Schema
@@ -433,6 +518,60 @@ Email Service (Resend API)
 - Household
 - Other
 
+### Receipts Collection
+
+```javascript
+{
+  _id: ObjectId,
+  userId: ObjectId (ref: 'User', indexed),
+  originalFilename: String,
+  mimeType: String,
+  size: Number,
+  fileId: ObjectId (GridFS file reference, indexed),
+  contentHash: String (indexed, dedupe),
+  pageCount: Number,
+  sourceImages: [{ filename: String, size: Number, mimeType: String }],
+  stitchedDimensions: { width: Number, height: Number },
+  merchant: String,
+  purchaseDate: String,
+  subtotal: Number, tax: Number, savings: Number, total: Number,
+  currency: String,
+  items: [{ name: String, quantity: Number, price: Number, currency: String }],
+  embeddingStatus: String ('pending' | 'completed' | 'failed'),
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+**Indexes:**
+- `userId` (for per-user queries)
+- `fileId`, `contentHash` (dedupe / GridFS lookups)
+
+### ReceiptChunks Collection
+
+```javascript
+{
+  _id: ObjectId,
+  receiptId: ObjectId (ref: 'Receipt', indexed),
+  userId: ObjectId (ref: 'User', indexed),
+  chunkIndex: Number,
+  text: String,
+  embedding: [Number] (vector, dimension matches RAG_EMBEDDINGS_MODEL),
+  merchant: String,
+  purchaseDate: String (indexed),
+  total: Number,
+  items: Mixed,
+  metadata: Mixed,
+  createdAt: Date,
+  updatedAt: Date
+}
+```
+
+**Indexes:**
+- `receiptId`, `userId` (ownership/lookup)
+- `purchaseDate` (filterable in `$vectorSearch`)
+- **`receiptVectorIndex`** — Atlas Vector Search index on `embedding` (cosine similarity, 3072 dimensions for `text-embedding-3-large`), with `userId`/`receiptId`/`purchaseDate`/`merchant` as pre-filter fields. See `docs/atlas_vector_index.md` for the exact index definition.
+
 ## Security Architecture
 
 ### Defense in Depth
@@ -488,6 +627,8 @@ Layer 4: Data Security
 | Global | 15 min | 100 | General throttling |
 | Auth (login/register) | 15 min | 5 | Brute-force prevention |
 | Password Reset | 1 hour | 3 | Abuse prevention |
+| Receipt Chat (per-user) | 15 min | 20 | OpenAI cost/abuse control |
+| Receipt Chat (per-IP) | 15 min | 50 | OpenAI cost/abuse control |
 
 ## PWA Implementation
 
@@ -581,9 +722,18 @@ MONGODB_URI=mongodb+srv://...
 PORT=3001
 CORS_ORIGIN=https://your-app.netlify.app
 NODE_ENV=production
+JWT_SECRET=...
 RESEND_API_KEY=re_...
 EMAIL_FROM=noreply@yourdomain.com
 FRONTEND_URL=https://your-app.netlify.app
+OCR_SERVICE_URL=https://your-ocr-service.railway.app
+OPENAI_API_KEY=sk-...
+RAG_EMBEDDINGS_MODEL=text-embedding-3-large
+RAG_COMPLETIONS_MODEL=gpt-4o
+RAG_TOP_K=5
+RAG_CHUNK_SIZE=512
+RAG_VECTOR_INDEX=receiptVectorIndex
+EMBEDDINGS_VERSION=3
 ```
 
 ### Build Process
@@ -677,6 +827,6 @@ FRONTEND_URL=https://your-app.netlify.app
 
 ---
 
-**Last Updated**: October 2024
-**Version**: 2.0
+**Last Updated**: September 2026
+**Version**: 2.1
 **Maintainer**: Development Team
