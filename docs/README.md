@@ -16,6 +16,7 @@ Welcome to the Voice Grocery List App documentation! This folder contains compre
 | Document | Description | Best For |
 |----------|-------------|----------|
 | **[Architecture](./Architecture.md)** | Technical architecture and system design | Understanding the codebase |
+| **[Architecture Diagram (interactive)](./diagrams/architecture.html)** | Explorable HTML/SVG system diagram (components, primary path, receipts/RAG branch) | Visual overview, onboarding |
 | **[Deployment Guide](./DEPLOYMENT.md)** | Production deployment instructions | Deploying to production |
 | **[MongoDB Setup](./MONGODB_SETUP.md)** | Database configuration guide | Setting up the database |
 | **[API Reference: Receipt Chat](./API.md)** | `/api/receipts/chat` RAG endpoint contract | Integrating with the receipts RAG API |

@@ -79,6 +79,8 @@ The Voice Grocery List App is a full-stack Progressive Web Application (PWA) tha
 
 ## Architecture Diagram
 
+> An explorable, higher-level version of this diagram (pan/zoom, search, light/dark, primary-path tracing) lives at [`docs/diagrams/architecture.html`](./diagrams/architecture.html) — open it directly in a browser.
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Client Layer                              │
