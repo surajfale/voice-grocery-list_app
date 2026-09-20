@@ -138,38 +138,46 @@ const createCustomTheme = (mode, colorTheme) => {
       },
     },
     typography: {
-      fontFamily: '"Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontFamily: '"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       h1: {
-        fontWeight: 800,
-        fontSize: '2.5rem',
-        lineHeight: 1.2,
-        letterSpacing: '-0.02em',
+        fontFamily: '"Outfit", "Plus Jakarta Sans", sans-serif',
+        fontWeight: 700,
+        fontSize: '2.75rem',
+        lineHeight: 1.1,
+        letterSpacing: '-0.03em',
       },
       h2: {
+        fontFamily: '"Outfit", "Plus Jakarta Sans", sans-serif',
         fontWeight: 700,
-        fontSize: '2rem',
-        lineHeight: 1.3,
-        letterSpacing: '-0.01em',
+        fontSize: '2.125rem',
+        lineHeight: 1.2,
+        letterSpacing: '-0.025em',
       },
       h3: {
+        fontFamily: '"Outfit", "Plus Jakarta Sans", sans-serif',
         fontWeight: 600,
         fontSize: '1.5rem',
-        lineHeight: 1.4,
+        lineHeight: 1.3,
+        letterSpacing: '-0.015em',
       },
       h4: {
+        fontFamily: '"Outfit", "Plus Jakarta Sans", sans-serif',
         fontWeight: 600,
         fontSize: '1.25rem',
-        lineHeight: 1.4,
+        lineHeight: 1.35,
+        letterSpacing: '-0.01em',
       },
       h5: {
+        fontFamily: '"Outfit", "Plus Jakarta Sans", sans-serif',
         fontWeight: 600,
-        fontSize: '1.125rem',
+        fontSize: '1.0625rem',
         lineHeight: 1.4,
       },
       h6: {
+        fontFamily: '"Outfit", "Plus Jakarta Sans", sans-serif',
         fontWeight: 600,
-        fontSize: '1rem',
-        lineHeight: 1.5,
+        fontSize: '0.9375rem',
+        lineHeight: 1.45,
       },
       body1: {
         fontSize: '1rem',
@@ -181,10 +189,21 @@ const createCustomTheme = (mode, colorTheme) => {
         lineHeight: 1.6,
         color: isDark ? '#CBD5E1' : '#64748B',
       },
+      caption: {
+        fontSize: '0.75rem',
+        lineHeight: 1.5,
+        letterSpacing: '0.01em',
+      },
+      overline: {
+        fontFamily: '"Outfit", "Plus Jakarta Sans", sans-serif',
+        fontWeight: 600,
+        letterSpacing: '0.08em',
+      },
       button: {
+        fontFamily: '"Outfit", "Plus Jakarta Sans", sans-serif',
         fontWeight: 600,
         textTransform: 'none',
-        letterSpacing: '0.02em',
+        letterSpacing: '0.01em',
       },
     },
     components: {
@@ -193,9 +212,10 @@ const createCustomTheme = (mode, colorTheme) => {
           body: {
             backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
             backgroundImage: isDark
-              ? 'radial-gradient(circle at 1px 1px, rgba(148,163,184,0.15) 1px, transparent 0)'
-              : 'radial-gradient(circle at 1px 1px, rgba(99,102,241,0.05) 1px, transparent 0)',
-            backgroundSize: '20px 20px',
+              ? `radial-gradient(ellipse 900px 500px at 15% -10%, ${colors.primary}1f 0%, transparent 60%)`
+              : `radial-gradient(ellipse 900px 500px at 15% -10%, ${colors.primary}14 0%, transparent 60%)`,
+            backgroundAttachment: 'fixed',
+            backgroundRepeat: 'no-repeat',
           },
           '*': {
             boxSizing: 'border-box',
@@ -219,13 +239,12 @@ const createCustomTheme = (mode, colorTheme) => {
         styleOverrides: {
           root: {
             backgroundImage: 'none',
+            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
             boxShadow: isDark
-              ? '0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px 0 rgba(0, 0, 0, 0.3)'
-              : `0 1px 3px 0 ${colors.primary}14, 0 1px 2px 0 ${colors.primary}0d`,
-            borderRadius: '12px',
-            border: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.8)' : 'rgba(226, 232, 240, 0.8)'}`,
-            backdropFilter: 'blur(8px)',
-            background: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.9)',
+              ? '0 1px 2px 0 rgba(0, 0, 0, 0.5)'
+              : `0 1px 2px 0 ${colors.primary}0f`,
+            borderRadius: '10px',
+            border: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.6)' : 'rgba(226, 232, 240, 0.9)'}`,
           },
         },
       },
@@ -285,18 +304,17 @@ const createCustomTheme = (mode, colorTheme) => {
       MuiCard: {
         styleOverrides: {
           root: {
-            borderRadius: '16px',
-            border: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.8)' : 'rgba(226, 232, 240, 0.8)'}`,
-            background: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.9)',
-            backdropFilter: 'blur(8px)',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            borderRadius: '14px',
+            border: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.6)' : 'rgba(226, 232, 240, 0.9)'}`,
+            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+            boxShadow: 'none',
+            transition: 'border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
             color: isDark ? '#F8FAFC' : '#1E293B',
             '&:hover': {
-              transform: 'translateY(-2px)',
               boxShadow: isDark
-                ? '0 10px 25px rgba(0, 0, 0, 0.4)'
-                : `0 10px 25px -4px ${colors.primary}26`,
-              borderColor: `${colors.primary}60`,
+                ? `0 6px 20px -6px ${colors.primary}4d`
+                : `0 6px 20px -6px ${colors.primary}33`,
+              borderColor: `${colors.primary}70`,
             },
           },
         },
@@ -330,22 +348,20 @@ const createCustomTheme = (mode, colorTheme) => {
       MuiAppBar: {
         styleOverrides: {
           root: {
-            background: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.9)',
-            backdropFilter: 'blur(12px)',
-            borderBottom: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.8)' : 'rgba(226, 232, 240, 0.8)'}`,
+            background: isDark ? 'rgba(30, 41, 59, 0.92)' : 'rgba(255, 255, 255, 0.86)',
+            backdropFilter: 'blur(16px) saturate(1.4)',
+            borderBottom: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.6)' : 'rgba(226, 232, 240, 0.9)'}`,
             color: isDark ? '#F8FAFC' : '#1E293B',
-            boxShadow: isDark
-              ? '0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 1px 2px 0 rgba(0, 0, 0, 0.4)'
-              : '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+            boxShadow: 'none',
           },
         },
       },
       MuiDrawer: {
         styleOverrides: {
           paper: {
-            background: isDark ? 'rgba(30, 41, 59, 0.98)' : 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(12px)',
-            borderRight: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.8)' : 'rgba(226, 232, 240, 0.8)'}`,
+            background: isDark ? 'rgba(30, 41, 59, 0.96)' : 'rgba(255, 255, 255, 0.92)',
+            backdropFilter: 'blur(16px) saturate(1.4)',
+            borderRight: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.6)' : 'rgba(226, 232, 240, 0.9)'}`,
             color: isDark ? '#F8FAFC' : '#1E293B',
           },
         },
@@ -374,6 +390,16 @@ const createCustomTheme = (mode, colorTheme) => {
                 color: isDark ? '#94A3B8' : '#64748B',
                 opacity: 1,
               },
+            },
+          },
+        },
+      },
+      MuiButtonBase: {
+        styleOverrides: {
+          root: {
+            '&.Mui-focusVisible': {
+              outline: `2px solid ${colors.primary}`,
+              outlineOffset: '2px',
             },
           },
         },
