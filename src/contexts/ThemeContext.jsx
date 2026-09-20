@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { createTheme } from '@mui/material/styles';
 
 const ThemeContext = createContext();
 
@@ -70,351 +69,22 @@ export const colorThemes = {
   },
 };
 
-const createCustomTheme = (mode, colorTheme) => {
-  const colors = colorThemes[colorTheme];
-  const isDark = mode === 'dark';
-
-  return createTheme({
-    palette: {
-      mode,
-      primary: {
-        main: colors.primary,
-        light: colors.primaryLight,
-        dark: colors.primaryDark,
-        contrastText: '#FFFFFF',
-      },
-      secondary: {
-        main: colors.secondary,
-        light: colors.secondaryLight,
-        dark: colors.secondaryDark,
-        contrastText: '#FFFFFF',
-      },
-      background: {
-        default: isDark ? '#0F172A' : '#F8FAFC',
-        paper: isDark ? '#1E293B' : '#FFFFFF',
-      },
-      text: {
-        primary: isDark ? '#F8FAFC' : '#1E293B',
-        secondary: isDark ? '#CBD5E1' : '#64748B',
-      },
-      action: {
-        hover: isDark ? 'rgba(248, 250, 252, 0.08)' : 'rgba(0, 0, 0, 0.04)',
-        selected: isDark ? 'rgba(248, 250, 252, 0.12)' : 'rgba(0, 0, 0, 0.08)',
-        disabled: isDark ? 'rgba(248, 250, 252, 0.3)' : 'rgba(0, 0, 0, 0.26)',
-        disabledBackground: isDark ? 'rgba(248, 250, 252, 0.12)' : 'rgba(0, 0, 0, 0.12)',
-      },
-      divider: isDark ? 'rgba(248, 250, 252, 0.12)' : 'rgba(0, 0, 0, 0.12)',
-      success: {
-        main: '#10B981',
-        light: '#D1FAE5',
-        dark: '#059669',
-      },
-      error: {
-        main: '#EF4444',
-        light: '#FEE2E2',
-        dark: '#DC2626',
-      },
-      warning: {
-        main: '#F59E0B',
-        light: '#FEF3C7',
-        dark: '#D97706',
-      },
-      info: {
-        main: '#3B82F6',
-        light: '#DBEAFE',
-        dark: '#2563EB',
-      },
-      grey: {
-        50: isDark ? '#1E293B' : '#F8FAFC',
-        100: isDark ? '#334155' : '#F1F5F9',
-        200: isDark ? '#475569' : '#E2E8F0',
-        300: isDark ? '#64748B' : '#CBD5E1',
-        400: isDark ? '#94A3B8' : '#94A3B8',
-        500: isDark ? '#CBD5E1' : '#64748B',
-        600: isDark ? '#E2E8F0' : '#475569',
-        700: isDark ? '#F1F5F9' : '#334155',
-        800: isDark ? '#F8FAFC' : '#1E293B',
-        900: isDark ? '#FFFFFF' : '#0F172A',
-      },
-    },
-    typography: {
-      fontFamily: '"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      h1: {
-        fontFamily: '"Outfit", "Plus Jakarta Sans", sans-serif',
-        fontWeight: 700,
-        fontSize: '2.75rem',
-        lineHeight: 1.1,
-        letterSpacing: '-0.03em',
-      },
-      h2: {
-        fontFamily: '"Outfit", "Plus Jakarta Sans", sans-serif',
-        fontWeight: 700,
-        fontSize: '2.125rem',
-        lineHeight: 1.2,
-        letterSpacing: '-0.025em',
-      },
-      h3: {
-        fontFamily: '"Outfit", "Plus Jakarta Sans", sans-serif',
-        fontWeight: 600,
-        fontSize: '1.5rem',
-        lineHeight: 1.3,
-        letterSpacing: '-0.015em',
-      },
-      h4: {
-        fontFamily: '"Outfit", "Plus Jakarta Sans", sans-serif',
-        fontWeight: 600,
-        fontSize: '1.25rem',
-        lineHeight: 1.35,
-        letterSpacing: '-0.01em',
-      },
-      h5: {
-        fontFamily: '"Outfit", "Plus Jakarta Sans", sans-serif',
-        fontWeight: 600,
-        fontSize: '1.0625rem',
-        lineHeight: 1.4,
-      },
-      h6: {
-        fontFamily: '"Outfit", "Plus Jakarta Sans", sans-serif',
-        fontWeight: 600,
-        fontSize: '0.9375rem',
-        lineHeight: 1.45,
-      },
-      body1: {
-        fontSize: '1rem',
-        lineHeight: 1.6,
-        color: isDark ? '#F8FAFC' : '#1E293B',
-      },
-      body2: {
-        fontSize: '0.875rem',
-        lineHeight: 1.6,
-        color: isDark ? '#CBD5E1' : '#64748B',
-      },
-      caption: {
-        fontSize: '0.75rem',
-        lineHeight: 1.5,
-        letterSpacing: '0.01em',
-      },
-      overline: {
-        fontFamily: '"Outfit", "Plus Jakarta Sans", sans-serif',
-        fontWeight: 600,
-        letterSpacing: '0.08em',
-      },
-      button: {
-        fontFamily: '"Outfit", "Plus Jakarta Sans", sans-serif',
-        fontWeight: 600,
-        textTransform: 'none',
-        letterSpacing: '0.01em',
-      },
-    },
-    components: {
-      MuiCssBaseline: {
-        styleOverrides: {
-          body: {
-            backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
-            backgroundImage: isDark
-              ? `radial-gradient(ellipse 900px 500px at 15% -10%, ${colors.primary}1f 0%, transparent 60%)`
-              : `radial-gradient(ellipse 900px 500px at 15% -10%, ${colors.primary}14 0%, transparent 60%)`,
-            backgroundAttachment: 'fixed',
-            backgroundRepeat: 'no-repeat',
-          },
-          '*': {
-            boxSizing: 'border-box',
-          },
-          '*::-webkit-scrollbar': {
-            width: '8px',
-          },
-          '*::-webkit-scrollbar-track': {
-            backgroundColor: isDark ? '#334155' : '#F1F5F9',
-          },
-          '*::-webkit-scrollbar-thumb': {
-            backgroundColor: isDark ? '#64748B' : '#CBD5E1',
-            borderRadius: '4px',
-          },
-          '*::-webkit-scrollbar-thumb:hover': {
-            backgroundColor: isDark ? '#94A3B8' : '#94A3B8',
-          },
-        },
-      },
-      MuiPaper: {
-        styleOverrides: {
-          root: {
-            backgroundImage: 'none',
-            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-            boxShadow: isDark
-              ? '0 1px 2px 0 rgba(0, 0, 0, 0.5)'
-              : `0 1px 2px 0 ${colors.primary}0f`,
-            borderRadius: '10px',
-            border: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.6)' : 'rgba(226, 232, 240, 0.9)'}`,
-          },
-        },
-      },
-      MuiButton: {
-        styleOverrides: {
-          root: {
-            borderRadius: '10px',
-            textTransform: 'none',
-            fontWeight: 600,
-            padding: '10px 24px',
-            fontSize: '0.875rem',
-            boxShadow: 'none',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            '&:active': {
-              transform: 'scale(0.98)',
-            },
-          },
-          contained: {
-            backgroundColor: colors.primary,
-            '&:hover': {
-              backgroundColor: colors.primaryDark,
-              boxShadow: `0 4px 12px -2px ${colors.primary}66`,
-              transform: 'translateY(-1px)',
-            },
-          },
-          outlined: {
-            borderColor: isDark ? '#64748B' : '#E2E8F0',
-            color: isDark ? '#CBD5E1' : '#64748B',
-            '&:hover': {
-              borderColor: colors.primary,
-              backgroundColor: `${colors.primary}14`,
-              color: isDark ? '#F8FAFC' : colors.primary,
-            },
-          },
-          text: {
-            '&:hover': {
-              backgroundColor: `${colors.primary}14`,
-            },
-          },
-        },
-      },
-      MuiFab: {
-        styleOverrides: {
-          root: {
-            backgroundColor: colors.primary,
-            color: '#FFFFFF',
-            boxShadow: `0 8px 20px -4px ${colors.primary}66`,
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            '&:hover': {
-              backgroundColor: colors.primaryDark,
-              boxShadow: `0 12px 28px -4px ${colors.primary}80`,
-              transform: 'translateY(-2px)',
-            },
-          },
-        },
-      },
-      MuiCard: {
-        styleOverrides: {
-          root: {
-            borderRadius: '14px',
-            border: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.6)' : 'rgba(226, 232, 240, 0.9)'}`,
-            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-            boxShadow: 'none',
-            transition: 'border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            color: isDark ? '#F8FAFC' : '#1E293B',
-            '&:hover': {
-              boxShadow: isDark
-                ? `0 6px 20px -6px ${colors.primary}4d`
-                : `0 6px 20px -6px ${colors.primary}33`,
-              borderColor: `${colors.primary}70`,
-            },
-          },
-        },
-      },
-      MuiListItem: {
-        styleOverrides: {
-          root: {
-            borderRadius: '12px',
-            marginBottom: '8px',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            '&:hover': {
-              backgroundColor: `${colors.primary}10`,
-              transform: 'translateX(4px)',
-            },
-          },
-        },
-      },
-      MuiChip: {
-        styleOverrides: {
-          root: {
-            borderRadius: '8px',
-            fontWeight: 600,
-            fontSize: '0.75rem',
-          },
-          colorPrimary: {
-            backgroundColor: colors.primary,
-            color: '#FFFFFF',
-          },
-        },
-      },
-      MuiAppBar: {
-        styleOverrides: {
-          root: {
-            background: isDark ? 'rgba(30, 41, 59, 0.92)' : 'rgba(255, 255, 255, 0.86)',
-            backdropFilter: 'blur(16px) saturate(1.4)',
-            borderBottom: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.6)' : 'rgba(226, 232, 240, 0.9)'}`,
-            color: isDark ? '#F8FAFC' : '#1E293B',
-            boxShadow: 'none',
-          },
-        },
-      },
-      MuiDrawer: {
-        styleOverrides: {
-          paper: {
-            background: isDark ? 'rgba(30, 41, 59, 0.96)' : 'rgba(255, 255, 255, 0.92)',
-            backdropFilter: 'blur(16px) saturate(1.4)',
-            borderRight: `1px solid ${isDark ? 'rgba(71, 85, 105, 0.6)' : 'rgba(226, 232, 240, 0.9)'}`,
-            color: isDark ? '#F8FAFC' : '#1E293B',
-          },
-        },
-      },
-      MuiTextField: {
-        styleOverrides: {
-          root: {
-            '& .MuiOutlinedInput-root': {
-              borderRadius: '12px',
-              backgroundColor: isDark ? 'rgba(30, 41, 59, 0.9)' : 'rgba(255, 255, 255, 0.8)',
-              color: isDark ? '#F8FAFC' : '#1E293B',
-              '& fieldset': {
-                borderColor: isDark ? '#64748B' : '#E2E8F0',
-              },
-              '&:hover fieldset': {
-                borderColor: colors.primary,
-              },
-              '&.Mui-focused fieldset': {
-                borderColor: colors.primary,
-                borderWidth: '2px',
-              },
-              '& input': {
-                color: isDark ? '#F8FAFC' : '#1E293B',
-              },
-              '& input::placeholder': {
-                color: isDark ? '#94A3B8' : '#64748B',
-                opacity: 1,
-              },
-            },
-          },
-        },
-      },
-      MuiButtonBase: {
-        styleOverrides: {
-          root: {
-            '&.Mui-focusVisible': {
-              outline: `2px solid ${colors.primary}`,
-              outlineOffset: '2px',
-            },
-          },
-        },
-      },
-    },
-    breakpoints: {
-      values: {
-        xs: 0,
-        sm: 600,
-        md: 900,
-        lg: 1200,
-        xl: 1536,
-      },
-    },
-  });
+// Pushes the selected accent preset onto the document as CSS custom properties
+// so every shadcn/Tailwind surface (bg-primary, ring-ring, text-secondary, ...)
+// picks it up without re-rendering a component tree.
+const applyAccentVariables = (colors) => {
+  const root = document.documentElement.style;
+  root.setProperty('--primary', colors.primary);
+  root.setProperty('--primary-foreground', '#ffffff');
+  root.setProperty('--secondary', colors.secondary);
+  root.setProperty('--secondary-foreground', '#ffffff');
+  root.setProperty('--ring', colors.primary);
+  root.setProperty('--glow', colors.primary);
+  root.setProperty('--chart-1', colors.primary);
+  root.setProperty('--chart-2', colors.secondary);
+  root.setProperty('--chart-3', colors.primaryLight);
+  root.setProperty('--chart-4', colors.secondaryLight);
+  root.setProperty('--chart-5', colors.primaryDark);
 };
 
 export const CustomThemeProvider = ({ children }) => {
@@ -435,13 +105,16 @@ export const CustomThemeProvider = ({ children }) => {
     }
   }, []);
 
-  // Save theme preferences to localStorage whenever they change
+  // Save mode, sync the `.dark` class Tailwind's dark: variant looks for
   useEffect(() => {
     localStorage.setItem('themeMode', mode);
+    document.documentElement.classList.toggle('dark', mode === 'dark');
   }, [mode]);
 
+  // Save + apply the accent color preset as CSS variables
   useEffect(() => {
     localStorage.setItem('colorTheme', colorTheme);
+    applyAccentVariables(colorThemes[colorTheme]);
   }, [colorTheme]);
 
   const toggleMode = () => {
@@ -454,16 +127,13 @@ export const CustomThemeProvider = ({ children }) => {
     }
   };
 
-  const theme = createCustomTheme(mode, colorTheme);
-
-  const value = {
+  const value = useMemo(() => ({
     mode,
     colorTheme,
     colorThemes,
-    theme,
     toggleMode,
     changeColorTheme,
-  };
+  }), [mode, colorTheme]);
 
   return (
     <ThemeContext.Provider value={value}>

@@ -1,13 +1,16 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Box, Typography } from '@mui/material';
 
 /**
  * PrintableList Component
  * Renders a styled grocery list suitable for export as image or PDF
- * This component is rendered off-screen for capturing
+ * This component is rendered off-screen for capturing.
+ *
+ * Deliberately uses plain inline styles (not Tailwind/CSS variables): html2canvas
+ * rasterizes computed styles and can choke on modern color functions like oklch()
+ * or color-mix(), so this keeps fixed hex values for reliable, pixel-stable export.
  */
-const PrintableList = React.forwardRef(({ items, dateString, formatDateDisplay, theme: _theme }, ref) => {
+const PrintableList = React.forwardRef(({ items, dateString, formatDateDisplay }, ref) => {
   // Group items by category
   const groupedItems = items.reduce((acc, item) => {
     if (!acc[item.category]) {
@@ -42,9 +45,9 @@ const PrintableList = React.forwardRef(({ items, dateString, formatDateDisplay, 
   };
 
   return (
-    <Box
+    <div
       ref={ref}
-      sx={{
+      style={{
         width: '800px',
         padding: '40px',
         backgroundColor: '#ffffff',
@@ -52,114 +55,73 @@ const PrintableList = React.forwardRef(({ items, dateString, formatDateDisplay, 
       }}
     >
       {/* Header */}
-      <Box sx={{ mb: 4, pb: 3, borderBottom: '3px solid #e5e7eb' }}>
-        <Typography
-          sx={{
-            fontSize: '32px',
-            fontWeight: 700,
-            color: '#1f2937',
-            mb: 1,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-          }}
-        >
+      <div style={{ marginBottom: '32px', paddingBottom: '24px', borderBottom: '3px solid #e5e7eb' }}>
+        <div style={{ fontSize: '32px', fontWeight: 700, color: '#1f2937', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '16px' }}>
           🛒 Grocery List
-        </Typography>
-        <Typography sx={{ fontSize: '18px', color: '#6b7280', fontWeight: 500 }}>
+        </div>
+        <div style={{ fontSize: '18px', color: '#6b7280', fontWeight: 500 }}>
           {formatDateDisplay(dateString)}
-        </Typography>
-      </Box>
+        </div>
+      </div>
 
       {/* Progress Summary */}
-      <Box
-        sx={{
-          mb: 4,
-          p: 3,
+      <div
+        style={{
+          marginBottom: '32px',
+          padding: '24px',
           backgroundColor: progressPercent === 100 ? '#d1fae5' : '#eff6ff',
           borderRadius: '12px',
           border: `2px solid ${progressPercent === 100 ? '#10B981' : '#3B82F6'}`,
         }}
       >
-        <Typography sx={{ fontSize: '16px', fontWeight: 600, color: '#1f2937', mb: 1 }}>
+        <div style={{ fontSize: '16px', fontWeight: 600, color: '#1f2937', marginBottom: '8px' }}>
           Progress: {completedCount} / {totalCount} items ({progressPercent}%)
-        </Typography>
-        <Box
-          sx={{
-            width: '100%',
-            height: '12px',
-            backgroundColor: '#e5e7eb',
-            borderRadius: '6px',
-            overflow: 'hidden',
-          }}
-        >
-          <Box
-            sx={{
+        </div>
+        <div style={{ width: '100%', height: '12px', backgroundColor: '#e5e7eb', borderRadius: '6px', overflow: 'hidden' }}>
+          <div
+            style={{
               width: `${progressPercent}%`,
               height: '100%',
               backgroundColor: progressPercent === 100 ? '#10B981' : '#3B82F6',
-              transition: 'width 0.3s ease',
             }}
           />
-        </Box>
-      </Box>
+        </div>
+      </div>
 
       {/* Items by Category */}
-  {Object.entries(groupedItems).map(([category, categoryItems], _categoryIndex) => (
-        <Box key={category} sx={{ mb: 4 }}>
-          <Box
-            sx={{
+      {Object.entries(groupedItems).map(([category, categoryItems]) => (
+        <div key={category} style={{ marginBottom: '32px' }}>
+          <div
+            style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 2,
-              mb: 2,
-              pb: 1,
+              gap: '16px',
+              marginBottom: '16px',
+              paddingBottom: '8px',
               borderBottom: '2px solid #e5e7eb',
             }}
           >
-            <Box
-              sx={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                backgroundColor: getCategoryColor(category),
-              }}
-            />
-            <Typography
-              sx={{
-                fontSize: '20px',
-                fontWeight: 700,
-                color: '#1f2937',
-              }}
-            >
-              {category}
-            </Typography>
-            <Typography
-              sx={{
-                fontSize: '14px',
-                fontWeight: 600,
-                color: '#6b7280',
-                ml: 'auto',
-              }}
-            >
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: getCategoryColor(category) }} />
+            <div style={{ fontSize: '20px', fontWeight: 700, color: '#1f2937' }}>{category}</div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: '#6b7280', marginLeft: 'auto' }}>
               {categoryItems.filter(item => item.completed).length}/{categoryItems.length}
-            </Typography>
-          </Box>
+            </div>
+          </div>
 
-          <Box sx={{ pl: 3 }}>
+          <div style={{ paddingLeft: '24px' }}>
             {categoryItems.map((item, itemIndex) => (
-              <Box
+              <div
                 key={item.id}
-                sx={{
+                style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 2,
-                  py: 1.5,
+                  gap: '16px',
+                  padding: '12px 0',
                   borderBottom: itemIndex < categoryItems.length - 1 ? '1px solid #f3f4f6' : 'none',
                 }}
               >
-                <Box
-                  sx={{
+                <div
+                  style={{
                     width: '24px',
                     height: '24px',
                     border: item.completed ? 'none' : '2px solid #d1d5db',
@@ -171,16 +133,14 @@ const PrintableList = React.forwardRef(({ items, dateString, formatDateDisplay, 
                     flexShrink: 0,
                   }}
                 >
-                  {item.completed && (
-                    <Typography sx={{ fontSize: '16px', color: '#ffffff' }}>✓</Typography>
-                  )}
-                </Box>
+                  {item.completed && <span style={{ fontSize: '16px', color: '#ffffff' }}>✓</span>}
+                </div>
                 {item.count && item.count > 1 && (
-                  <Box
-                    sx={{
+                  <div
+                    style={{
                       minWidth: '32px',
                       height: '24px',
-                      px: 1,
+                      padding: '0 8px',
                       backgroundColor: '#eff6ff',
                       borderRadius: '4px',
                       display: 'flex',
@@ -188,19 +148,11 @@ const PrintableList = React.forwardRef(({ items, dateString, formatDateDisplay, 
                       justifyContent: 'center',
                     }}
                   >
-                    <Typography
-                      sx={{
-                        fontSize: '14px',
-                        fontWeight: 700,
-                        color: '#3B82F6',
-                      }}
-                    >
-                      ×{item.count}
-                    </Typography>
-                  </Box>
+                    <span style={{ fontSize: '14px', fontWeight: 700, color: '#3B82F6' }}>×{item.count}</span>
+                  </div>
                 )}
-                <Typography
-                  sx={{
+                <span
+                  style={{
                     fontSize: '16px',
                     fontWeight: 500,
                     color: item.completed ? '#9ca3af' : '#1f2937',
@@ -208,23 +160,21 @@ const PrintableList = React.forwardRef(({ items, dateString, formatDateDisplay, 
                   }}
                 >
                   {item.text}
-                </Typography>
-              </Box>
+                </span>
+              </div>
             ))}
-          </Box>
-        </Box>
+          </div>
+        </div>
       ))}
 
       {/* Footer */}
-      <Box sx={{ mt: 5, pt: 3, borderTop: '2px solid #e5e7eb', textAlign: 'center' }}>
-        <Typography sx={{ fontSize: '12px', color: '#9ca3af', mb: 0.5 }}>
+      <div style={{ marginTop: '40px', paddingTop: '24px', borderTop: '2px solid #e5e7eb', textAlign: 'center' }}>
+        <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>
           Generated by Voice Grocery List App
-        </Typography>
-        <Typography sx={{ fontSize: '11px', color: '#d1d5db' }}>
-          {new Date().toLocaleString()}
-        </Typography>
-      </Box>
-    </Box>
+        </div>
+        <div style={{ fontSize: '11px', color: '#d1d5db' }}>{new Date().toLocaleString()}</div>
+      </div>
+    </div>
   );
 });
 
@@ -234,7 +184,6 @@ PrintableList.propTypes = {
   items: PropTypes.array.isRequired,
   dateString: PropTypes.string.isRequired,
   formatDateDisplay: PropTypes.func.isRequired,
-  theme: PropTypes.object,
 };
 
 export default PrintableList;

@@ -101,6 +101,14 @@ export default [
     },
   },
   {
+    // shadcn/ui primitives are thin style wrappers around Radix/native elements;
+    // like the upstream shadcn generator, they intentionally skip PropTypes.
+    files: ['src/components/ui/**/*.jsx'],
+    rules: {
+      'react/prop-types': 'off',
+    },
+  },
+  {
     ignores: [
       'dist/**',
       'node_modules/**',

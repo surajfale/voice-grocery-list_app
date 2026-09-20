@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Box, IconButton, Collapse, Typography } from '@mui/material';
-import { Close, Info } from '@mui/icons-material';
+import { Info, X } from 'lucide-react';
 
 const ProjectDisclaimer = () => {
     const [open, setOpen] = useState(true);
@@ -26,35 +25,24 @@ const ProjectDisclaimer = () => {
     if (!visible) { return null; }
 
     return (
-        <Box sx={{ width: '100%', position: 'relative', zIndex: 2000 }}>
-            <Collapse in={open}>
-                <Alert
-                    severity="info"
-                    icon={<Info fontSize="inherit" />}
-                    action={
-                        <IconButton
-                            aria-label="close"
-                            color="inherit"
-                            size="small"
-                            onClick={handleClose}
-                        >
-                            <Close fontSize="inherit" />
-                        </IconButton>
-                    }
-                    sx={{
-                        borderRadius: 0,
-                        '& .MuiAlert-message': {
-                            width: '100%',
-                            textAlign: 'center',
-                        }
-                    }}
+        <div
+            className={`relative z-50 w-full bg-primary/10 border-b border-primary/20 overflow-hidden transition-[max-height,opacity] duration-300 ${open ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'}`}
+        >
+            <div className="flex items-center justify-center gap-2 py-2.5 px-10 relative text-center">
+                <Info className="size-4 text-primary shrink-0" />
+                <p className="text-sm font-medium text-foreground">
+                    <strong>Learning Project:</strong> This is a personal study project. Service availability is not guaranteed and data may be periodically reset.
+                </p>
+                <button
+                    type="button"
+                    aria-label="close"
+                    onClick={handleClose}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-primary/15 text-muted-foreground"
                 >
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        <strong>Learning Project:</strong> This is a personal study project. Service availability is not guaranteed and data may be periodically reset.
-                    </Typography>
-                </Alert>
-            </Collapse>
-        </Box>
+                    <X className="size-4" />
+                </button>
+            </div>
+        </div>
     );
 };
 

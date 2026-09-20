@@ -1,69 +1,34 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
+import dayjs from 'dayjs';
 import {
-  ThemeProvider,
-  CssBaseline,
-  AppBar,
-  Toolbar,
-  Typography,
-  Container,
-  Box,
-  IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  ListItemButton,
-  Chip,
-  Drawer,
-  useMediaQuery,
-  useTheme,
-  Divider,
-  CircularProgress,
-  Menu,
-  MenuItem,
-  Avatar,
-  Paper,
-  Button,
-  Alert,
-  AlertTitle,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Checkbox,
-} from '@mui/material';
-import { alpha } from '@mui/material/styles';
-import {
-  Delete,
-  CalendarToday,
+  Trash2,
+  CalendarDays,
   ShoppingCart,
   Menu as MenuIcon,
-  Clear,
-  Logout,
-  Help,
+  X,
+  LogOut,
+  HelpCircle,
   Palette,
-  LightMode,
-  DarkMode,
+  Sun,
+  Moon,
   Settings,
-  FilterList,
-  FilterListOff,
+  ListFilter,
+  ListX,
   Download,
-  Share,
-  Image,
-  PictureAsPdf,
-  ArrowDropDown,
-  DeleteForever,
-  ReceiptLong,
-  SwapHoriz,
-  CallMerge,
-} from '@mui/icons-material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import dayjs from 'dayjs';
+  Share2,
+  ImageIcon,
+  FileText,
+  ChevronDown,
+  Trash,
+  Receipt,
+  ArrowLeftRight,
+  Merge,
+  Loader2,
+} from 'lucide-react';
 import { AuthProvider, useAuth } from './AuthContext';
 import { CustomThemeProvider, useThemeContext } from './contexts/ThemeContext';
+import { useIsMobile } from './hooks/useIsMobile';
 import LoginPage from './LoginPage';
 import RegisterPage from './RegisterPage';
 import ForgotPasswordPage from './ForgotPasswordPage';
@@ -86,6 +51,39 @@ import ReceiptsPage from './pages/ReceiptsPage';
 import { useGroceryList } from './hooks/useGroceryList';
 import groceryIntelligence from './services/groceryIntelligence';
 import { downloadListAsImage, downloadListAsPDF, shareList } from './utils/downloadList';
+import { Button } from './components/ui/button';
+import { Badge } from './components/ui/badge';
+import { Avatar, AvatarFallback } from './components/ui/avatar';
+import { Card } from './components/ui/card';
+import { Checkbox } from './components/ui/checkbox';
+import { Separator } from './components/ui/separator';
+import { Alert, AlertTitle, AlertDescription } from './components/ui/alert';
+import { Input } from './components/ui/input';
+import { Sheet, SheetContent } from './components/ui/sheet';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from './components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from './components/ui/dropdown-menu';
+import { Toaster } from './components/ui/sonner';
+
+const Spinner = ({ className = 'size-8' }) => (
+  <Loader2 className={`${className} animate-spin text-primary`} />
+);
+
+Spinner.propTypes = {
+  className: PropTypes.string,
+};
 
 /**
  * Main Voice Grocery List Application Component
@@ -93,7 +91,6 @@ import { downloadListAsImage, downloadListAsPDF, shareList } from './utils/downl
  */
 const VoiceGroceryListApp = () => {
   const { isAuthenticated, user, logout, loading } = useAuth();
-  const { theme } = useThemeContext();
   const [authPage, setAuthPage] = useState('login'); // 'login', 'register', 'forgot-password', 'reset-password'
   const [resetToken, setResetToken] = useState('');
 
@@ -109,40 +106,32 @@ const VoiceGroceryListApp = () => {
 
   if (loading) {
     return (
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-          <CircularProgress size={60} />
-        </Box>
-      </ThemeProvider>
+      <div className="flex justify-center items-center h-screen">
+        <Spinner className="size-12" />
+      </div>
     );
   }
 
   if (!isAuthenticated) {
-    return (
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        {authPage === 'register' ? (
-          <RegisterPage onSwitchToLogin={() => setAuthPage('login')} />
-        ) : authPage === 'forgot-password' ? (
-          <ForgotPasswordPage onBackToLogin={() => setAuthPage('login')} />
-        ) : authPage === 'reset-password' ? (
-          <ResetPasswordPage
-            token={resetToken}
-            onBackToLogin={() => {
-              setAuthPage('login');
-              setResetToken('');
-              // Clear URL params
-              window.history.replaceState({}, document.title, window.location.pathname);
-            }}
-          />
-        ) : (
-          <LoginPage
-            onSwitchToRegister={() => setAuthPage('register')}
-            onSwitchToForgotPassword={() => setAuthPage('forgot-password')}
-          />
-        )}
-      </ThemeProvider>
+    return authPage === 'register' ? (
+      <RegisterPage onSwitchToLogin={() => setAuthPage('login')} />
+    ) : authPage === 'forgot-password' ? (
+      <ForgotPasswordPage onBackToLogin={() => setAuthPage('login')} />
+    ) : authPage === 'reset-password' ? (
+      <ResetPasswordPage
+        token={resetToken}
+        onBackToLogin={() => {
+          setAuthPage('login');
+          setResetToken('');
+          // Clear URL params
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }}
+      />
+    ) : (
+      <LoginPage
+        onSwitchToRegister={() => setAuthPage('register')}
+        onSwitchToForgotPassword={() => setAuthPage('forgot-password')}
+      />
     );
   }
 
@@ -153,17 +142,16 @@ const VoiceGroceryListApp = () => {
  * Main Voice Grocery List Component
  * Contains the main application interface with voice recognition, grocery list management,
  * and user interface controls
- * 
+ *
  * @param {Object} user - Current authenticated user object
  * @param {Function} logout - Function to handle user logout
  */
 const VoiceGroceryList = ({ user, logout }) => {
   // Theme and UI state
-  const { theme, mode, toggleMode } = useThemeContext();
+  const { mode, toggleMode } = useThemeContext();
   const { deleteAccount } = useAuth();
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState({});
-  const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const [showHelpPage, setShowHelpPage] = useState(false);
   const [showThemeSettings, setShowThemeSettings] = useState(false);
   const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
@@ -173,11 +161,9 @@ const VoiceGroceryList = ({ user, logout }) => {
   const [isListening, _setIsListening] = useState(false);
   const [transcript, _setTranscript] = useState('');
   const [showOnlyRemaining, setShowOnlyRemaining] = useState(false);
-  const [downloadMenuAnchor, setDownloadMenuAnchor] = useState(null);
   const [activeView, setActiveView] = useState('lists');
   const [displayedView, setDisplayedView] = useState('lists');
   const [viewContentVisible, setViewContentVisible] = useState(true);
-  const [settingsMenuAnchor, setSettingsMenuAnchor] = useState(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedDatesForMove, setSelectedDatesForMove] = useState([]);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
@@ -189,8 +175,7 @@ const VoiceGroceryList = ({ user, logout }) => {
   const printableListRef = useRef(null);
 
   // Responsive design helpers
-  const muiTheme = useTheme();
-  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
+  const isMobile = useIsMobile(900);
   const isReceiptsView = activeView === 'receipts';
 
   // Cross-fade the main content when switching between Lists and Receipts
@@ -261,63 +246,14 @@ const VoiceGroceryList = ({ user, logout }) => {
     }
   }, [isReceiptsView]);
 
-  /**
-   * Handle user menu opening
-   * Opens the user menu dropdown
-   * 
-   * @param {Event} event - Click event
-   */
-  const handleUserMenuOpen = (event) => {
-    setUserMenuAnchor(event.currentTarget);
-  };
-
-  /**
-   * Handle user menu closing
-   * Closes the user menu dropdown
-   */
-  const handleUserMenuClose = () => {
-    setUserMenuAnchor(null);
-  };
-
-  /**
-   * Handle user logout
-   * Closes user menu and logs out the user
-   */
   const handleLogout = () => {
-    handleUserMenuClose();
     logout();
-  };
-
-  /**
-   * Handle download menu opening
-   */
-  const handleDownloadMenuOpen = (event) => {
-    setDownloadMenuAnchor(event.currentTarget);
-  };
-
-  /**
-   * Handle download menu closing
-   */
-  const handleDownloadMenuClose = () => {
-    setDownloadMenuAnchor(null);
-  };
-
-  /**
-   * Handle settings menu open/close
-   */
-  const handleSettingsMenuOpen = (event) => {
-    setSettingsMenuAnchor(event.currentTarget);
-  };
-
-  const handleSettingsMenuClose = () => {
-    setSettingsMenuAnchor(null);
   };
 
   /**
    * Handle share action (Web Share API on mobile, download on desktop)
    */
   const handleShare = async () => {
-    handleDownloadMenuClose();
     if (printableListRef.current) {
       try {
         await shareList(printableListRef.current, currentDateString, formatDateDisplay);
@@ -331,7 +267,6 @@ const VoiceGroceryList = ({ user, logout }) => {
    * Handle download as image
    */
   const handleDownloadImage = async () => {
-    handleDownloadMenuClose();
     if (printableListRef.current) {
       try {
         await downloadListAsImage(printableListRef.current, currentDateString);
@@ -345,7 +280,6 @@ const VoiceGroceryList = ({ user, logout }) => {
    * Handle download as PDF
    */
   const handleDownloadPDF = async () => {
-    handleDownloadMenuClose();
     if (printableListRef.current) {
       try {
         await downloadListAsPDF(printableListRef.current, currentDateString);
@@ -388,7 +322,7 @@ const VoiceGroceryList = ({ user, logout }) => {
 
   /**
    * Handle item toggle (wrapper for useGroceryList toggleItem)
-   * 
+   *
    * @param {string} itemId - Item ID to toggle
    */
   const handleItemToggle = (itemId) => {
@@ -397,7 +331,7 @@ const VoiceGroceryList = ({ user, logout }) => {
 
   /**
    * Handle item removal (wrapper for useGroceryList removeItem)
-   * 
+   *
    * @param {string} itemId - Item ID to remove
    */
   const handleItemRemove = (itemId) => {
@@ -406,7 +340,7 @@ const VoiceGroceryList = ({ user, logout }) => {
 
   /**
    * Handle category change (wrapper for useGroceryList updateItemCategory)
-   * 
+   *
    * @param {string} itemId - Item ID to update
    * @param {string} newCategory - New category for the item
    */
@@ -417,7 +351,7 @@ const VoiceGroceryList = ({ user, logout }) => {
   /**
    * Format date for display in the UI
    * Shows relative dates (Today, Yesterday, Tomorrow) or formatted date
-   * 
+   *
    * @param {string} dateString - Date string to format
    * @returns {string} Formatted date string
    */
@@ -490,7 +424,7 @@ const VoiceGroceryList = ({ user, logout }) => {
   /**
    * Toggle category expansion state
    * Expands or collapses a grocery category
-   * 
+   *
    * @param {string} category - Category name to toggle
    */
   const toggleCategoryExpansion = (category) => {
@@ -532,128 +466,37 @@ const VoiceGroceryList = ({ user, logout }) => {
   /**
    * Memoized calculation for sorting dates
    * Sorts all available dates in descending order (newest first)
-   * 
+   *
    * @returns {Array} Array of sorted date strings
    */
   const sortedDates = useMemo(() => {
     return Object.keys(allLists).sort((a, b) => new Date(b) - new Date(a));
   }, [allLists]);
 
+  const isPastDate = currentDate.isBefore(dayjs().startOf('day'));
+
   // Drawer content for date selection and list management
   const drawerContent = (
-    <Box sx={{ width: isMobile ? 280 : 320, p: 2 }}>
-      <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <CalendarToday />
+    <div className="w-full p-4">
+      <h6 className="flex items-center gap-2 text-base font-display font-semibold mb-3">
+        <CalendarDays className="size-4.5" />
         Grocery Lists
-      </Typography>
-      <Divider sx={{ mb: 2 }} />
+      </h6>
+      <Separator className="mb-4" />
 
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <DatePicker
-          label="Select Date"
-          value={currentDate}
-          onChange={(newDate) => createNewListForDate(newDate)}
-          slotProps={{
-            textField: {
-              fullWidth: true,
-              sx: { mb: 2 }
-            },
-            day: (dayProps) => {
-              // Guard against undefined day
-              if (!dayProps || !dayProps.day) {
-                return {};
-              }
+      <Input
+        type="date"
+        value={currentDate.format('YYYY-MM-DD')}
+        onChange={(e) => e.target.value && createNewListForDate(e.target.value)}
+        className="mb-4"
+        aria-label="Select date"
+      />
 
-              const dateString = dayProps.day.format('YYYY-MM-DD');
-              const today = dayjs().startOf('day');
-              const isPast = dayProps.day.isBefore(today);
-              const hasExistingList = allLists[dateString] && allLists[dateString].length > 0;
-              const isToday = dayProps.day.isSame(today, 'day');
-
-              return {
-                sx: {
-                  // Grey out past dates without lists
-                  ...(isPast && !hasExistingList && {
-                    color: 'text.disabled',
-                    backgroundColor: 'action.disabledBackground',
-                    '&:hover': {
-                      backgroundColor: 'action.hover',
-                      cursor: 'not-allowed',
-                    },
-                    opacity: 0.5,
-                  }),
-                  // Highlight past dates WITH existing lists
-                  ...(isPast && hasExistingList && {
-                    backgroundColor: alpha(muiTheme.palette.info.main, 0.15),
-                    border: `2px solid ${muiTheme.palette.info.main}`,
-                    fontWeight: 700,
-                    color: muiTheme.palette.info.main,
-                    '&:hover': {
-                      backgroundColor: alpha(muiTheme.palette.info.main, 0.25),
-                    },
-                  }),
-                  // Highlight today
-                  ...(isToday && {
-                    backgroundColor: alpha(muiTheme.palette.success.main, 0.15),
-                    border: `2px solid ${muiTheme.palette.success.main}`,
-                    fontWeight: 700,
-                    '&:hover': {
-                      backgroundColor: alpha(muiTheme.palette.success.main, 0.25),
-                    },
-                  }),
-                  // Badge indicator for dates with lists
-                  ...(hasExistingList && !isPast && !isToday && {
-                    position: 'relative',
-                    '&::after': {
-                      content: '""',
-                      position: 'absolute',
-                      bottom: '4px',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      width: '4px',
-                      height: '4px',
-                      borderRadius: '50%',
-                      backgroundColor: 'primary.main',
-                    },
-                  }),
-                },
-              };
-            },
-          }}
-        />
-      </LocalizationProvider>
-
-      {/* Date Legend */}
-      <Box sx={{ mb: 2, p: 1.5, backgroundColor: 'background.default', borderRadius: '8px', border: '1px solid', borderColor: 'divider' }}>
-        <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', display: 'block', mb: 1 }}>
-          Date Legend:
-        </Typography>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: alpha(muiTheme.palette.success.main, 0.4), border: `2px solid ${muiTheme.palette.success.main}` }} />
-            <Typography variant="caption" color="text.secondary">Today</Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: alpha(muiTheme.palette.info.main, 0.4), border: `2px solid ${muiTheme.palette.info.main}` }} />
-            <Typography variant="caption" color="text.secondary">Past (with list)</Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'action.disabledBackground', opacity: 0.5 }} />
-            <Typography variant="caption" color="text.secondary">Past (no list)</Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: 'primary.main' }} />
-            <Typography variant="caption" color="text.secondary">Has items</Typography>
-          </Box>
-        </Box>
-      </Box>
-
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-        <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-          Your Lists
-        </Typography>
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-xs font-semibold text-muted-foreground">Your Lists</span>
         <Button
-          size="small"
+          variant="ghost"
+          size="sm"
           onClick={() => {
             setSelectMode(prev => !prev);
             setSelectedDatesForMove([]);
@@ -661,144 +504,117 @@ const VoiceGroceryList = ({ user, logout }) => {
         >
           {selectMode ? 'Cancel' : 'Select'}
         </Button>
-      </Box>
+      </div>
 
       {selectMode && selectedDatesForMove.length > 0 && (
         <Button
-          fullWidth
-          variant="contained"
-          size="small"
-          startIcon={<CallMerge />}
-          sx={{ mb: 1 }}
+          className="w-full mb-2"
           onClick={() => openMoveDialog(selectedDatesForMove)}
         >
+          <Merge />
           Move/Merge {selectedDatesForMove.length} list{selectedDatesForMove.length > 1 ? 's' : ''}
         </Button>
       )}
 
-      <List>
+      <ul className="space-y-1">
         {sortedDates.length > 0 ? (
           sortedDates.map(date => {
             const dateObj = dayjs(date);
             const today = dayjs().startOf('day');
-            const isPastDate = dateObj.isBefore(today);
+            const isPast = dateObj.isBefore(today);
             const hasItems = allLists[date]?.length > 0;
+            const isSelected = date === currentDateString;
 
             return (
-              <ListItem key={date} disablePadding>
-                <ListItemButton
-                  selected={date === currentDateString}
+              <li key={date}>
+                <button
+                  type="button"
                   onClick={() => (selectMode ? toggleDateSelection(date) : createNewListForDate(date))}
-                  sx={{
-                    borderRadius: 1,
-                    mb: 0.5,
-                    // Style past dates with existing lists
-                    ...(isPastDate && hasItems && {
-                      backgroundColor: date === currentDateString
-                        ? alpha(muiTheme.palette.info.main, 0.25)
-                        : alpha(muiTheme.palette.info.main, 0.08),
-                      borderLeft: `4px solid ${muiTheme.palette.info.main}`,
-                      '&:hover': {
-                        backgroundColor: alpha(muiTheme.palette.info.main, 0.15),
-                      },
-                    }),
-                  }}
+                  className={`w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors group ${
+                    isSelected ? 'bg-primary/10' : 'hover:bg-accent'
+                  } ${isPast && hasItems ? 'border-l-4 border-l-primary/60' : ''}`}
                 >
                   {selectMode && (
-                    <ListItemIcon sx={{ minWidth: 36 }}>
-                      <Checkbox
-                        edge="start"
-                        checked={selectedDatesForMove.includes(date)}
-                        tabIndex={-1}
-                        disableRipple
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleDateSelection(date);
-                        }}
-                      />
-                    </ListItemIcon>
+                    <Checkbox
+                      checked={selectedDatesForMove.includes(date)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleDateSelection(date);
+                      }}
+                    />
                   )}
-                  <ListItemText
-                    primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography
-                          sx={{
-                            fontWeight: date === currentDateString ? 700 : 500,
-                            color: isPastDate && hasItems ? muiTheme.palette.info.main : 'text.primary',
-                          }}
-                        >
-                          {formatDateDisplay(date)}
-                        </Typography>
-                        {isPastDate && hasItems && (
-                          <Chip
-                            label="Past"
-                            size="small"
-                            sx={{
-                              height: '18px',
-                              fontSize: '0.7rem',
-                              backgroundColor: muiTheme.palette.info.main,
-                              color: 'white',
-                              fontWeight: 600,
-                            }}
-                          />
-                        )}
-                      </Box>
-                    }
-                    secondary={`${allLists[date]?.length || 0} items`}
-                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-sm truncate ${isSelected ? 'font-bold' : 'font-medium'} ${isPast && hasItems ? 'text-primary' : ''}`}>
+                        {formatDateDisplay(date)}
+                      </span>
+                      {isPast && hasItems && (
+                        <Badge variant="soft" className="text-[10px] h-4 px-1.5">Past</Badge>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground">{allLists[date]?.length || 0} items</span>
+                  </div>
                   {!selectMode && (
-                    <IconButton
-                      edge="end"
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      title="Move/merge to another date"
                       onClick={(e) => {
                         e.stopPropagation();
                         openMoveDialog([date]);
                       }}
-                      size="small"
-                      title="Move/merge to another date"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          openMoveDialog([date]);
+                        }
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-background text-muted-foreground"
                     >
-                      <SwapHoriz />
-                    </IconButton>
+                      <ArrowLeftRight className="size-3.5" />
+                    </span>
                   )}
-                  {!selectMode && date !== currentDateString && (
-                    <IconButton
-                      edge="end"
+                  {!selectMode && !isSelected && (
+                    <span
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteList(date);
                       }}
-                      size="small"
-                      color="error"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          deleteList(date);
+                        }
+                      }}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-destructive/10 text-destructive"
                     >
-                      <Delete />
-                    </IconButton>
+                      <Trash2 className="size-3.5" />
+                    </span>
                   )}
-                </ListItemButton>
-              </ListItem>
+                </button>
+              </li>
             );
           })
         ) : (
-          <ListItem>
-            <ListItemText primary="No grocery lists yet" />
-          </ListItem>
+          <li className="text-sm text-muted-foreground px-2.5 py-2">No grocery lists yet</li>
         )}
-      </List>
-    </Box>
+      </ul>
+    </div>
   );
 
   // Show help page if requested
   if (showHelpPage) {
-    return (
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <HelpPage onBack={() => setShowHelpPage(false)} />
-      </ThemeProvider>
-    );
+    return <HelpPage onBack={() => setShowHelpPage(false)} />;
   }
 
   // Main component render
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <>
+      <Toaster />
 
       {/* Correction Dialog */}
       <CorrectionDialog
@@ -841,364 +657,176 @@ const VoiceGroceryList = ({ user, logout }) => {
       />
 
       {/* Move/Merge Lists Dialog */}
-      <Dialog open={moveDialogOpen} onClose={closeMoveDialog} maxWidth="xs" fullWidth>
-        <DialogTitle>Move/Merge to Date</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" sx={{ mb: 2 }}>
+      <Dialog open={moveDialogOpen} onOpenChange={(open) => !open && closeMoveDialog()}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Move/Merge to Date</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
             {moveDialogDates.length > 1
               ? `Merge ${moveDialogDates.length} lists into one date. Items already on the target date won't be duplicated.`
               : 'Move this list to a new date. If the target date already has a list, items will be merged without duplicates.'}
-          </Typography>
-          <LocalizationProvider dateAdapter={AdapterDayjs}>
-            <DatePicker
-              label="Target Date"
-              value={moveTargetDate}
-              onChange={(newDate) => newDate && setMoveTargetDate(newDate)}
-              disablePast
-              slotProps={{ textField: { fullWidth: true } }}
-            />
-          </LocalizationProvider>
+          </p>
+          <Input
+            type="date"
+            value={moveTargetDate.format('YYYY-MM-DD')}
+            min={dayjs().format('YYYY-MM-DD')}
+            onChange={(e) => e.target.value && setMoveTargetDate(dayjs(e.target.value))}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={closeMoveDialog}>Cancel</Button>
+            <Button onClick={handleConfirmMove} disabled={movingLists}>
+              {movingLists ? 'Moving...' : 'Confirm'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={closeMoveDialog}>Cancel</Button>
-          <Button variant="contained" onClick={handleConfirmMove} disabled={movingLists}>
-            {movingLists ? 'Moving...' : 'Confirm'}
-          </Button>
-        </DialogActions>
       </Dialog>
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <div className="flex flex-col min-h-screen">
         <ProjectDisclaimer />
-        <Box sx={{ display: 'flex', flex: 1 }}>
-          {/* Modern App Bar */}
-          <AppBar
-            position="fixed"
-            elevation={0}
-            sx={{
-              zIndex: (theme) => theme.zIndex.drawer + 1,
-            }}
-          >
-            <Toolbar sx={{ minHeight: '72px', px: { xs: 1, sm: 3 } }}>
-              {isMobile && !isReceiptsView && (
-                <IconButton
-                  color="inherit"
-                  edge="start"
-                  onClick={() => setMobileDrawerOpen(true)}
-                  sx={{
-                    mr: 2,
-                    p: 1.5,
-                    borderRadius: '12px',
-                    '&:hover': {
-                      backgroundColor: alpha(muiTheme.palette.primary.main, 0.08),
-                    }
-                  }}
-                >
-                  <MenuIcon />
-                </IconButton>
-              )}
-
-              {/* Logo and Brand */}
-              <Box sx={{ display: 'flex', alignItems: 'center', mr: { xs: 1, sm: 3 } }}>
-                <Box
-                  sx={{
-                    width: { xs: 32, sm: 40 },
-                    height: { xs: 32, sm: 40 },
-                    borderRadius: '12px',
-                    backgroundColor: muiTheme.palette.primary.main,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    mr: { xs: 1, sm: 2 },
-                    boxShadow: `0 4px 12px ${alpha(muiTheme.palette.primary.main, 0.3)}`,
-                  }}
-                >
-                  <ShoppingCart sx={{ color: 'white', fontSize: { xs: 16, sm: 20 } }} />
-                </Box>
-                <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-                  <Typography
-                    variant="h6"
-                    component="div"
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: '1.25rem',
-                      color: 'primary.main',
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    Grocery List
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: 'text.secondary',
-                      fontSize: '0.75rem',
-                      fontWeight: 500,
-                      display: { xs: 'none', sm: 'block' }
-                    }}
-                  >
-                    Smart Shopping Lists
-                  </Typography>
-                </Box>
-              </Box>
-
-              <Box sx={{ flexGrow: 1 }} />
-
-              {/* Current Date Badge */}
-              {!isReceiptsView && (
-                <Chip
-                  label={formatDateDisplay(currentDateString)}
-                  variant="outlined"
-                  sx={{
-                    display: { xs: 'none', md: 'flex' },
-                    mr: 2,
-                    borderColor: alpha(muiTheme.palette.primary.main, 0.2),
-                    color: 'text.secondary',
-                    fontWeight: 600,
-                    '&:hover': {
-                      borderColor: 'primary.main',
-                      backgroundColor: alpha(muiTheme.palette.primary.main, 0.04),
-                    }
-                  }}
-                />
-              )}
-
+        {/* Modern App Bar */}
+        <header className="sticky top-0 z-40 h-[72px] shrink-0 flex items-center px-3 sm:px-6 bg-card/85 backdrop-blur-xl border-b border-border">
+            {isMobile && !isReceiptsView && (
               <Button
-                variant={isReceiptsView ? 'contained' : 'outlined'}
-                size="small"
-                startIcon={<ReceiptLong fontSize="small" />}
-                onClick={() => setActiveView(isReceiptsView ? 'lists' : 'receipts')}
-                sx={{
-                  textTransform: 'none',
-                  borderRadius: 9999,
-                  mr: 2
-                }}
+                variant="ghost"
+                size="icon"
+                onClick={() => setMobileDrawerOpen(true)}
+                className="mr-2"
+                aria-label="Open menu"
               >
-                {isReceiptsView ? 'Back to Lists' : 'Receipts'}
+                <MenuIcon />
               </Button>
+            )}
 
-              {/* Settings Menu (theme + help) */}
-              <IconButton
-                onClick={handleSettingsMenuOpen}
-                sx={{
-                  mr: { xs: 0.5, sm: 1 },
-                  width: { xs: 36, sm: 44 },
-                  height: { xs: 36, sm: 44 },
-                  borderRadius: '12px',
-                  color: 'text.secondary',
-                  '&:hover': {
-                    backgroundColor: alpha(muiTheme.palette.primary.main, 0.08),
-                    color: 'primary.main',
-                    transform: 'scale(1.05)',
-                  },
-                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                }}
-              >
-                <Settings sx={{ fontSize: { xs: 18, sm: 24 } }} />
-              </IconButton>
+            {/* Logo and Brand */}
+            <div className="flex items-center mr-2 sm:mr-6">
+              <div className="size-8 sm:size-10 rounded-xl bg-primary flex items-center justify-center mr-2 sm:mr-3 shadow-[0_4px_12px_-2px_var(--primary)]">
+                <ShoppingCart className="text-white size-4 sm:size-5" />
+              </div>
+              <div className="hidden sm:block">
+                <h1 className="font-display font-bold text-xl text-primary leading-tight">
+                  Grocery List
+                </h1>
+                <p className="text-xs text-muted-foreground font-medium">Smart Shopping Lists</p>
+              </div>
+            </div>
 
-              {/* User Profile Section */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1.5 } }}>
-                <Box sx={{
-                  display: 'block', // Always show user name
-                  textAlign: 'right',
-                  minWidth: 0, // Allow text to shrink
-                }}>
-                  <Typography variant="body2" sx={{
-                    fontWeight: 600,
-                    color: 'text.primary',
-                    lineHeight: 1.2,
-                    fontSize: { xs: '0.7rem', sm: '0.875rem' },
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    maxWidth: { xs: '80px', sm: '150px', md: '200px' }
-                  }}>
-                    {user.firstName} {user.lastName}
-                  </Typography>
-                  <Typography variant="caption" sx={{
-                    color: 'text.secondary',
-                    fontSize: { xs: '0.6rem', sm: '0.75rem' },
-                    display: { xs: 'none', sm: 'block' } // Hide "Member" text on very small screens
-                  }}>
-                    {currentItems.length} items today
-                  </Typography>
-                </Box>
-                <IconButton
-                  onClick={handleUserMenuOpen}
-                  sx={{
-                    p: 0,
-                    '&:hover': {
-                      transform: 'scale(1.05)',
-                    },
-                    transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                  }}
-                >
-                  <Avatar
-                    sx={{
-                      width: { xs: 32, sm: 44 },
-                      height: { xs: 32, sm: 44 },
-                      backgroundColor: muiTheme.palette.success.main,
-                      fontSize: { xs: '0.75rem', sm: '1.1rem' },
-                      fontWeight: 600,
-                      boxShadow: `0 4px 12px ${alpha(muiTheme.palette.success.main, 0.3)}`,
-                    }}
+            <div className="flex-1" />
+
+            {/* Current Date Badge */}
+            {!isReceiptsView && (
+              <Badge variant="outline" className="hidden md:flex mr-3 h-8 px-3 font-semibold text-muted-foreground">
+                {formatDateDisplay(currentDateString)}
+              </Badge>
+            )}
+
+            <Button
+              variant={isReceiptsView ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveView(isReceiptsView ? 'lists' : 'receipts')}
+              className="rounded-full mr-2"
+            >
+              <Receipt className="size-4" />
+              {isReceiptsView ? 'Back to Lists' : 'Receipts'}
+            </Button>
+
+            {/* Settings Menu (theme + help) */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="mr-1 sm:mr-2 text-muted-foreground">
+                  <Settings />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-60">
+                <DropdownMenuItem onClick={toggleMode}>
+                  {mode === 'dark' ? <Sun /> : <Moon />}
+                  <div>
+                    <div className="font-semibold">{mode === 'dark' ? 'Light mode' : 'Dark mode'}</div>
+                    <div className="text-xs text-muted-foreground">Toggle base theme</div>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowThemeSettings(true)}>
+                  <Palette />
+                  <div>
+                    <div className="font-semibold">Theme settings</div>
+                    <div className="text-xs text-muted-foreground">Accent colors &amp; hues</div>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setShowHelpPage(true)}>
+                  <HelpCircle />
+                  <div>
+                    <div className="font-semibold">Help &amp; tips</div>
+                    <div className="text-xs text-muted-foreground">Guides and shortcuts</div>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* User Profile Section */}
+            <div className="flex items-center gap-1.5 sm:gap-3">
+              <div className="text-right min-w-0 hidden xs:block">
+                <p className="font-semibold text-foreground leading-tight text-xs sm:text-sm truncate max-w-[80px] sm:max-w-[150px] md:max-w-[200px]">
+                  {user.firstName} {user.lastName}
+                </p>
+                <p className="text-muted-foreground text-[0.6rem] sm:text-xs hidden sm:block">
+                  {currentItems.length} items today
+                </p>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button type="button" className="rounded-full hover:scale-105 transition-transform">
+                    <Avatar className="size-8 sm:size-11 shadow-[0_4px_12px_-2px_var(--secondary)]">
+                      <AvatarFallback className="bg-secondary text-secondary-foreground text-xs sm:text-base">
+                        {user.firstName[0]}{user.lastName[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel className="font-normal">
+                    <p className="text-xs text-muted-foreground">Signed in as</p>
+                    <p className="text-sm font-bold text-foreground">{user.firstName} {user.lastName}</p>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={() => setShowDeleteAccountDialog(true)}
                   >
-                    {user.firstName[0]}{user.lastName[0]}
-                  </Avatar>
-                </IconButton>
-              </Box>
+                    <Trash />
+                    Delete Account
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+        </header>
 
-              <Menu
-                anchorEl={userMenuAnchor}
-                open={Boolean(userMenuAnchor)}
-                onClose={handleUserMenuClose}
-                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-              >
-                <Box sx={{ px: 2, py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Signed in as
-                  </Typography>
-                  <Typography variant="body1" fontWeight="bold">
-                    {user.firstName} {user.lastName}
-                  </Typography>
-                </Box>
-                <MenuItem
-                  onClick={() => {
-                    setShowDeleteAccountDialog(true);
-                    handleUserMenuClose();
-                  }}
-                  sx={{ gap: 1, mt: 1, color: 'error.main' }}
-                >
-                  <DeleteForever fontSize="small" />
-                  Delete Account
-                </MenuItem>
-                <MenuItem onClick={handleLogout} sx={{ gap: 1 }}>
-                  <Logout fontSize="small" />
-                  Sign Out
-                </MenuItem>
-              </Menu>
-
-              <Menu
-                anchorEl={settingsMenuAnchor}
-                open={Boolean(settingsMenuAnchor)}
-                onClose={handleSettingsMenuClose}
-                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                PaperProps={{
-                  sx: {
-                    mt: 1,
-                    borderRadius: '16px',
-                    minWidth: 240,
-                  }
-                }}
-              >
-                <MenuItem
-                  onClick={() => {
-                    toggleMode();
-                    handleSettingsMenuClose();
-                  }}
-                  sx={{ gap: 1 }}
-                >
-                  <ListItemIcon>
-                    {mode === 'dark' ? <LightMode fontSize="small" /> : <DarkMode fontSize="small" />}
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={mode === 'dark' ? 'Light mode' : 'Dark mode'}
-                    secondary="Toggle base theme"
-                    primaryTypographyProps={{ fontWeight: 600 }}
-                  />
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    setShowThemeSettings(true);
-                    handleSettingsMenuClose();
-                  }}
-                  sx={{ gap: 1 }}
-                >
-                  <ListItemIcon>
-                    <Palette fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="Theme settings"
-                    secondary="Accent colors & hues"
-                    primaryTypographyProps={{ fontWeight: 600 }}
-                  />
-                </MenuItem>
-                <Divider sx={{ my: 0.5 }} />
-                <MenuItem
-                  onClick={() => {
-                    setShowHelpPage(true);
-                    handleSettingsMenuClose();
-                  }}
-                  sx={{ gap: 1 }}
-                >
-                  <ListItemIcon>
-                    <Help fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="Help & tips"
-                    secondary="Guides and shortcuts"
-                    primaryTypographyProps={{ fontWeight: 600 }}
-                  />
-                </MenuItem>
-              </Menu>
-            </Toolbar>
-          </AppBar>
-
+        <div className="flex flex-1">
           {/* Navigation Drawer */}
           {!isReceiptsView && (
             !isMobile ? (
-              <Drawer
-                variant="permanent"
-                sx={{
-                  width: 320,
-                  flexShrink: 0,
-                  '& .MuiDrawer-paper': {
-                    width: 320,
-                    boxSizing: 'border-box',
-                  },
-                }}
-              >
-                <Toolbar />
+              <aside className="w-80 shrink-0 border-r border-border bg-card/60 hidden md:block">
                 {drawerContent}
-              </Drawer>
+              </aside>
             ) : (
-              <Drawer
-                variant="temporary"
-                open={mobileDrawerOpen}
-                onClose={() => setMobileDrawerOpen(false)}
-                ModalProps={{
-                  keepMounted: true,
-                }}
-              >
-                {drawerContent}
-              </Drawer>
+              <Sheet open={mobileDrawerOpen} onOpenChange={setMobileDrawerOpen}>
+                <SheetContent side="left" className="w-80 p-0 pt-4">
+                  {drawerContent}
+                </SheetContent>
+              </Sheet>
             )
           )}
 
           {/* Main Content */}
-          <Box
-            component="main"
-            sx={{
-              flexGrow: 1,
-              display: 'flex',
-              flexDirection: 'column',
-              p: { xs: 2, sm: 3, md: 4 },
-              minHeight: '100vh',
-              bgcolor: 'background.default',
-            }}
-          >
-            <Toolbar sx={{ minHeight: '72px' }} />
-
-            <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 3, md: 4 }, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-              <Box
-                sx={{
-                  flexGrow: 1,
-                  width: '100%',
-                  opacity: viewContentVisible ? 1 : 0,
-                  transition: viewContentVisible ? 'opacity 200ms ease-out' : 'opacity 120ms ease-out',
-                }}
+          <main className="flex-1 flex flex-col p-4 sm:p-6 md:p-8 bg-background">
+            <div className="max-w-5xl w-full mx-auto py-4 sm:py-6 md:py-8 flex-1 flex flex-col">
+              <div
+                className="flex-1 w-full transition-opacity"
+                style={{ opacity: viewContentVisible ? 1 : 0, transitionDuration: viewContentVisible ? '200ms' : '120ms' }}
               >
                 {displayedView === 'receipts' ? (
                   <ReceiptsPage user={user} />
@@ -1206,9 +834,9 @@ const VoiceGroceryList = ({ user, logout }) => {
                   <>
                     {/* Loading Indicator */}
                     {dataLoading && (
-                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                        <CircularProgress />
-                      </Box>
+                      <div className="flex justify-center py-8">
+                        <Spinner />
+                      </div>
                     )}
 
                     {/* Status Alerts */}
@@ -1221,18 +849,13 @@ const VoiceGroceryList = ({ user, logout }) => {
                     />
 
                     {/* Past Date Warning */}
-                    {currentDate.isBefore(dayjs().startOf('day')) && (
-                      <Alert
-                        severity="warning"
-                        sx={{
-                          mb: 3,
-                          borderRadius: '12px',
-                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                        }}
-                      >
-                        <AlertTitle sx={{ fontWeight: 700 }}>📅 Past Date Selected</AlertTitle>
-                        You are viewing a past grocery list. You cannot add new items to past dates.
-                        {currentItems.length === 0 && ' This date has no existing list.'}
+                    {isPastDate && (
+                      <Alert variant="warning" className="mb-4">
+                        <AlertTitle>📅 Past Date Selected</AlertTitle>
+                        <AlertDescription>
+                          You are viewing a past grocery list. You cannot add new items to past dates.
+                          {currentItems.length === 0 && ' This date has no existing list.'}
+                        </AlertDescription>
                       </Alert>
                     )}
 
@@ -1241,105 +864,71 @@ const VoiceGroceryList = ({ user, logout }) => {
                       onAddItems={handleManualItems}
                       historicalItems={historicalItems}
                       loading={loading}
-                      disabled={currentDate.isBefore(dayjs().startOf('day'))}
+                      disabled={isPastDate}
                     />
 
                     {/* List Stats and Controls */}
                     {currentItems.length > 0 && (
-                      <Paper sx={{ p: 2, mb: 3 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-                          <Typography variant="body2" color="text.secondary">
+                      <Card className="p-4 mb-4">
+                        <div className="flex justify-between items-center flex-wrap gap-3">
+                          <p className="text-sm text-muted-foreground">
                             {currentItems.filter(item => !item.completed).length} of {currentItems.length} items remaining
-                          </Typography>
-                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                          </p>
+                          <div className="flex gap-2 flex-wrap">
                             <Button
-                              startIcon={showOnlyRemaining ? <FilterListOff /> : <FilterList />}
+                              variant={showOnlyRemaining ? 'default' : 'outline'}
+                              size="sm"
                               onClick={() => setShowOnlyRemaining(!showOnlyRemaining)}
-                              variant={showOnlyRemaining ? "contained" : "outlined"}
-                              size="small"
                               disabled={loading}
-                              sx={{
-                                borderRadius: '8px',
-                                textTransform: 'none',
-                                fontWeight: 600,
-                              }}
                             >
+                              {showOnlyRemaining ? <ListX /> : <ListFilter />}
                               {showOnlyRemaining ? 'Show All' : 'Remaining Only'}
                             </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" disabled={loading}>
+                                  <Download />
+                                  Download
+                                  <ChevronDown />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={handleShare}>
+                                  <Share2 />
+                                  <div>
+                                    <div className="font-semibold">Share Image</div>
+                                    <div className="text-xs text-muted-foreground">Best for mobile sharing</div>
+                                  </div>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleDownloadImage}>
+                                  <ImageIcon />
+                                  <div>
+                                    <div className="font-semibold">Download Image</div>
+                                    <div className="text-xs text-muted-foreground">PNG format</div>
+                                  </div>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleDownloadPDF}>
+                                  <FileText />
+                                  <div>
+                                    <div className="font-semibold">Download PDF</div>
+                                    <div className="text-xs text-muted-foreground">Professional format</div>
+                                  </div>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                             <Button
-                              startIcon={<Download />}
-                              endIcon={<ArrowDropDown />}
-                              onClick={handleDownloadMenuOpen}
-                              variant="outlined"
-                              size="small"
-                              disabled={loading}
-                              sx={{
-                                borderRadius: '8px',
-                                textTransform: 'none',
-                                fontWeight: 600,
-                              }}
-                            >
-                              Download
-                            </Button>
-                            <Menu
-                              anchorEl={downloadMenuAnchor}
-                              open={Boolean(downloadMenuAnchor)}
-                              onClose={handleDownloadMenuClose}
-                              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                              PaperProps={{
-                                sx: {
-                                  mt: 1,
-                                  borderRadius: '12px',
-                                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-                                }
-                              }}
-                            >
-                              <MenuItem onClick={handleShare} sx={{ gap: 2, px: 2, py: 1.5 }}>
-                                <Share fontSize="small" />
-                                <Box>
-                                  <Typography variant="body2" fontWeight={600}>Share Image</Typography>
-                                  <Typography variant="caption" color="text.secondary">
-                                    Best for mobile sharing
-                                  </Typography>
-                                </Box>
-                              </MenuItem>
-                              <MenuItem onClick={handleDownloadImage} sx={{ gap: 2, px: 2, py: 1.5 }}>
-                                <Image fontSize="small" />
-                                <Box>
-                                  <Typography variant="body2" fontWeight={600}>Download Image</Typography>
-                                  <Typography variant="caption" color="text.secondary">
-                                    PNG format
-                                  </Typography>
-                                </Box>
-                              </MenuItem>
-                              <MenuItem onClick={handleDownloadPDF} sx={{ gap: 2, px: 2, py: 1.5 }}>
-                                <PictureAsPdf fontSize="small" />
-                                <Box>
-                                  <Typography variant="body2" fontWeight={600}>Download PDF</Typography>
-                                  <Typography variant="caption" color="text.secondary">
-                                    Professional format
-                                  </Typography>
-                                </Box>
-                              </MenuItem>
-                            </Menu>
-                            <Button
-                              startIcon={<Clear />}
+                              variant="ghost"
+                              size="sm"
                               onClick={clearCurrentList}
-                              color="error"
-                              size="small"
                               disabled={loading}
-                              sx={{
-                                borderRadius: '8px',
-                                textTransform: 'none',
-                                fontWeight: 600,
-                              }}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
                             >
+                              <X />
                               {loading ? 'Clearing...' : 'Clear List'}
                             </Button>
-                          </Box>
-                        </Box>
-                      </Paper>
+                          </div>
+                        </div>
+                      </Card>
                     )}
 
                     {/* Grocery List Display */}
@@ -1358,14 +947,14 @@ const VoiceGroceryList = ({ user, logout }) => {
                           loading={loading}
                         />
                       ) : (
-                        <Paper sx={{ p: 4, textAlign: 'center', borderRadius: '20px' }}>
-                          <Typography variant="h6" color="text.secondary" gutterBottom>
+                        <Card className="p-8 text-center">
+                          <p className="font-display text-lg font-semibold text-muted-foreground mb-1">
                             🎉 All items completed!
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            You've checked off all items. Toggle "Show All" to see completed items.
-                          </Typography>
-                        </Paper>
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            You&apos;ve checked off all items. Toggle &quot;Show All&quot; to see completed items.
+                          </p>
+                        </Card>
                       )
                     ) : (
                       <EmptyState
@@ -1375,36 +964,35 @@ const VoiceGroceryList = ({ user, logout }) => {
                     )}
                   </>
                 )}
-              </Box>
+              </div>
 
               {/* Footer */}
               <Footer />
-            </Container>
-          </Box>
+            </div>
+          </main>
 
           {!isReceiptsView && (
             <>
               {/* Hidden Printable List Component for Export */}
-              <Box sx={{ position: 'absolute', left: '-9999px', top: 0 }}>
+              <div className="absolute -left-[9999px] top-0">
                 <PrintableList
                   ref={printableListRef}
                   items={currentItems}
                   dateString={currentDateString}
                   formatDateDisplay={formatDateDisplay}
-                  theme={theme}
                 />
-              </Box>
+              </div>
 
               {/* Voice Recognition Component */}
               <VoiceRecognition
                 onItemsDetected={handleVoiceItems}
-                disabled={loading || currentDate.isBefore(dayjs().startOf('day'))}
+                disabled={loading || isPastDate}
               />
             </>
           )}
-        </Box>
-      </Box>
-    </ThemeProvider>
+        </div>
+      </div>
+    </>
   );
 };
 

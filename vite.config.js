@@ -1,10 +1,13 @@
+import path from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   plugins: [
     react(),
+    tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
@@ -111,19 +114,16 @@ export default defineConfig({
     }
   },
   resolve: {
-    dedupe: ['react', 'react-dom', '@emotion/react', '@emotion/styled']
+    dedupe: ['react', 'react-dom'],
+    alias: {
+      '@': path.resolve(__dirname, './src')
+    }
   },
   optimizeDeps: {
     include: [
       'react',
       'react-dom',
       'prop-types',
-      '@emotion/react',
-      '@emotion/styled',
-      '@emotion/cache',
-      '@mui/material',
-      '@mui/icons-material',
-      '@mui/x-date-pickers',
       'validator'
     ],
     esbuildOptions: {

@@ -48,7 +48,7 @@ pnpm dev
 ## Architecture
 
 ### Tech Stack
-- **Frontend**: React 18 with Vite, Material-UI (MUI), Voice Recognition API, Day.js, PWA support
+- **Frontend**: React 18 with Vite, Tailwind CSS v4 + shadcn/ui (Radix primitives), Voice Recognition API, Day.js, PWA support
 - **Backend**: Node.js with Express, MongoDB Atlas, bcryptjs, jsonwebtoken, CORS, Helmet, Rate limiting, Multer (file uploads)
 - **Database**: MongoDB Atlas with Mongoose ODM, plus GridFS (receipt images) and Atlas Vector Search (receipt embeddings)
 - **AI / RAG**: OpenAI API (`openai` SDK) for receipt OCR text structuring, embeddings, and retrieval-augmented chat completions; a separate EasyOCR/Vision microservice performs raw text extraction
@@ -173,7 +173,7 @@ This app was migrated from JSONBin to MongoDB backend. See `MIGRATION_NOTES.md` 
 - This is a pnpm workspace with frontend (root) and backend packages
 - ESLint configured: frontend (max 10 warnings), backend (max 5 warnings)
 - No testing setup currently configured
-- Uses Emotion for CSS-in-JS with Material-UI
+- Uses Tailwind CSS v4 (via `@tailwindcss/vite`) with CSS custom properties for theming; shadcn/ui primitives live in `src/components/ui/` (hand-authored, not CLI-generated) and wrap `radix-ui` for accessible behavior. Path alias `@` resolves to `src/`
 - Voice recognition requires HTTPS in production (uses Web Speech API)
 - Frontend runs on port 5173, backend on port 3001
 - Dependencies are optimized (removed unused prop-types)
@@ -208,11 +208,11 @@ When making changes to this codebase, always generate conventional commit messag
 
 1. **Follow conventional commit format**: `type(scope): description`
 2. **Keep messages concise**: Maximum 2 lines, short and to the point
-3. **Understand project context**: This is a React + Material-UI voice-powered grocery list app with MongoDB backend
+3. **Understand project context**: This is a React + Tailwind CSS/shadcn-ui voice-powered grocery list app with MongoDB backend
 4. **Use appropriate types**:
    - `feat`: New features (components, API endpoints, UI enhancements)
    - `fix`: Bug fixes (UI issues, API errors, voice recognition problems)
-   - `style`: UI/styling changes (Material-UI components, responsive design)
+   - `style`: UI/styling changes (Tailwind/shadcn components, responsive design)
    - `refactor`: Code restructuring without functionality changes
    - `docs`: Documentation updates (README, CLAUDE.md, comments)
    - `chore`: Build tools, dependencies, configuration changes

@@ -1,7 +1,9 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Box, Typography, Button, Paper, Alert } from '@mui/material';
-import { ErrorOutline, Refresh } from '@mui/icons-material';
+import { CircleAlert, RotateCw } from 'lucide-react';
+import { Card } from './ui/card';
+import { Button } from './ui/button';
+import { Alert, AlertTitle, AlertDescription } from './ui/alert';
 import logger from '../utils/logger.js';
 
 /**
@@ -12,11 +14,11 @@ import logger from '../utils/logger.js';
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { 
-      hasError: false, 
-      error: null, 
+    this.state = {
+      hasError: false,
+      error: null,
       errorInfo: null,
-      errorId: null 
+      errorId: null
     };
   }
 
@@ -28,7 +30,7 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(_error, errorInfo) {
     // Generate unique error ID for tracking
     const errorId = `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
+
     // Log error details
     logger.error('Error Boundary caught an error:', {
       error: _error?.message,
@@ -58,11 +60,11 @@ class ErrorBoundary extends React.Component {
 
   handleRetry = () => {
     // Reset error state to allow retry
-    this.setState({ 
-      hasError: false, 
-      error: null, 
+    this.setState({
+      hasError: false,
+      error: null,
       errorInfo: null,
-      errorId: null 
+      errorId: null
     });
   };
 
@@ -80,87 +82,52 @@ class ErrorBoundary extends React.Component {
 
       // Default fallback UI
       return (
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            minHeight: '100vh',
-            p: 3,
-            bgcolor: 'background.default'
-          }}
-        >
-          <Paper
-            elevation={3}
-            sx={{
-              p: 4,
-              maxWidth: 600,
-              width: '100%',
-              textAlign: 'center'
-            }}
-          >
-            <ErrorOutline 
-              sx={{ 
-                fontSize: 64, 
-                color: 'error.main', 
-                mb: 2 
-              }} 
-            />
-            
-            <Typography variant="h4" gutterBottom color="error">
+        <div className="flex justify-center items-center min-h-screen p-6 bg-background">
+          <Card className="p-8 max-w-xl w-full text-center">
+            <CircleAlert className="size-16 text-destructive mx-auto mb-4" />
+
+            <h4 className="font-display text-2xl font-bold text-destructive mb-2">
               Something went wrong
-            </Typography>
-            
-            <Typography variant="body1" sx={{ mb: 3, color: 'text.secondary' }}>
-              We're sorry, but something unexpected happened. This has been logged and we'll look into it.
-            </Typography>
+            </h4>
+
+            <p className="text-muted-foreground mb-5">
+              We&apos;re sorry, but something unexpected happened. This has been logged and we&apos;ll look into it.
+            </p>
 
             {this.state.errorId && (
-              <Alert severity="info" sx={{ mb: 3 }}>
-                Error ID: {this.state.errorId}
+              <Alert variant="info" className="mb-5 text-left">
+                <AlertDescription>Error ID: {this.state.errorId}</AlertDescription>
               </Alert>
             )}
 
             {import.meta.env && import.meta.env.DEV && this.state.error && (
-              <Alert severity="error" sx={{ mb: 3, textAlign: 'left' }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Development Error Details:
-                </Typography>
-                <Typography variant="body2" component="pre" sx={{ fontSize: '0.75rem' }}>
-                  {this.state.error.message}
-                </Typography>
-                {this.state.error.stack && (
-                  <Typography variant="body2" component="pre" sx={{ fontSize: '0.75rem', mt: 1 }}>
-                    {this.state.error.stack}
-                  </Typography>
-                )}
+              <Alert variant="destructive" className="mb-5 text-left">
+                <AlertTitle>Development Error Details:</AlertTitle>
+                <AlertDescription>
+                  <pre className="text-xs whitespace-pre-wrap">{this.state.error.message}</pre>
+                  {this.state.error.stack && (
+                    <pre className="text-xs whitespace-pre-wrap mt-2">{this.state.error.stack}</pre>
+                  )}
+                </AlertDescription>
               </Alert>
             )}
 
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
-              <Button
-                variant="contained"
-                startIcon={<Refresh />}
-                onClick={this.handleRetry}
-                sx={{ minWidth: 120 }}
-              >
+            <div className="flex gap-3 justify-center">
+              <Button onClick={this.handleRetry} className="min-w-[120px]">
+                <RotateCw />
                 Try Again
               </Button>
-              
-              <Button
-                variant="outlined"
-                onClick={this.handleReload}
-                sx={{ minWidth: 120 }}
-              >
+
+              <Button variant="outline" onClick={this.handleReload} className="min-w-[120px]">
                 Reload Page
               </Button>
-            </Box>
+            </div>
 
-            <Typography variant="caption" sx={{ mt: 3, display: 'block', color: 'text.secondary' }}>
+            <p className="text-xs text-muted-foreground mt-5">
               If this problem persists, please contact support with the Error ID above.
-            </Typography>
-          </Paper>
-        </Box>
+            </p>
+          </Card>
+        </div>
       );
     }
 
