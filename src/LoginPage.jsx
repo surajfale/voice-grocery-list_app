@@ -1,27 +1,12 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import {
-  Box,
-  Paper,
-  TextField,
-  Button,
-  Typography,
-  Container,
-  Alert,
-  InputAdornment,
-  IconButton,
-  Link,
-} from '@mui/material';
-import {
-  Visibility,
-  VisibilityOff,
-  ShoppingCart,
-  Email,
-  Lock,
-  Login,
-} from '@mui/icons-material';
-import { alpha, useTheme } from '@mui/material/styles';
+import { ShoppingCart, Mail, Lock, LogIn, Eye, EyeOff, TriangleAlert } from 'lucide-react';
 import { useAuth } from './AuthContext';
+import { Card } from './components/ui/card';
+import { Input } from './components/ui/input';
+import { Label } from './components/ui/label';
+import { Button } from './components/ui/button';
+import { Alert, AlertDescription } from './components/ui/alert';
 
 const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
   const [email, setEmail] = useState('');
@@ -30,13 +15,6 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
-  const theme = useTheme();
-  const { palette } = theme;
-
-  // Debug: Log whenever error state changes
-  React.useEffect(() => {
-    console.log('🔍 Error state changed:', error);
-  }, [error]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -55,215 +33,131 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
     setLoading(true);
 
     try {
-      console.log('🔑 Attempting login for:', email);
       const result = await login(email, password);
-      console.log('🔑 Login result:', result);
 
       if (!result.success) {
-        const errorMessage = result.error || 'Login failed';
-        console.log('🔑 Setting error message:', errorMessage);
-        setError(errorMessage);
+        setError(result.error || 'Login failed');
         setLoading(false); // Stop loading immediately when there's an error
         return;
       }
 
       // If successful, the AuthContext will handle navigation
-      console.log('🔑 Login successful - AuthContext will handle navigation');
-    } catch (err) {
-      console.error('🔑 Login error caught:', err);
+    } catch {
       setError('Login failed. Please try again.');
       setLoading(false);
     }
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: `radial-gradient(circle at 50% 0%, ${alpha(palette.primary.main, 0.15)} 0%, transparent 60%), ${palette.background.default}`,
-        p: 2,
-      }}
-    >
-      <Container maxWidth="sm">
-        <Paper
-          elevation={24}
-          sx={{
-            p: 4,
-            borderRadius: 3,
-          }}
-        >
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <Card className="p-8 shadow-lg">
           {/* Header */}
-          <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                mb: 2,
-              }}
-            >
-              <ShoppingCart
-                sx={{
-                  fontSize: 48,
-                  color: 'primary.main',
-                  mr: 1,
-                }}
-              />
-              <Typography
-                variant="h4"
-                component="h1"
-                sx={{
-                  fontWeight: 'bold',
-                  color: 'primary.main',
-                }}
-              >
+          <div className="text-center mb-6">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <ShoppingCart className="size-10 text-primary" strokeWidth={2.25} />
+              <h1 className="font-display text-3xl font-bold text-primary">
                 Grocery List
-              </Typography>
-            </Box>
-            <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
-              Welcome Back!
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
+              </h1>
+            </div>
+            <h2 className="font-display text-xl font-semibold mb-1">Welcome Back!</h2>
+            <p className="text-sm text-muted-foreground">
               Sign in to access your grocery lists across all devices
-            </Typography>
-          </Box>
+            </p>
+          </div>
 
           {/* Project Disclaimer Alert */}
-          <Alert severity="warning" sx={{ mb: 3 }}>
-            <Typography variant="body2">
-              <strong>Note:</strong> This is a personal learning project. Service availability is not guaranteed and data may be reset.
-            </Typography>
+          <Alert variant="warning" className="mb-4">
+            <TriangleAlert />
+            <AlertDescription>
+              <strong className="text-foreground">Note:</strong> This is a personal learning project. Service availability is not guaranteed and data may be reset.
+            </AlertDescription>
           </Alert>
 
           {/* Error Alert */}
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
           {/* Login Form */}
-          <Box component="form" onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              label="Email Address"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              margin="normal"
-              required
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Email color="action" />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ mb: 2 }}
-            />
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email Address</Label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="pl-10"
+                />
+              </div>
+            </div>
 
-            <TextField
-              fullWidth
-              label="Password"
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              margin="normal"
-              required
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Lock color="action" />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowPassword(!showPassword)}
-                      edge="end"
-                    >
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ mb: 1 }}
-            />
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="pl-10 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+            </div>
 
-            {/* Forgot Password Link */}
-            <Box sx={{ textAlign: 'right', mb: 2 }}>
-              <Link
-                component="button"
+            <div className="text-right">
+              <button
                 type="button"
-                variant="body2"
                 onClick={onSwitchToForgotPassword}
-                sx={{
-                  textDecoration: 'none',
-                  color: 'primary.main',
-                  fontSize: '0.875rem',
-                  '&:hover': {
-                    textDecoration: 'underline',
-                  },
-                }}
+                className="text-sm font-medium text-primary hover:underline"
               >
                 Forgot Password?
-              </Link>
-            </Box>
+              </button>
+            </div>
 
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              size="large"
-              disabled={loading}
-              startIcon={<Login />}
-              sx={{
-                py: 1.5,
-                fontSize: '1.1rem',
-                fontWeight: 'bold',
-                mb: 2
-              }}
-            >
+            <Button type="submit" size="lg" disabled={loading} className="w-full">
+              <LogIn />
               {loading ? 'Signing In...' : 'Sign In'}
             </Button>
-          </Box>
+          </form>
 
           {/* Switch to Register */}
-          <Box sx={{ textAlign: 'center', mt: 3 }}>
-            <Typography variant="body2" color="text.secondary">
-              Don't have an account?{' '}
-              <Link
-                component="button"
-                variant="body2"
-                onClick={onSwitchToRegister}
-                sx={{
-                  textDecoration: 'none',
-                  fontWeight: 'bold',
-                  color: 'primary.main',
-                  '&:hover': {
-                    textDecoration: 'underline',
-                  },
-                }}
-              >
-                Create Account
-              </Link>
-            </Typography>
-          </Box>
+          <p className="text-center text-sm text-muted-foreground mt-5">
+            Don&apos;t have an account?{' '}
+            <button
+              type="button"
+              onClick={onSwitchToRegister}
+              className="font-semibold text-primary hover:underline"
+            >
+              Create Account
+            </button>
+          </p>
 
           {/* Privacy Note */}
-          <Box sx={{ textAlign: 'center', mt: 2 }}>
-            <Typography variant="caption" color="text.secondary">
-              Your data is securely encrypted and stored in the cloud.
-              <br />
-              Access your lists from any device, anywhere.
-            </Typography>
-          </Box>
-        </Paper>
-      </Container>
-    </Box>
+          <p className="text-center text-xs text-muted-foreground mt-4">
+            Your data is securely encrypted and stored in the cloud.
+            <br />
+            Access your lists from any device, anywhere.
+          </p>
+        </Card>
+      </div>
+    </div>
   );
 };
 

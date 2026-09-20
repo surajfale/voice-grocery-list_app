@@ -1,44 +1,24 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import {
-  Box,
-  Container,
-  Typography,
-  Paper,
-  Card,
-  CardContent,
-  Grid,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  IconButton,
-  AppBar,
-  Toolbar,
-} from '@mui/material';
-import { alpha, useTheme } from '@mui/material/styles';
-import {
-  ArrowBack,
+  ArrowLeft,
   Mic,
-  Edit,
-  Category,
-  DateRange,
-  CheckCircle,
-  VoiceChat,
-  AutoFixHigh,
-  // ...existing imports
-} from '@mui/icons-material';
+  Pencil,
+  Tags,
+  CalendarRange,
+  CircleCheck,
+  AudioLines,
+  Wand2,
+} from 'lucide-react';
+import { Card } from './ui/card';
 
 const HelpPage = ({ onBack }) => {
-  const theme = useTheme();
-  const { palette } = theme;
-
   const features = [
     {
-      icon: <VoiceChat />,
+      icon: <AudioLines className="size-6" />,
       title: 'Voice Recognition',
       description: 'Say multiple items at once and our AI will automatically separate and categorize them',
-      color: palette.primary.main,
+      color: 'var(--primary)',
       tips: [
         'Speak clearly and at normal pace',
         'You can say multiple items in one session',
@@ -47,10 +27,10 @@ const HelpPage = ({ onBack }) => {
       ],
     },
     {
-      icon: <AutoFixHigh />,
+      icon: <Wand2 className="size-6" />,
       title: 'Smart Auto-correction',
       description: 'AI automatically detects and suggests corrections for misspelled items',
-      color: palette.warning.main,
+      color: 'var(--warning)',
       tips: [
         'Common misspellings are automatically detected',
         'You can choose to keep original or use corrections',
@@ -59,10 +39,10 @@ const HelpPage = ({ onBack }) => {
       ],
     },
     {
-      icon: <Category />,
+      icon: <Tags className="size-6" />,
       title: 'Intelligent Categorization',
       description: 'Items are automatically sorted into relevant categories like Produce, Dairy, etc.',
-      color: palette.success.main,
+      color: 'var(--success)',
       tips: [
         'Supports 8+ categories including Asian & Indian Pantry',
         'Click edit icon to manually change categories',
@@ -71,10 +51,10 @@ const HelpPage = ({ onBack }) => {
       ],
     },
     {
-      icon: <DateRange />,
+      icon: <CalendarRange className="size-6" />,
       title: 'Date-based Lists',
       description: 'Each date gets its own separate grocery list for better organization',
-      color: palette.secondary.main,
+      color: 'var(--secondary)',
       tips: [
         'Switch between dates using the sidebar',
         'Create lists for future shopping trips',
@@ -85,24 +65,9 @@ const HelpPage = ({ onBack }) => {
   ];
 
   const quickStart = [
-    {
-      step: 1,
-      title: 'Add Items',
-      description: 'Use the voice button or type items manually',
-      icon: <Mic />,
-    },
-    {
-      step: 2,
-      title: 'Review Suggestions',
-      description: 'Check auto-corrections and categorization',
-      icon: <Edit />,
-    },
-    {
-      step: 3,
-      title: 'Shop Smart',
-      description: 'Check off items as you shop',
-      icon: <CheckCircle />,
-    },
+    { step: 1, title: 'Add Items', description: 'Use the voice button or type items manually', icon: <Mic className="size-7" /> },
+    { step: 2, title: 'Review Suggestions', description: 'Check auto-corrections and categorization', icon: <Pencil className="size-7" /> },
+    { step: 3, title: 'Shop Smart', description: 'Check off items as you shop', icon: <CircleCheck className="size-7" /> },
   ];
 
   const voiceCommands = [
@@ -113,313 +78,151 @@ const HelpPage = ({ onBack }) => {
     'yogurt ice cream and butter',
   ];
 
+  const categories = [
+    { name: 'Produce', color: '#10B981', items: 'Fruits, vegetables, herbs' },
+    { name: 'Dairy', color: '#3B82F6', items: 'Milk, cheese, yogurt, eggs' },
+    { name: 'Meat & Seafood', color: '#EF4444', items: 'Fresh meat, fish, poultry' },
+    { name: 'Asian Pantry', color: '#8B5CF6', items: 'Rice, noodles, sauces, oils' },
+    { name: 'Indian Pantry', color: '#F59E0B', items: 'Spices, lentils, flour, ghee' },
+    { name: 'Frozen', color: '#06B6D4', items: 'Frozen foods, ice cream' },
+    { name: 'Beverages', color: '#84CC16', items: 'Drinks, juices, tea, coffee' },
+    { name: 'Snacks', color: '#F97316', items: 'Chips, nuts, sweets' },
+    { name: 'Bakery', color: '#EC4899', items: 'Bread, pastries, cakes' },
+  ];
+
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <div className="min-h-screen bg-background">
       {/* Help Page Header */}
-      <AppBar position="sticky" elevation={0}>
-        <Toolbar>
-          <IconButton
-            edge="start"
-            onClick={onBack}
-            sx={{
-              mr: 2,
-              borderRadius: '12px',
-              '&:hover': {
-                backgroundColor: alpha(palette.primary.main, 0.08),
-              },
-            }}
-          >
-            <ArrowBack />
-          </IconButton>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box
-              sx={{
-                width: 40,
-                height: 40,
-                borderRadius: '12px',
-                backgroundColor: palette.primary.main,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Typography variant="h6" sx={{ color: 'white', fontSize: '1.2rem' }}>
-                💡
-              </Typography>
-            </Box>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                Help & Guide
-              </Typography>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                Learn how to use Grocery Voice List effectively
-              </Typography>
-            </Box>
-          </Box>
-        </Toolbar>
-      </AppBar>
-
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        {/* Quick Start Section */}
-        <Paper
-          sx={{
-            p: 4,
-            mb: 4,
-            borderRadius: '20px',
-            backgroundColor: palette.primary.main,
-            color: 'white',
-            position: 'relative',
-            overflow: 'hidden',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%)',
-            },
-          }}
+      <header className="sticky top-0 z-30 h-[72px] flex items-center px-4 sm:px-6 bg-card/90 backdrop-blur-xl border-b border-border">
+        <button
+          type="button"
+          onClick={onBack}
+          className="mr-3 p-2.5 rounded-xl hover:bg-primary/8 text-foreground"
+          aria-label="Back"
         >
-          <Box sx={{ position: 'relative', zIndex: 1 }}>
-            <Typography variant="h4" sx={{ fontWeight: 700, mb: 2 }}>
-              Getting Started
-            </Typography>
-            <Typography variant="body1" sx={{ mb: 4, opacity: 0.9 }}>
-              Follow these simple steps to create your first smart grocery list
-            </Typography>
+          <ArrowLeft />
+        </button>
 
-            <Grid container spacing={3}>
+        <div className="flex items-center gap-3">
+          <div className="size-10 rounded-xl bg-primary flex items-center justify-center text-xl">
+            💡
+          </div>
+          <div>
+            <h6 className="font-display font-bold">Help &amp; Guide</h6>
+            <p className="text-xs text-muted-foreground">Learn how to use Grocery Voice List effectively</p>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+        {/* Quick Start Section */}
+        <div className="relative overflow-hidden rounded-2xl p-6 sm:p-8 mb-8 bg-primary text-white">
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: 'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.15) 0%, transparent 50%)' }}
+          />
+          <div className="relative">
+            <h4 className="font-display text-2xl sm:text-3xl font-bold mb-2">Getting Started</h4>
+            <p className="opacity-90 mb-6">Follow these simple steps to create your first smart grocery list</p>
+
+            <div className="grid sm:grid-cols-3 gap-4">
               {quickStart.map((item) => (
-                <Grid item xs={12} md={4} key={item.step}>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      textAlign: 'center',
-                      p: 3,
-                      borderRadius: '16px',
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      backdropFilter: 'blur(8px)',
-                      border: '1px solid rgba(255, 255, 255, 0.2)',
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: 60,
-                        height: 60,
-                        borderRadius: '50%',
-                        background: 'rgba(255, 255, 255, 0.2)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mb: 2,
-                      }}
-                    >
-                      {React.cloneElement(item.icon, { sx: { fontSize: 28 } })}
-                    </Box>
-                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                      {item.step}. {item.title}
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                      {item.description}
-                    </Typography>
-                  </Box>
-                </Grid>
+                <div
+                  key={item.step}
+                  className="flex flex-col items-center text-center p-4 rounded-2xl bg-white/10 border border-white/20 backdrop-blur"
+                >
+                  <div className="size-14 rounded-full bg-white/20 flex items-center justify-center mb-3">
+                    {item.icon}
+                  </div>
+                  <p className="font-semibold mb-1">{item.step}. {item.title}</p>
+                  <p className="text-sm opacity-90">{item.description}</p>
+                </div>
               ))}
-            </Grid>
-          </Box>
-        </Paper>
+            </div>
+          </div>
+        </div>
 
         {/* Features Section */}
-        <Typography variant="h4" sx={{ fontWeight: 700, mb: 3, color: 'text.primary' }}>
-          Key Features
-        </Typography>
+        <h4 className="font-display text-2xl font-bold mb-4">Key Features</h4>
 
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+        <div className="grid md:grid-cols-2 gap-4 mb-8">
           {features.map((feature, index) => (
-            <Grid item xs={12} md={6} key={index}>
-              <Card
-                sx={{
-                  height: '100%',
-                  borderRadius: '20px',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: `0 20px 40px ${alpha(feature.color, 0.15)}`,
-                    borderColor: alpha(feature.color, 0.3),
-                  },
-                }}
-              >
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                    <Box
-                      sx={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: '12px',
-                        backgroundColor: feature.color,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                      }}
-                    >
-                      {React.cloneElement(feature.icon, { sx: { fontSize: 24 } })}
-                    </Box>
-                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                      {feature.title}
-                    </Typography>
-                  </Box>
+            <Card
+              key={index}
+              className="p-5 transition-all hover:-translate-y-1 hover:shadow-lg"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div
+                  className="size-12 rounded-xl flex items-center justify-center text-white shrink-0"
+                  style={{ backgroundColor: feature.color }}
+                >
+                  {feature.icon}
+                </div>
+                <p className="font-display font-bold">{feature.title}</p>
+              </div>
 
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    {feature.description}
-                  </Typography>
+              <p className="text-sm text-muted-foreground mb-3">{feature.description}</p>
 
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                    Tips & Best Practices:
-                  </Typography>
-                  <List dense>
-                    {feature.tips.map((tip, tipIndex) => (
-                      <ListItem key={tipIndex} sx={{ pl: 0 }}>
-                        <ListItemIcon sx={{ minWidth: 20 }}>
-                          <Box
-                            sx={{
-                              width: 6,
-                              height: 6,
-                              borderRadius: '50%',
-                              backgroundColor: feature.color,
-                            }}
-                          />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={tip}
-                          primaryTypographyProps={{
-                            variant: 'body2',
-                            sx: { fontSize: '0.875rem' },
-                          }}
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                </CardContent>
-              </Card>
-            </Grid>
+              <p className="text-sm font-semibold mb-1.5">Tips &amp; Best Practices:</p>
+              <ul className="space-y-1.5">
+                {feature.tips.map((tip, tipIndex) => (
+                  <li key={tipIndex} className="flex items-start gap-2 text-sm">
+                    <span
+                      className="size-1.5 rounded-full mt-1.5 shrink-0"
+                      style={{ backgroundColor: feature.color }}
+                    />
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+            </Card>
           ))}
-        </Grid>
+        </div>
 
         {/* Voice Commands Examples */}
-        <Paper
-          sx={{
-            p: 4,
-            mb: 4,
-            borderRadius: '20px',
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-            <Box
-              sx={{
-                width: 40,
-                height: 40,
-                borderRadius: '12px',
-                backgroundColor: palette.primary.main,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Mic sx={{ color: 'white', fontSize: 20 }} />
-            </Box>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
-              Voice Command Examples
-            </Typography>
-          </Box>
+        <Card className="p-6 mb-8">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="size-10 rounded-xl bg-primary flex items-center justify-center">
+              <Mic className="text-white size-5" />
+            </div>
+            <h5 className="font-display text-xl font-bold">Voice Command Examples</h5>
+          </div>
 
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          <p className="text-sm text-muted-foreground mb-4">
             Try these example phrases with the voice recognition feature:
-          </Typography>
+          </p>
 
-          <Grid container spacing={2}>
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
             {voiceCommands.map((command, index) => (
-              <Grid item xs={12} sm={6} md={4} key={index}>
-                <Paper
-                  sx={{
-                    p: 2,
-                    borderRadius: '12px',
-                    backgroundColor: alpha(palette.primary.main, 0.05),
-                    border: `1px solid ${alpha(palette.primary.main, 0.1)}`,
-                  }}
-                >
-                  <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'primary.dark' }}>
-                    "{command}"
-                  </Typography>
-                </Paper>
-              </Grid>
+              <div key={index} className="p-3 rounded-xl bg-primary/5 border border-primary/10">
+                <p className="text-sm italic text-primary">&quot;{command}&quot;</p>
+              </div>
             ))}
-          </Grid>
-        </Paper>
+          </div>
+        </Card>
 
         {/* Categories Information */}
-        <Paper
-          sx={{
-            p: 4,
-            borderRadius: '20px',
-          }}
-        >
-          <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
-            Smart Categories
-          </Typography>
+        <Card className="p-6">
+          <h5 className="font-display text-xl font-bold mb-3">Smart Categories</h5>
 
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          <p className="text-sm text-muted-foreground mb-4">
             Items are automatically organized into these categories:
-          </Typography>
+          </p>
 
-          <Grid container spacing={2}>
-            {[
-              { name: 'Produce', color: '#10B981', items: 'Fruits, vegetables, herbs' },
-              { name: 'Dairy', color: '#3B82F6', items: 'Milk, cheese, yogurt, eggs' },
-              { name: 'Meat & Seafood', color: '#EF4444', items: 'Fresh meat, fish, poultry' },
-              { name: 'Asian Pantry', color: '#8B5CF6', items: 'Rice, noodles, sauces, oils' },
-              { name: 'Indian Pantry', color: '#F59E0B', items: 'Spices, lentils, flour, ghee' },
-              { name: 'Frozen', color: '#06B6D4', items: 'Frozen foods, ice cream' },
-              { name: 'Beverages', color: '#84CC16', items: 'Drinks, juices, tea, coffee' },
-              { name: 'Snacks', color: '#F97316', items: 'Chips, nuts, sweets' },
-              { name: 'Bakery', color: '#EC4899', items: 'Bread, pastries, cakes' },
-            ].map((category) => (
-              <Grid item xs={12} sm={6} md={4} key={category.name}>
-                <Box
-                  sx={{
-                    p: 2,
-                    borderRadius: '12px',
-                    border: '1px solid',
-                    borderColor: 'divider',
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <Box
-                      sx={{
-                        width: 12,
-                        height: 12,
-                        borderRadius: '50%',
-                        backgroundColor: category.color,
-                      }}
-                    />
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                      {category.name}
-                    </Typography>
-                  </Box>
-                  <Typography variant="caption" color="text.secondary">
-                    {category.items}
-                  </Typography>
-                </Box>
-              </Grid>
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {categories.map((category) => (
+              <div key={category.name} className="p-3 rounded-xl border border-border">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="size-3 rounded-full" style={{ backgroundColor: category.color }} />
+                  <span className="text-sm font-semibold">{category.name}</span>
+                </div>
+                <p className="text-xs text-muted-foreground">{category.items}</p>
+              </div>
             ))}
-          </Grid>
-        </Paper>
-      </Container>
-    </Box>
+          </div>
+        </Card>
+      </div>
+    </div>
   );
 };
 

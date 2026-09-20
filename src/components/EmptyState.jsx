@@ -1,118 +1,36 @@
 import React, { memo } from 'react';
 import PropTypes from 'prop-types';
-import {
-  Paper,
-  Box,
-  Typography,
-} from '@mui/material';
-import { alpha, useTheme } from '@mui/material/styles';
-import { ShoppingCart, Mic, Edit } from '@mui/icons-material';
+import { ShoppingCart, Mic, Pencil } from 'lucide-react';
+import { Card } from './ui/card';
 
 const EmptyState = memo(({ currentDateString, formatDateDisplay }) => {
-  const theme = useTheme();
-  const { primary, success } = theme.palette;
-
   return (
-    <Paper
-      sx={{
-        p: 6,
-        textAlign: 'center',
-        borderRadius: '20px',
-        animation: 'fadeInUp 0.6s ease-out',
-        '@keyframes fadeInUp': {
-          '0%': {
-            opacity: 0,
-            transform: 'translateY(20px)',
-          },
-          '100%': {
-            opacity: 1,
-            transform: 'translateY(0)',
-          },
-        },
-      }}
-    >
-      <Box
-        sx={{
-          width: 80,
-          height: 80,
-          borderRadius: '50%',
-          backgroundColor: alpha(primary.main, 0.1),
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          mx: 'auto',
-          mb: 3,
-          border: `2px solid ${alpha(primary.main, 0.2)}`,
-          animation: 'float 3s ease-in-out infinite',
-          '@keyframes float': {
-            '0%, 100%': {
-              transform: 'translateY(0px)',
-            },
-            '50%': {
-              transform: 'translateY(-8px)',
-            },
-          },
-        }}
-      >
-        <ShoppingCart sx={{ fontSize: 40, color: primary.main }} />
-      </Box>
+    <Card className="p-10 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="size-20 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center mx-auto mb-5 animate-bounce [animation-duration:3s]">
+        <ShoppingCart className="size-10 text-primary" />
+      </div>
 
-      <Typography
-        variant="h5"
-        sx={{
-          fontWeight: 700,
-          mb: 1,
-          color: 'text.primary',
-        }}
-      >
-        Your list is empty
-      </Typography>
+      <h5 className="font-display text-xl font-bold mb-1">Your list is empty</h5>
 
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 1, fontWeight: 500 }}>
+      <p className="text-muted-foreground font-medium mb-1">
         for {formatDateDisplay(currentDateString)}
-      </Typography>
+      </p>
 
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+      <p className="text-sm text-muted-foreground mb-5">
         Start adding items using voice recognition or manual input to create your smart grocery list
-      </Typography>
+      </p>
 
-      <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            px: 2,
-            py: 1,
-            borderRadius: '12px',
-            backgroundColor: alpha(primary.main, 0.08),
-            border: `1px solid ${alpha(primary.main, 0.2)}`,
-          }}
-        >
-          <Mic sx={{ fontSize: 16, color: 'primary.main' }} />
-          <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 600 }}>
-            Voice Recognition
-          </Typography>
-        </Box>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            px: 2,
-            py: 1,
-            borderRadius: '12px',
-            backgroundColor: alpha(success.main, 0.08),
-            border: `1px solid ${alpha(success.main, 0.2)}`,
-          }}
-        >
-          <Edit sx={{ fontSize: 16, color: 'success.main' }} />
-          <Typography variant="caption" sx={{ color: 'success.main', fontWeight: 600 }}>
-            Auto-correction
-          </Typography>
-        </Box>
-      </Box>
-    </Paper>
+      <div className="flex justify-center gap-3 flex-wrap">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/8 border border-primary/20">
+          <Mic className="size-4 text-primary" />
+          <span className="text-xs font-semibold text-primary">Voice Recognition</span>
+        </div>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-success/10 border border-success/25">
+          <Pencil className="size-4 text-success" />
+          <span className="text-xs font-semibold text-success">Auto-correction</span>
+        </div>
+      </div>
+    </Card>
   );
 });
 

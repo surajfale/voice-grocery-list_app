@@ -2,16 +2,24 @@ import { useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
 import dayjs from 'dayjs';
 import {
-  Grid,
-  MenuItem,
-  Paper,
-  Stack,
-  TextField,
-  Typography
-} from '@mui/material';
-import { useTheme } from '@mui/material/styles';
-import { BarChart } from '@mui/x-charts/BarChart';
-import { LineChart } from '@mui/x-charts/LineChart';
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from 'recharts';
+import { Card } from '../ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 import groceryIntelligence from '../../services/groceryIntelligence.js';
 
 const UNKNOWN_STORE = 'Unknown store';
@@ -28,8 +36,15 @@ const getMonthKey = (receipt) => {
 
 const getStoreName = (receipt) => receipt.merchant?.trim() || UNKNOWN_STORE;
 
-const SpendingInsights = ({ receipts, loading }) => {
-  const { palette } = useTheme();
+const chartTooltipStyle = {
+  backgroundColor: 'var(--popover)',
+  color: 'var(--popover-foreground)',
+  border: '1px solid var(--border)',
+  borderRadius: '0.75rem',
+  fontSize: '0.8rem',
+};
+
+const SpendingInsights = ({ receipts, loading = false }) => {
   const [selectedStore, setSelectedStore] = useState('all');
 
   const readyReceipts = useMemo(
@@ -107,116 +122,102 @@ const SpendingInsights = ({ receipts, loading }) => {
 
   if (!loading && readyReceipts.length === 0) {
     return (
-      <Paper sx={{ p: 4, borderRadius: 3, textAlign: 'center' }}>
-        <Typography variant="h6" gutterBottom>
-          No spending data yet
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
+      <Card className="p-8 text-center">
+        <h6 className="font-display font-semibold mb-1">No spending data yet</h6>
+        <p className="text-sm text-muted-foreground">
           Upload receipts to see monthly trends and spend breakdowns by store and category.
-        </Typography>
-      </Paper>
+        </p>
+      </Card>
     );
   }
 
   return (
-    <Stack spacing={3}>
-      <Paper sx={{ p: 2, borderRadius: 3 }}>
-        <TextField
-          select
-          label="Store"
-          size="small"
-          value={selectedStore}
-          onChange={(event) => setSelectedStore(event.target.value)}
-          sx={{ minWidth: 220 }}
-        >
-          <MenuItem value="all">All stores</MenuItem>
-          {storeOptions.map((store) => (
-            <MenuItem key={store} value={store}>
-              {store}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Paper>
+    <div className="flex flex-col gap-4">
+      <Card className="p-4">
+        <Select value={selectedStore} onValueChange={setSelectedStore}>
+          <SelectTrigger className="min-w-[220px]">
+            <SelectValue placeholder="Store" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All stores</SelectItem>
+            {storeOptions.map((store) => (
+              <SelectItem key={store} value={store}>{store}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </Card>
 
-      <Grid container spacing={2}>
-        <Grid item xs={12} sm={4}>
-          <Paper sx={{ p: 2.5, borderRadius: 3 }}>
-            <Typography variant="caption" color="text.secondary">Total spent</Typography>
-            <Typography variant="h5" fontWeight={700}>{formatCurrency(totalSpent)}</Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          <Paper sx={{ p: 2.5, borderRadius: 3 }}>
-            <Typography variant="caption" color="text.secondary">Avg per receipt</Typography>
-            <Typography variant="h5" fontWeight={700}>{formatCurrency(avgPerReceipt)}</Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={4}>
-          <Paper sx={{ p: 2.5, borderRadius: 3 }}>
-            <Typography variant="caption" color="text.secondary">Top store</Typography>
-            <Typography variant="h5" fontWeight={700} noWrap title={topStore}>{topStore}</Typography>
-          </Paper>
-        </Grid>
-      </Grid>
+      <div className="grid sm:grid-cols-3 gap-3">
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground">Total spent</p>
+          <p className="font-display text-xl font-bold">{formatCurrency(totalSpent)}</p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground">Avg per receipt</p>
+          <p className="font-display text-xl font-bold">{formatCurrency(avgPerReceipt)}</p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground">Top store</p>
+          <p className="font-display text-xl font-bold truncate" title={topStore}>{topStore}</p>
+        </Card>
+      </div>
 
-      <Paper sx={{ p: 3, borderRadius: 3 }}>
-        <Typography variant="h6" gutterBottom>
+      <Card className="p-5">
+        <h6 className="font-display font-semibold mb-3">
           Monthly spend trend{selectedStore !== 'all' ? ` — ${selectedStore}` : ''}
-        </Typography>
+        </h6>
         {monthlyTrend.length > 0 ? (
-          <LineChart
-            height={300}
-            xAxis={[{ scaleType: 'point', data: monthlyTrend.map((entry) => entry.month) }]}
-            series={[{ data: monthlyTrend.map((entry) => entry.total), label: 'Spend', color: palette.primary.main }]}
-          />
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={monthlyTrend} margin={{ left: 8, right: 16 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis dataKey="month" tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} />
+              <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} />
+              <Tooltip contentStyle={chartTooltipStyle} formatter={(value) => formatCurrency(value)} />
+              <Line type="monotone" dataKey="total" name="Spend" stroke="var(--primary)" strokeWidth={2.5} dot={{ r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
         ) : (
-          <Typography variant="body2" color="text.secondary">
-            Not enough dated receipts to chart a trend yet.
-          </Typography>
+          <p className="text-sm text-muted-foreground">Not enough dated receipts to chart a trend yet.</p>
         )}
-      </Paper>
+      </Card>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, borderRadius: 3, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>
-              Spend by store
-            </Typography>
-            {storeTotals.length > 0 ? (
-              <BarChart
-                height={320}
-                layout="horizontal"
-                yAxis={[{ scaleType: 'band', data: storeTotals.map((entry) => entry.store) }]}
-                series={[{ data: storeTotals.map((entry) => entry.total), label: 'Total', color: palette.success.main }]}
-                margin={{ left: 110 }}
-              />
-            ) : (
-              <Typography variant="body2" color="text.secondary">No store data yet.</Typography>
-            )}
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, borderRadius: 3, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>
-              Spend by category{selectedStore !== 'all' ? ` — ${selectedStore}` : ''}
-            </Typography>
-            {categoryTotals.length > 0 ? (
-              <BarChart
-                height={320}
-                layout="horizontal"
-                yAxis={[{ scaleType: 'band', data: categoryTotals.map((entry) => entry.category) }]}
-                series={[{ data: categoryTotals.map((entry) => entry.total), label: 'Total', color: palette.warning.main }]}
-                margin={{ left: 130 }}
-              />
-            ) : (
-              <Typography variant="body2" color="text.secondary">
-                No itemized prices detected yet for this selection.
-              </Typography>
-            )}
-          </Paper>
-        </Grid>
-      </Grid>
-    </Stack>
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card className="p-5">
+          <h6 className="font-display font-semibold mb-3">Spend by store</h6>
+          {storeTotals.length > 0 ? (
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart data={storeTotals} layout="vertical" margin={{ left: 16, right: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis type="number" tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} />
+                <YAxis dataKey="store" type="category" width={110} tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} />
+                <Tooltip contentStyle={chartTooltipStyle} formatter={(value) => formatCurrency(value)} />
+                <Bar dataKey="total" name="Total" fill="var(--success)" radius={[0, 6, 6, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-muted-foreground">No store data yet.</p>
+          )}
+        </Card>
+        <Card className="p-5">
+          <h6 className="font-display font-semibold mb-3">
+            Spend by category{selectedStore !== 'all' ? ` — ${selectedStore}` : ''}
+          </h6>
+          {categoryTotals.length > 0 ? (
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart data={categoryTotals} layout="vertical" margin={{ left: 16, right: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis type="number" tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} />
+                <YAxis dataKey="category" type="category" width={130} tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }} />
+                <Tooltip contentStyle={chartTooltipStyle} formatter={(value) => formatCurrency(value)} />
+                <Bar dataKey="total" name="Total" fill="var(--warning)" radius={[0, 6, 6, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-sm text-muted-foreground">No itemized prices detected yet for this selection.</p>
+          )}
+        </Card>
+      </div>
+    </div>
   );
 };
 
@@ -232,10 +233,6 @@ SpendingInsights.propTypes = {
     }))
   })).isRequired,
   loading: PropTypes.bool
-};
-
-SpendingInsights.defaultProps = {
-  loading: false
 };
 
 export default SpendingInsights;

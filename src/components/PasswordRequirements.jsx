@@ -1,18 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import {
-  Box,
-  Typography,
-  LinearProgress,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-} from '@mui/material';
-import {
-  CheckCircle,
-  RadioButtonUnchecked,
-} from '@mui/icons-material';
+import { CircleCheck, Circle } from 'lucide-react';
 import { validatePassword } from '../utils/passwordValidator';
 
 /**
@@ -24,69 +12,51 @@ const PasswordRequirements = ({ password, showStrength = true }) => {
   const { requirements, strength } = validation;
 
   return (
-    <Box sx={{ mt: 2, mb: 2 }}>
+    <div className="mt-3 mb-3">
       {/* Password Strength Meter */}
       {showStrength && password && (
-        <Box sx={{ mb: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-            <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+        <div className="mb-3">
+          <div className="flex justify-between mb-1">
+            <span className="text-xs font-semibold text-muted-foreground">
               Password Strength:
-            </Typography>
-            <Typography
-              variant="caption"
-              sx={{
-                fontWeight: 700,
-                color: strength.color,
-                textTransform: 'uppercase'
-              }}
+            </span>
+            <span
+              className="text-xs font-bold uppercase"
+              style={{ color: strength.color }}
             >
               {strength.level}
-            </Typography>
-          </Box>
-          <LinearProgress
-            variant="determinate"
-            value={strength.percentage}
-            sx={{
-              height: 8,
-              borderRadius: 4,
-              backgroundColor: '#e0e0e0',
-              '& .MuiLinearProgress-bar': {
-                backgroundColor: strength.color,
-                borderRadius: 4,
-              }
-            }}
-          />
-        </Box>
+            </span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full transition-[width] duration-300"
+              style={{ width: `${strength.percentage}%`, backgroundColor: strength.color }}
+            />
+          </div>
+        </div>
       )}
 
       {/* Requirements List */}
-      <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', display: 'block', mb: 1 }}>
+      <p className="text-xs font-semibold text-muted-foreground mb-1.5">
         Password must contain:
-      </Typography>
-      <List dense sx={{ py: 0 }}>
+      </p>
+      <ul className="space-y-1">
         {requirements.map((req) => (
-          <ListItem key={req.id} sx={{ py: 0.5, px: 0 }}>
-            <ListItemIcon sx={{ minWidth: 32 }}>
-              {req.met ? (
-                <CheckCircle sx={{ fontSize: 18, color: '#4caf50' }} />
-              ) : (
-                <RadioButtonUnchecked sx={{ fontSize: 18, color: '#9e9e9e' }} />
-              )}
-            </ListItemIcon>
-            <ListItemText
-              primary={req.text}
-              primaryTypographyProps={{
-                variant: 'caption',
-                sx: {
-                  color: req.met ? 'text.primary' : 'text.secondary',
-                  fontWeight: req.met ? 600 : 400,
-                }
-              }}
-            />
-          </ListItem>
+          <li key={req.id} className="flex items-center gap-2">
+            {req.met ? (
+              <CircleCheck className="size-4 text-success shrink-0" />
+            ) : (
+              <Circle className="size-4 text-muted-foreground/50 shrink-0" />
+            )}
+            <span
+              className={`text-xs ${req.met ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}
+            >
+              {req.text}
+            </span>
+          </li>
         ))}
-      </List>
-    </Box>
+      </ul>
+    </div>
   );
 };
 

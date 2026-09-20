@@ -1,15 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import PropTypes from 'prop-types';
-import { Fab, Box } from '@mui/material';
-import { alpha, useTheme } from '@mui/material/styles';
-import { Mic, MicOff } from '@mui/icons-material';
+import { Mic, MicOff } from 'lucide-react';
 import logger from '../utils/logger.js';
 import groceryIntelligence from '../services/groceryIntelligence.js';
 
 const VoiceRecognition = memo(({ onItemsDetected, disabled = false }) => {
-  const theme = useTheme();
-  const activeColor = theme.palette.error.main;
-  const idleColor = theme.palette.primary.main;
   const [isListening, setIsListening] = useState(false);
   const [_transcript, setTranscript] = useState('');
   const [fullTranscript, setFullTranscript] = useState('');
@@ -242,152 +237,38 @@ const VoiceRecognition = memo(({ onItemsDetected, disabled = false }) => {
   // Example: const currentDisplay = (fullTranscriptRef.current || '') + ' ' + finalTranscript + ' ' + interimTranscript;
 
   return (
-    <Box
-      sx={{
-        position: 'fixed',
-        bottom: 24,
-        right: 24,
-        zIndex: 1000,
-      }}
-    >
+    <div className="fixed bottom-6 right-6 z-[1000]">
       {/* Listening Animation Rings */}
       {isListening && (
         <>
-          <Box
-            sx={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: 80,
-              height: 80,
-              borderRadius: '50%',
-              border: `2px solid ${alpha(activeColor, 0.3)}`,
-              animation: 'pulse 2s infinite',
-              '@keyframes pulse': {
-                '0%': {
-                  transform: 'translate(-50%, -50%) scale(0.8)',
-                  opacity: 1,
-                },
-                '100%': {
-                  transform: 'translate(-50%, -50%) scale(1.4)',
-                  opacity: 0,
-                },
-              },
-            }}
-          />
-          <Box
-            sx={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: 100,
-              height: 100,
-              borderRadius: '50%',
-              border: `2px solid ${alpha(activeColor, 0.2)}`,
-              animation: 'pulse 2s infinite 0.5s',
-              '@keyframes pulse': {
-                '0%': {
-                  transform: 'translate(-50%, -50%) scale(0.8)',
-                  opacity: 1,
-                },
-                '100%': {
-                  transform: 'translate(-50%, -50%) scale(1.6)',
-                  opacity: 0,
-                },
-              },
-            }}
-          />
+          <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-20 rounded-full border-2 border-destructive/30 animate-ping [animation-duration:2s]" />
+          <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-24 rounded-full border-2 border-destructive/20 animate-ping [animation-duration:2s] [animation-delay:0.5s]" />
         </>
       )}
 
-      <Fab
-        color={isListening ? "error" : "primary"}
+      <button
+        type="button"
         onClick={isListening ? stopListening : startListening}
         disabled={disabled}
-        sx={{
-          width: 64,
-          height: 64,
-          backgroundColor: isListening ? activeColor : idleColor,
-          boxShadow: isListening
-            ? `0 8px 32px ${alpha(activeColor, 0.4)}`
-            : `0 8px 32px ${alpha(idleColor, 0.4)}`,
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          '&:hover': {
-            transform: 'scale(1.1)',
-            boxShadow: isListening
-              ? `0 12px 40px ${alpha(activeColor, 0.5)}`
-              : `0 12px 40px ${alpha(idleColor, 0.5)}`,
-            backgroundColor: isListening
-              ? theme.palette.error.dark
-              : theme.palette.primary.dark,
-          },
-          '&:active': {
-            transform: 'scale(0.95)',
-          },
-          animation: isListening ? 'breathe 1.5s ease-in-out infinite' : 'none',
-          '@keyframes breathe': {
-            '0%, 100%': {
-              transform: 'scale(1)',
-            },
-            '50%': {
-              transform: 'scale(1.05)',
-            },
-          },
-        }}
+        aria-label={isListening ? 'Stop listening' : 'Start voice input'}
+        className={`relative size-16 rounded-full flex items-center justify-center text-white transition-all duration-300 ease-out hover:scale-110 active:scale-95 disabled:opacity-50 disabled:pointer-events-none ${
+          isListening
+            ? 'bg-destructive shadow-[0_8px_32px_-4px_var(--destructive)] hover:shadow-[0_12px_40px_-4px_var(--destructive)] animate-breathe'
+            : 'bg-primary shadow-[0_8px_32px_-4px_var(--primary)] hover:shadow-[0_12px_40px_-4px_var(--primary)]'
+        }`}
       >
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'transform 0.2s ease',
-            transform: isListening ? 'scale(1.1)' : 'scale(1)',
-          }}
-        >
-          {isListening ? (
-            <MicOff sx={{ fontSize: 28, color: 'white' }} />
-          ) : (
-            <Mic sx={{ fontSize: 28, color: 'white' }} />
-          )}
-        </Box>
-      </Fab>
+        <span className={`flex items-center justify-center transition-transform duration-200 ${isListening ? 'scale-110' : 'scale-100'}`}>
+          {isListening ? <MicOff className="size-7" /> : <Mic className="size-7" />}
+        </span>
+      </button>
 
       {/* Voice Status Tooltip */}
       {isListening && (
-        <Box
-          sx={{
-            position: 'absolute',
-            bottom: 80,
-            right: 0,
-            backgroundColor: alpha(activeColor, 0.95),
-            color: 'white',
-            px: 2,
-            py: 1,
-            borderRadius: '12px',
-            fontSize: '0.75rem',
-            fontWeight: 600,
-            whiteSpace: 'nowrap',
-            backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            animation: 'slideUp 0.3s ease-out',
-            '@keyframes slideUp': {
-              '0%': {
-                opacity: 0,
-                transform: 'translateY(10px)',
-              },
-              '100%': {
-                opacity: 1,
-                transform: 'translateY(0)',
-              },
-            },
-          }}
-        >
+        <div className="absolute bottom-20 right-0 bg-destructive/95 text-white px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap backdrop-blur border border-white/20 animate-in fade-in slide-in-from-bottom-2 duration-300">
           🎤 Listening...
-        </Box>
+        </div>
       )}
-    </Box>
+    </div>
   );
 });
 

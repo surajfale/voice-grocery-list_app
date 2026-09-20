@@ -1,255 +1,91 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import PropTypes from 'prop-types';
-import {
-  Dialog,
-  DialogContent,
-  Typography,
-  Box,
-  Button,
-  Fade,
-  IconButton
-} from '@mui/material';
-import { alpha, useTheme } from '@mui/material/styles';
-import {
-  CheckCircle,
-  Close,
-  Celebration,
-  ShoppingCart
-} from '@mui/icons-material';
+import { CircleCheck, PartyPopper, ShoppingCart } from 'lucide-react';
+import { Dialog, DialogContent } from './ui/dialog';
+import { Button } from './ui/button';
+
+const CONFETTI_COLORS = ['var(--warning)', 'var(--success)', 'var(--primary)', 'var(--secondary)'];
 
 const CongratulationsDialog = ({ open, onClose, itemCount, currentDate }) => {
-  const theme = useTheme();
-  const { palette } = theme;
-  const isDark = palette.mode === 'dark';
+  const randomMessage = useMemo(() => {
+    const congratsMessages = [
+      '🎉 Shopping list complete!',
+      '✨ All done! Great job!',
+      '🌟 List conquered!',
+      '🎊 Mission accomplished!',
+      '💪 All items checked off!',
+    ];
+    return congratsMessages[Math.floor(Math.random() * congratsMessages.length)];
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-roll only when the dialog (re)opens
+  }, [open]);
 
-  const congratsMessages = [
-    "🎉 Shopping list complete!",
-    "✨ All done! Great job!",
-    "🌟 List conquered!",
-    "🎊 Mission accomplished!",
-    "💪 All items checked off!"
-  ];
-
-  const randomMessage = congratsMessages[Math.floor(Math.random() * congratsMessages.length)];
-  const confettiColors = [
-    palette.warning.main,
-    palette.success.main,
-    palette.primary.main,
-    palette.secondary.main,
-    palette.primary.light,
-  ];
+  const confetti = useMemo(
+    () => Array.from({ length: 20 }, () => ({
+      left: `${Math.random() * 100}%`,
+      delay: `${Math.random() * 2}s`,
+      color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+    })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-roll only when the dialog (re)opens
+    [open]
+  );
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="sm"
-      fullWidth
-      disableAutoFocus
-      disableEnforceFocus
-      disableRestoreFocus
-      PaperProps={{
-        sx: {
-          borderRadius: '24px',
-          background: isDark
-            ? `linear-gradient(135deg, ${alpha(palette.success.main, 0.12)} 0%, ${palette.background.paper} 60%)`
-            : `linear-gradient(135deg, ${alpha(palette.primary.main, 0.06)} 0%, ${alpha(palette.success.main, 0.08)} 100%)`,
-          overflow: 'visible',
-        }
-      }}
-      TransitionComponent={Fade}
-      transitionDuration={400}
-    >
-      <IconButton
-        onClick={onClose}
-        sx={{
-          position: 'absolute',
-          right: 12,
-          top: 12,
-          zIndex: 1,
-          backgroundColor: alpha(palette.background.paper, 0.9),
-          '&:hover': {
-            backgroundColor: palette.background.paper,
-            transform: 'scale(1.1)',
-          },
-          transition: 'all 0.2s ease',
-        }}
+    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+      <DialogContent
+        showCloseButton
+        className="sm:max-w-md text-center overflow-hidden bg-gradient-to-br from-primary/6 to-success/8 dark:from-success/12 dark:to-card"
       >
-        <Close />
-      </IconButton>
+        <div className="relative pt-4">
+          {/* Confetti effect */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden -m-6 rounded-2xl">
+            {confetti.map((c, i) => (
+              <span
+                key={i}
+                className="absolute size-1.5 rounded-full animate-confetti"
+                style={{ left: c.left, animationDelay: c.delay, backgroundColor: c.color, top: '-10px' }}
+              />
+            ))}
+          </div>
 
-      <DialogContent sx={{ textAlign: 'center', p: 4, position: 'relative' }}>
-        {/* Floating celebration icons */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: -10,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            animation: 'bounce 2s infinite',
-            '@keyframes bounce': {
-              '0%, 20%, 50%, 80%, 100%': {
-                transform: 'translateX(-50%) translateY(0)',
-              },
-              '40%': {
-                transform: 'translateX(-50%) translateY(-10px)',
-              },
-              '60%': {
-                transform: 'translateX(-50%) translateY(-5px)',
-              },
-            },
-          }}
-        >
-          <Celebration
-            sx={{
-              fontSize: 48,
-              color: palette.warning.main,
-              filter: `drop-shadow(0 4px 8px ${alpha(palette.warning.main, 0.3)})`,
-            }}
-          />
-        </Box>
+          {/* Floating celebration icon */}
+          <div className="flex justify-center mb-2">
+            <PartyPopper className="size-11 text-warning drop-shadow-[0_4px_8px_var(--warning)] animate-bounce" />
+          </div>
 
-        {/* Main success icon */}
-        <Box sx={{ mb: 3, mt: 2 }}>
-          <Box
-            sx={{
-              width: 120,
-              height: 120,
-              borderRadius: '50%',
-              backgroundColor: palette.success.main,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto',
-              boxShadow: `0 20px 40px ${alpha(palette.success.main, 0.3)}`,
-              animation: 'pulse 2s infinite',
-              '@keyframes pulse': {
-                '0%': {
-                  transform: 'scale(1)',
-                },
-                '50%': {
-                  transform: 'scale(1.05)',
-                },
-                '100%': {
-                  transform: 'scale(1)',
-                },
-              },
-            }}
+          {/* Main success icon */}
+          <div className="mb-4">
+            <div className="size-28 rounded-full bg-success mx-auto flex items-center justify-center shadow-[0_20px_40px_-8px_var(--success)] animate-pulse">
+              <CircleCheck className="size-14 text-white" strokeWidth={1.75} />
+            </div>
+          </div>
+
+          <h4 className="font-display text-2xl sm:text-3xl font-bold text-success mb-2">
+            {randomMessage}
+          </h4>
+
+          <p className="text-muted-foreground font-medium mb-4">
+            You&apos;ve completed all {itemCount} items on your grocery list!
+          </p>
+
+          {/* Stats box */}
+          <div className="bg-card/80 backdrop-blur rounded-2xl p-3.5 mb-4 border border-success/20">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <ShoppingCart className="size-4.5 text-primary" />
+              <span className="font-semibold">Shopping Complete</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {currentDate} • {itemCount} items checked off
+            </p>
+          </div>
+
+          <Button
+            onClick={onClose}
+            size="lg"
+            className="bg-success text-white hover:bg-success/90 shadow-[0_8px_24px_-6px_var(--success)] w-full sm:w-auto"
           >
-            <CheckCircle sx={{ fontSize: 64, color: 'white' }} />
-          </Box>
-        </Box>
-
-        {/* Congratulations text */}
-        <Typography
-          variant="h4"
-          sx={{
-            fontWeight: 700,
-            color: 'success.main',
-            mb: 2,
-            fontSize: { xs: '1.75rem', sm: '2rem' },
-          }}
-        >
-          {randomMessage}
-        </Typography>
-
-        <Typography
-          variant="h6"
-          sx={{
-            color: 'text.secondary',
-            mb: 3,
-            fontWeight: 500,
-          }}
-        >
-          You've completed all {itemCount} items on your grocery list!
-        </Typography>
-
-        {/* Stats box */}
-        <Box
-          sx={{
-            backgroundColor: alpha(palette.background.paper, 0.8),
-            borderRadius: '16px',
-            p: 2,
-            mb: 3,
-            border: `1px solid ${alpha(palette.success.main, 0.2)}`,
-            backdropFilter: 'blur(10px)',
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 1 }}>
-            <ShoppingCart sx={{ color: 'primary.main' }} />
-            <Typography variant="body1" sx={{ fontWeight: 600 }}>
-              Shopping Complete
-            </Typography>
-          </Box>
-          <Typography variant="body2" color="text.secondary">
-            {currentDate} • {itemCount} items checked off
-          </Typography>
-        </Box>
-
-        {/* Action button */}
-        <Button
-          onClick={onClose}
-          variant="contained"
-          size="large"
-          sx={{
-            borderRadius: '16px',
-            px: 4,
-            py: 1.5,
-            backgroundColor: palette.success.main,
-            boxShadow: `0 8px 24px ${alpha(palette.success.main, 0.4)}`,
-            textTransform: 'none',
-            fontSize: '1.1rem',
-            fontWeight: 600,
-            '&:hover': {
-              backgroundColor: palette.success.dark,
-              transform: 'translateY(-2px)',
-              boxShadow: `0 12px 32px ${alpha(palette.success.main, 0.5)}`,
-            },
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-        >
-          Awesome! 🎉
-        </Button>
-
-        {/* Confetti effect */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            pointerEvents: 'none',
-            overflow: 'hidden',
-            borderRadius: '24px',
-          }}
-        >
-          {[...Array(20)].map((_, i) => (
-            <Box
-              key={i}
-              sx={{
-                position: 'absolute',
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                backgroundColor: confettiColors[i % confettiColors.length],
-                left: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 2}s`,
-                animation: 'confetti 3s infinite linear',
-                '@keyframes confetti': {
-                  '0%': {
-                    transform: 'translateY(-100vh) rotate(0deg)',
-                    opacity: 1,
-                  },
-                  '100%': {
-                    transform: 'translateY(100vh) rotate(360deg)',
-                    opacity: 0,
-                  },
-                },
-              }}
-            />
-          ))}
-        </Box>
+            Awesome! 🎉
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

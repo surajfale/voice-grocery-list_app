@@ -1,38 +1,21 @@
 import React from 'react';
-import { Box, Typography, Link } from '@mui/material';
 
 const Footer = () => {
   return (
-    <Box
-      component="footer"
-      sx={{
-        mt: 'auto',
-        py: 3,
-        textAlign: 'center',
-        borderTop: '1px solid rgba(226, 232, 240, 0.8)',
-        backgroundColor: 'transparent',
-      }}
-    >
-      <Typography variant="body2" color="text.secondary">
+    <footer className="mt-auto py-6 text-center border-t border-border">
+      <p className="text-sm text-muted-foreground">
         © 2025 Grocery List App. Built by{' '}
-        <Link
+        <a
           href="https://github.com/surajfale"
           target="_blank"
           rel="noopener noreferrer"
-          sx={{
-            color: 'primary.main',
-            textDecoration: 'none',
-            fontWeight: 500,
-            '&:hover': {
-              textDecoration: 'underline',
-            },
-          }}
+          className="text-primary font-medium hover:underline"
         >
           Suraj
-        </Link>
-        {' '}with React + Material UI.
-      </Typography>
-    </Box>
+        </a>
+        {' '}with React + shadcn/ui.
+      </p>
+    </footer>
   );
 };
 

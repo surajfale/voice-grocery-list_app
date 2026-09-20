@@ -1,26 +1,13 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import {
-  Box,
-  Paper,
-  TextField,
-  Button,
-  Typography,
-  Container,
-  Alert,
-  InputAdornment,
-  Link,
-} from '@mui/material';
-import {
-  ShoppingCart,
-  Email,
-  ArrowBack,
-  Send,
-} from '@mui/icons-material';
-import { alpha, useTheme } from '@mui/material/styles';
+import { ShoppingCart, Mail, ArrowLeft, Send, Info } from 'lucide-react';
+import { Card } from './components/ui/card';
+import { Input } from './components/ui/input';
+import { Label } from './components/ui/label';
+import { Button } from './components/ui/button';
+import { Alert, AlertDescription } from './components/ui/alert';
 
 const ForgotPasswordPage = ({ onBackToLogin }) => {
-  const { palette } = useTheme();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -60,161 +47,96 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
       setSuccess('An email has been sent with a link to reset your password. You will receive the email if you provided the correct email address. Please check your inbox and spam folder.');
       setEmail('');
       setLoading(false);
-    } catch (err) {
-      console.error('Forgot password error:', err);
+    } catch {
       setError('Failed to send reset email. Please try again.');
       setLoading(false);
     }
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: `radial-gradient(circle at 50% 0%, ${alpha(palette.primary.main, 0.15)} 0%, transparent 60%), ${palette.background.default}`,
-        p: 2,
-      }}
-    >
-      <Container maxWidth="sm">
-        <Paper
-          elevation={24}
-          sx={{
-            p: 4,
-            borderRadius: 3,
-          }}
-        >
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <Card className="p-8 shadow-lg">
           {/* Header */}
-          <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                mb: 2,
-              }}
-            >
-              <ShoppingCart
-                sx={{
-                  fontSize: 48,
-                  color: 'primary.main',
-                  mr: 1,
-                }}
-              />
-              <Typography
-                variant="h4"
-                component="h1"
-                sx={{
-                  fontWeight: 'bold',
-                  color: 'primary.main',
-                }}
-              >
+          <div className="text-center mb-6">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <ShoppingCart className="size-10 text-primary" strokeWidth={2.25} />
+              <h1 className="font-display text-3xl font-bold text-primary">
                 Grocery List
-              </Typography>
-            </Box>
-            <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
-              Forgot Password?
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Enter your email address and we'll send you a link to reset your password
-            </Typography>
-          </Box>
+              </h1>
+            </div>
+            <h2 className="font-display text-xl font-semibold mb-1">Forgot Password?</h2>
+            <p className="text-sm text-muted-foreground">
+              Enter your email address and we&apos;ll send you a link to reset your password
+            </p>
+          </div>
 
           {/* Error Alert */}
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
           {/* Success Alert */}
           {success && (
-            <Alert severity="success" sx={{ mb: 3 }}>
-              {success}
+            <Alert variant="success" className="mb-4">
+              <AlertDescription>{success}</AlertDescription>
             </Alert>
           )}
 
           {/* Info Note */}
           {!success && (
-            <Alert severity="info" sx={{ mb: 3 }}>
-              <Typography variant="body2">
-                <strong>Note:</strong> For security reasons, we'll send a password reset email only if an account exists with the provided email address. If you don't receive an email within a few minutes, please check your spam folder or verify that you entered the correct email.
-              </Typography>
+            <Alert variant="info" className="mb-4">
+              <Info />
+              <AlertDescription>
+                <strong className="text-foreground">Note:</strong> For security reasons, we&apos;ll send a password reset email only if an account exists with the provided email address. If you don&apos;t receive an email within a few minutes, please check your spam folder or verify that you entered the correct email.
+              </AlertDescription>
             </Alert>
           )}
 
           {/* Forgot Password Form */}
-          <Box component="form" onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              label="Email Address"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              margin="normal"
-              required
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Email color="action" />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ mb: 3 }}
-            />
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email Address</Label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="pl-10"
+                />
+              </div>
+            </div>
 
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              size="large"
-              disabled={loading}
-              startIcon={<Send />}
-              sx={{
-                py: 1.5,
-                fontSize: '1.1rem',
-                fontWeight: 'bold',
-                mb: 2
-              }}
-            >
+            <Button type="submit" size="lg" disabled={loading} className="w-full">
+              <Send />
               {loading ? 'Sending...' : 'Send Reset Link'}
             </Button>
-          </Box>
+          </form>
 
           {/* Back to Login */}
-          <Box sx={{ textAlign: 'center', mt: 3 }}>
-            <Link
-              component="button"
-              variant="body2"
+          <div className="text-center mt-5">
+            <button
+              type="button"
               onClick={onBackToLogin}
-              sx={{
-                textDecoration: 'none',
-                fontWeight: 'bold',
-                color: 'primary.main',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 0.5,
-                '&:hover': {
-                  textDecoration: 'underline',
-                },
-              }}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
             >
-              <ArrowBack fontSize="small" />
+              <ArrowLeft className="size-4" />
               Back to Login
-            </Link>
-          </Box>
+            </button>
+          </div>
 
           {/* Privacy Note */}
-          <Box sx={{ textAlign: 'center', mt: 2 }}>
-            <Typography variant="caption" color="text.secondary">
-              Your data is securely encrypted and stored in the cloud.
-            </Typography>
-          </Box>
-        </Paper>
-      </Container>
-    </Box>
+          <p className="text-center text-xs text-muted-foreground mt-4">
+            Your data is securely encrypted and stored in the cloud.
+          </p>
+        </Card>
+      </div>
+    </div>
   );
 };
 

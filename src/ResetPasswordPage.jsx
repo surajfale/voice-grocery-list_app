@@ -1,31 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import {
-  Box,
-  Paper,
-  TextField,
-  Button,
-  Typography,
-  Container,
-  Alert,
-  InputAdornment,
-  IconButton,
-  Link,
-} from '@mui/material';
-import {
-  ShoppingCart,
-  Lock,
-  Visibility,
-  VisibilityOff,
-  ArrowBack,
-  CheckCircle,
-} from '@mui/icons-material';
-import { alpha, useTheme } from '@mui/material/styles';
+import { ShoppingCart, Lock, Eye, EyeOff, ArrowLeft, CircleCheck } from 'lucide-react';
 import PasswordRequirements from './components/PasswordRequirements';
 import { validatePassword } from './utils/passwordValidator';
+import { Card } from './components/ui/card';
+import { Input } from './components/ui/input';
+import { Label } from './components/ui/label';
+import { Button } from './components/ui/button';
+import { Alert, AlertDescription } from './components/ui/alert';
 
 const ResetPasswordPage = ({ token, onBackToLogin }) => {
-  const { palette } = useTheme();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -63,8 +47,7 @@ const ResetPasswordPage = ({ token, onBackToLogin }) => {
         } else {
           setTokenValid(true);
         }
-      } catch (err) {
-        console.error('Token validation error:', err);
+      } catch {
         setError('Failed to validate reset token. Please try again.');
         setTokenValid(false);
       } finally {
@@ -123,8 +106,7 @@ const ResetPasswordPage = ({ token, onBackToLogin }) => {
       setPassword('');
       setConfirmPassword('');
       setLoading(false);
-    } catch (err) {
-      console.error('Password reset error:', err);
+    } catch {
       setError('Failed to reset password. Please try again.');
       setLoading(false);
     }
@@ -132,208 +114,125 @@ const ResetPasswordPage = ({ token, onBackToLogin }) => {
 
   if (validatingToken) {
     return (
-      <Box
-        sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          bgcolor: 'background.default',
-        }}
-      >
-        <Typography variant="h6" color="text.secondary">
-          Validating reset token...
-        </Typography>
-      </Box>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground font-medium">Validating reset token...</p>
+      </div>
     );
   }
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: `radial-gradient(circle at 50% 0%, ${alpha(palette.primary.main, 0.15)} 0%, transparent 60%), ${palette.background.default}`,
-        p: 2,
-      }}
-    >
-      <Container maxWidth="sm">
-        <Paper
-          elevation={24}
-          sx={{
-            p: 4,
-            borderRadius: 3,
-          }}
-        >
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <Card className="p-8 shadow-lg">
           {/* Header */}
-          <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                mb: 2,
-              }}
-            >
-              <ShoppingCart
-                sx={{
-                  fontSize: 48,
-                  color: 'primary.main',
-                  mr: 1,
-                }}
-              />
-              <Typography
-                variant="h4"
-                component="h1"
-                sx={{
-                  fontWeight: 'bold',
-                  color: 'primary.main',
-                }}
-              >
+          <div className="text-center mb-6">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <ShoppingCart className="size-10 text-primary" strokeWidth={2.25} />
+              <h1 className="font-display text-3xl font-bold text-primary">
                 Grocery List
-              </Typography>
-            </Box>
-            <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
-              Reset Password
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
+              </h1>
+            </div>
+            <h2 className="font-display text-xl font-semibold mb-1">Reset Password</h2>
+            <p className="text-sm text-muted-foreground">
               {success ? 'Password reset successful!' : 'Enter your new password below'}
-            </Typography>
-          </Box>
+            </p>
+          </div>
 
           {/* Error Alert */}
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
           {/* Success Alert */}
           {success && (
-            <Alert
-              severity="success"
-              icon={<CheckCircle />}
-              sx={{ mb: 3 }}
-            >
-              Your password has been successfully reset! You can now log in with your new password.
+            <Alert variant="success" className="mb-4">
+              <CircleCheck />
+              <AlertDescription>
+                Your password has been successfully reset! You can now log in with your new password.
+              </AlertDescription>
             </Alert>
           )}
 
           {/* Reset Password Form */}
           {!success && tokenValid && (
-            <Box component="form" onSubmit={handleSubmit}>
-              <TextField
-                fullWidth
-                label="New Password"
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                margin="normal"
-                required
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Lock color="action" />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={() => setShowPassword(!showPassword)}
-                        edge="end"
-                      >
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{ mb: 2 }}
-              />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="new-password">New Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <Input
+                    id="new-password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="pl-10 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
+              </div>
 
               {/* Password Requirements */}
               <PasswordRequirements password={password} />
 
-              <TextField
-                fullWidth
-                label="Confirm New Password"
-                type={showConfirmPassword ? 'text' : 'password'}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                margin="normal"
-                required
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Lock color="action" />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        edge="end"
-                      >
-                        {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{ mb: 3 }}
-              />
+              <div className="space-y-1.5">
+                <Label htmlFor="confirm-new-password">Confirm New Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <Input
+                    id="confirm-new-password"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className="pl-10 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
+              </div>
 
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                size="large"
-                disabled={loading}
-                startIcon={<CheckCircle />}
-                sx={{
-                  py: 1.5,
-                  fontSize: '1.1rem',
-                  fontWeight: 'bold',
-                  mb: 2
-                }}
-              >
+              <Button type="submit" size="lg" disabled={loading} className="w-full">
+                <CircleCheck />
                 {loading ? 'Resetting Password...' : 'Reset Password'}
               </Button>
-            </Box>
+            </form>
           )}
 
           {/* Back to Login */}
-          <Box sx={{ textAlign: 'center', mt: 3 }}>
-            <Link
-              component="button"
-              variant="body2"
+          <div className="text-center mt-5">
+            <button
+              type="button"
               onClick={onBackToLogin}
-              sx={{
-                textDecoration: 'none',
-                fontWeight: 'bold',
-                color: 'primary.main',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 0.5,
-                '&:hover': {
-                  textDecoration: 'underline',
-                },
-              }}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
             >
-              <ArrowBack fontSize="small" />
+              <ArrowLeft className="size-4" />
               {success ? 'Go to Login' : 'Back to Login'}
-            </Link>
-          </Box>
+            </button>
+          </div>
 
           {/* Privacy Note */}
-          <Box sx={{ textAlign: 'center', mt: 2 }}>
-            <Typography variant="caption" color="text.secondary">
-              Your data is securely encrypted and stored in the cloud.
-            </Typography>
-          </Box>
-        </Paper>
-      </Container>
-    </Box>
+          <p className="text-center text-xs text-muted-foreground mt-4">
+            Your data is securely encrypted and stored in the cloud.
+          </p>
+        </Card>
+      </div>
+    </div>
   );
 };
 

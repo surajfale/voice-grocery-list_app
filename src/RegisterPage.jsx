@@ -1,32 +1,15 @@
 import React, { useState } from 'react';
 import isEmail from 'validator/lib/isEmail';
 import PropTypes from 'prop-types';
-import {
-  Box,
-  Paper,
-  TextField,
-  Button,
-  Typography,
-  Container,
-  Alert,
-  InputAdornment,
-  IconButton,
-  Link,
-  Grid,
-} from '@mui/material';
-import {
-  Visibility,
-  VisibilityOff,
-  ShoppingCart,
-  Person,
-  Lock,
-  Email,
-  PersonAdd,
-} from '@mui/icons-material';
-import { alpha, useTheme } from '@mui/material/styles';
+import { ShoppingCart, User, Mail, Lock, UserPlus, Eye, EyeOff, Info } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import PasswordRequirements from './components/PasswordRequirements';
 import { validatePassword } from './utils/passwordValidator';
+import { Card } from './components/ui/card';
+import { Input } from './components/ui/input';
+import { Label } from './components/ui/label';
+import { Button } from './components/ui/button';
+import { Alert, AlertDescription } from './components/ui/alert';
 
 const RegisterPage = ({ onSwitchToLogin }) => {
   const [formData, setFormData] = useState({
@@ -41,8 +24,6 @@ const RegisterPage = ({ onSwitchToLogin }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
-  const theme = useTheme();
-  const { palette } = theme;
 
   const handleInputChange = (field) => (e) => {
     setFormData({
@@ -122,238 +103,160 @@ const RegisterPage = ({ onSwitchToLogin }) => {
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: `radial-gradient(circle at 50% 0%, ${alpha(palette.primary.main, 0.15)} 0%, transparent 60%), ${palette.background.default}`,
-        p: 2,
-      }}
-    >
-      <Container maxWidth="sm">
-        <Paper
-          elevation={24}
-          sx={{
-            p: 4,
-            borderRadius: 3,
-          }}
-        >
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <Card className="p-8 shadow-lg">
           {/* Header */}
-          <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Box
-              sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                mb: 2,
-              }}
-            >
-              <ShoppingCart
-                sx={{
-                  fontSize: 48,
-                  color: 'primary.main',
-                  mr: 1,
-                }}
-              />
-              <Typography
-                variant="h4"
-                component="h1"
-                sx={{
-                  fontWeight: 'bold',
-                  color: 'primary.main',
-                }}
-              >
+          <div className="text-center mb-6">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <ShoppingCart className="size-10 text-primary" strokeWidth={2.25} />
+              <h1 className="font-display text-3xl font-bold text-primary">
                 Grocery List
-              </Typography>
-            </Box>
-            <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
-              Create Your Account
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
+              </h1>
+            </div>
+            <h2 className="font-display text-xl font-semibold mb-1">Create Your Account</h2>
+            <p className="text-sm text-muted-foreground">
               Join us to start organizing your grocery shopping
-            </Typography>
-          </Box>
+            </p>
+          </div>
 
           {/* Project Disclaimer Alert */}
-          <Alert severity="info" sx={{ mb: 3 }}>
-            <Typography variant="body2">
-              <strong>Note:</strong> This is a personal learning project. Service availability is not guaranteed and data may be reset.
-            </Typography>
+          <Alert variant="info" className="mb-4">
+            <Info />
+            <AlertDescription>
+              <strong className="text-foreground">Note:</strong> This is a personal learning project. Service availability is not guaranteed and data may be reset.
+            </AlertDescription>
           </Alert>
 
           {/* Error Alert */}
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
           {/* Registration Form */}
-          <Box component="form" onSubmit={handleSubmit}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="First Name"
-                  value={formData.firstName}
-                  onChange={handleInputChange('firstName')}
-                  required
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Person color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ mb: 2 }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Last Name"
-                  value={formData.lastName}
-                  onChange={handleInputChange('lastName')}
-                  required
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Person color="action" />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ mb: 2 }}
-                />
-              </Grid>
-            </Grid>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="firstName">First Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <Input
+                    id="firstName"
+                    value={formData.firstName}
+                    onChange={handleInputChange('firstName')}
+                    required
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="lastName">Last Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <Input
+                    id="lastName"
+                    value={formData.lastName}
+                    onChange={handleInputChange('lastName')}
+                    required
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+            </div>
 
-            <TextField
-              fullWidth
-              label="Email Address"
-              type="email"
-              value={formData.email}
-              onChange={handleInputChange('email')}
-              required
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Email color="action" />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ mb: 2 }}
-            />
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email Address</Label>
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleInputChange('email')}
+                  required
+                  className="pl-10"
+                />
+              </div>
+            </div>
 
-            <TextField
-              fullWidth
-              label="Password"
-              type={showPassword ? 'text' : 'password'}
-              value={formData.password}
-              onChange={handleInputChange('password')}
-              required
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Lock color="action" />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowPassword(!showPassword)}
-                      edge="end"
-                    >
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ mb: 2 }}
-            />
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={handleInputChange('password')}
+                  required
+                  className="pl-10 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+            </div>
 
             {/* Password Requirements */}
             <PasswordRequirements password={formData.password} />
 
-            <TextField
-              fullWidth
-              label="Confirm Password"
-              type={showConfirmPassword ? 'text' : 'password'}
-              value={formData.confirmPassword}
-              onChange={handleInputChange('confirmPassword')}
-              required
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Lock color="action" />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      edge="end"
-                    >
-                      {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ mb: 3 }}
-            />
+            <div className="space-y-1.5">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange('confirmPassword')}
+                  required
+                  className="pl-10 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+            </div>
 
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              size="large"
-              disabled={loading}
-              startIcon={<PersonAdd />}
-              sx={{
-                py: 1.5,
-                fontSize: '1.1rem',
-                fontWeight: 'bold',
-                mb: 2
-              }}
-            >
+            <Button type="submit" size="lg" disabled={loading} className="w-full">
+              <UserPlus />
               {loading ? 'Creating Account...' : 'Create Account'}
             </Button>
-          </Box>
+          </form>
 
           {/* Switch to Login */}
-          <Box sx={{ textAlign: 'center', mt: 3 }}>
-            <Typography variant="body2" color="text.secondary">
-              Already have an account?{' '}
-              <Link
-                component="button"
-                variant="body2"
-                onClick={onSwitchToLogin}
-                sx={{
-                  textDecoration: 'none',
-                  fontWeight: 'bold',
-                  color: 'primary.main',
-                  '&:hover': {
-                    textDecoration: 'underline',
-                  },
-                }}
-              >
-                Sign In
-              </Link>
-            </Typography>
-          </Box>
+          <p className="text-center text-sm text-muted-foreground mt-5">
+            Already have an account?{' '}
+            <button
+              type="button"
+              onClick={onSwitchToLogin}
+              className="font-semibold text-primary hover:underline"
+            >
+              Sign In
+            </button>
+          </p>
 
           {/* Privacy Note */}
-          <Box sx={{ textAlign: 'center', mt: 2 }}>
-            <Typography variant="caption" color="text.secondary">
-              Your data is securely encrypted and stored in the cloud.
-              <br />
-              We never share your personal information.
-            </Typography>
-          </Box>
-        </Paper>
-      </Container>
-    </Box>
+          <p className="text-center text-xs text-muted-foreground mt-4">
+            Your data is securely encrypted and stored in the cloud.
+            <br />
+            We never share your personal information.
+          </p>
+        </Card>
+      </div>
+    </div>
   );
 };
 

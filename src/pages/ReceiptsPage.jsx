@@ -1,54 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import {
-  Alert,
-  Box,
-  Button,
-  Chip,
-  CircularProgress,
-  Divider,
-  Grid,
-  IconButton,
-  List,
-  ListItem,
-  ListItemAvatar,
-  Avatar,
-  ListItemText,
-  Pagination,
-  Paper,
-  Stack,
-  Tab,
-  Tabs,
-  Typography
-} from '@mui/material';
-import {
-  CloudUpload,
-  Delete,
-  Description,
-  Image as ImageIcon,
-  Refresh
-} from '@mui/icons-material';
+import { CloudUpload, Trash2, FileText, Image as ImageIcon, RefreshCw, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import useReceipts from '../hooks/useReceipts.js';
 import ReceiptChatPanel from '../components/receipts/ReceiptChatPanel.jsx';
 import SpendingInsights from '../components/receipts/SpendingInsights.jsx';
+import { Card } from '../components/ui/card';
+import { Button, buttonVariants } from '../components/ui/button';
+import { cn } from '../lib/utils';
+import { Badge } from '../components/ui/badge';
+import { Separator } from '../components/ui/separator';
+import { Alert, AlertDescription } from '../components/ui/alert';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 
 const ALLOWED_FILE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'];
 
-const statusColorMap = {
-  ready: 'success',
-  processing: 'warning',
-  error: 'error'
+const statusVariantMap = {
+  ready: 'default',
+  processing: 'outline',
+  error: 'destructive'
 };
 
 const ReceiptMetadata = ({ label, value }) => (
-  <Box>
-    <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-      {label}
-    </Typography>
-    <Typography variant="body1" fontWeight={600}>
-      {value ?? '—'}
-    </Typography>
-  </Box>
+  <div>
+    <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+    <p className="font-semibold">{value ?? '—'}</p>
+  </div>
 );
 
 ReceiptMetadata.propTypes = {
@@ -141,330 +117,261 @@ const ReceiptsPage = ({ user }) => {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+    <div className="flex flex-col gap-4">
       {displayError && (
-        <Alert
-          severity="error"
-          onClose={() => {
-            setLocalError('');
-            clearError();
-          }}
-        >
-          {displayError}
+        <Alert variant="destructive" className="pr-10">
+          <AlertDescription>{displayError}</AlertDescription>
+          <button
+            type="button"
+            onClick={() => {
+              setLocalError('');
+              clearError();
+            }}
+            aria-label="Dismiss"
+            className="absolute right-3 top-3.5 text-muted-foreground hover:text-foreground"
+          >
+            ×
+          </button>
         </Alert>
       )}
 
-      <Tabs
-        value={activeTab}
-        onChange={(_event, value) => setActiveTab(value)}
-        sx={{ borderBottom: 1, borderColor: 'divider' }}
-      >
-        <Tab label="Receipts" value="receipts" />
-        <Tab label="Spending Insights" value="insights" />
-      </Tabs>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="receipts">Receipts</TabsTrigger>
+          <TabsTrigger value="insights">Spending Insights</TabsTrigger>
+        </TabsList>
 
-      {activeTab === 'insights' ? (
-        <SpendingInsights receipts={receipts} loading={loading} />
-      ) : (
-      <>
-      <Paper
-        variant="outlined"
-        sx={{
-          p: 3,
-          borderRadius: 3,
-          borderStyle: 'dashed',
-          borderWidth: 2,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 2
-        }}
-        onDragOver={(event) => event.preventDefault()}
-        onDrop={(event) => {
-          event.preventDefault();
-          handleFiles(event.dataTransfer.files);
-        }}
-      >
-        <Box>
-          <Typography variant="h6" gutterBottom>
-            Upload grocery receipt
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Drop one or more receipt photos (max 10) or choose files to have them stitched, OCR’d, and added to your history.
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Tip: Select images in order from top to bottom—the server will stitch them vertically into a single receipt.
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={2}>
-          <Button
-            variant="outlined"
-            startIcon={<Refresh />}
-            onClick={reloadReceipts}
-            disabled={loading}
+        <TabsContent value="insights">
+          <SpendingInsights receipts={receipts} loading={loading} />
+        </TabsContent>
+
+        <TabsContent value="receipts" className="flex flex-col gap-4">
+          <Card
+            className="p-5 border-2 border-dashed flex flex-wrap items-center justify-between gap-4"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault();
+              handleFiles(event.dataTransfer.files);
+            }}
           >
-            Refresh
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<CloudUpload />}
-            component="label"
-            disabled={uploading}
-          >
-            {uploading ? 'Uploading...' : 'Choose Image(s)'}
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              hidden
-              ref={fileInputRef}
-              onChange={handleFileChange}
-            />
-          </Button>
-        </Stack>
-      </Paper>
-
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 2, borderRadius: 3, minHeight: 420 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-              <Typography variant="h6">Receipts</Typography>
-              {loading && <CircularProgress size={20} />}
-            </Stack>
-
-            {receipts.length === 0 ? (
-              <Box sx={{ textAlign: 'center', py: 6 }}>
-                <Description sx={{ fontSize: 40, color: 'text.secondary', mb: 1 }} />
-                <Typography variant="body2" color="text.secondary">
-                  Upload your first receipt to get started.
-                </Typography>
-              </Box>
-            ) : (
-              <List>
-                {paginatedReceipts.map((receipt) => (
-                  <ListItem
-                    key={receipt._id}
-                    selected={receipt._id === selectedReceiptId}
-                    sx={{
-                      borderRadius: 2,
-                      mb: 1,
-                      border: '1px solid',
-                      borderColor: receipt._id === selectedReceiptId ? 'primary.main' : 'divider',
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => selectReceipt(receipt._id)}
-                    secondaryAction={(
-                      <IconButton
-                        edge="end"
-                        aria-label="delete receipt"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          deleteReceipt(receipt._id);
-                        }}
-                      >
-                        <Delete fontSize="small" />
-                      </IconButton>
-                    )}
-                  >
-                    <ListItemAvatar>
-                      <Avatar>
-                        <Description />
-                      </Avatar>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={
-                        receipt.merchant || receipt.originalFilename
-                          ? `${receipt.merchant || receipt.originalFilename}${receipt.pageCount > 1 ? ` (${receipt.pageCount} pages)` : ''}`
-                          : 'Unknown merchant'
-                      }
-                      secondary={
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Typography variant="caption" color="text.secondary">
-                            {receipt.purchaseDate || 'No date'}
-                          </Typography>
-                          <Chip
-                            label={receipt.status}
-                            size="small"
-                            color={statusColorMap[receipt.status] || 'default'}
-                            sx={{ textTransform: 'capitalize' }}
-                          />
-                        </Stack>
-                      }
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            )}
-
-            {pageCount > 1 && (
-              <Stack direction="row" justifyContent="center" sx={{ mt: 2 }}>
-                <Pagination
-                  count={pageCount}
-                  page={page}
-                  onChange={(_event, value) => setPage(value)}
-                  size="small"
-                  color="primary"
+            <div>
+              <h6 className="font-display font-semibold mb-1">Upload grocery receipt</h6>
+              <p className="text-sm text-muted-foreground">
+                Drop one or more receipt photos (max 10) or choose files to have them stitched, OCR&rsquo;d, and added to your history.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Tip: Select images in order from top to bottom—the server will stitch them vertically into a single receipt.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={reloadReceipts} disabled={loading}>
+                <RefreshCw />
+                Refresh
+              </Button>
+              <label
+                className={cn(
+                  buttonVariants(),
+                  uploading ? 'opacity-50 pointer-events-none cursor-not-allowed' : 'cursor-pointer'
+                )}
+              >
+                <CloudUpload />
+                {uploading ? 'Uploading...' : 'Choose Image(s)'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  hidden
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  disabled={uploading}
                 />
-              </Stack>
-            )}
-          </Paper>
-        </Grid>
+              </label>
+            </div>
+          </Card>
 
-        <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3, borderRadius: 3, minHeight: 420 }}>
-            {selectedReceipt ? (
-              <Stack spacing={2}>
-                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Merchant
-                    </Typography>
-                    <Typography variant="h5" fontWeight={700}>
-                      {selectedReceipt.merchant || 'Unknown'}
-                    </Typography>
-                  </Box>
-                  <Chip
-                    label={selectedReceipt.status}
-                    color={statusColorMap[selectedReceipt.status] || 'default'}
-                    sx={{ textTransform: 'capitalize' }}
-                  />
-                </Stack>
+          <div className="grid md:grid-cols-3 gap-4">
+            <Card className="p-4 min-h-[420px] md:col-span-1">
+              <div className="flex justify-between items-center mb-3">
+                <h6 className="font-display font-semibold">Receipts</h6>
+                {loading && <Loader2 className="size-4 animate-spin text-primary" />}
+              </div>
 
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={3}>
+              {receipts.length === 0 ? (
+                <div className="text-center py-10">
+                  <FileText className="size-9 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">Upload your first receipt to get started.</p>
+                </div>
+              ) : (
+                <ul className="space-y-1.5">
+                  {paginatedReceipts.map((receipt) => (
+                    <li key={receipt._id}>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => selectReceipt(receipt._id)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            selectReceipt(receipt._id);
+                          }
+                        }}
+                        className={`flex items-center gap-3 rounded-xl border p-2.5 cursor-pointer transition-colors ${
+                          receipt._id === selectedReceiptId ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent'
+                        }`}
+                      >
+                        <div className="size-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+                          <FileText className="size-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {receipt.merchant || receipt.originalFilename
+                              ? `${receipt.merchant || receipt.originalFilename}${receipt.pageCount > 1 ? ` (${receipt.pageCount} pages)` : ''}`
+                              : 'Unknown merchant'}
+                          </p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-xs text-muted-foreground">{receipt.purchaseDate || 'No date'}</span>
+                            <Badge variant={statusVariantMap[receipt.status] || 'outline'} className="capitalize">
+                              {receipt.status}
+                            </Badge>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          aria-label="delete receipt"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            deleteReceipt(receipt._id);
+                          }}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive shrink-0"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {pageCount > 1 && (
+                <div className="flex justify-center items-center gap-3 mt-4">
+                  <button
+                    type="button"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="p-1.5 rounded-lg hover:bg-accent disabled:opacity-40"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </button>
+                  <span className="text-xs text-muted-foreground">{page} / {pageCount}</span>
+                  <button
+                    type="button"
+                    disabled={page >= pageCount}
+                    onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                    className="p-1.5 rounded-lg hover:bg-accent disabled:opacity-40"
+                  >
+                    <ChevronRight className="size-4" />
+                  </button>
+                </div>
+              )}
+            </Card>
+
+            <Card className="p-5 min-h-[420px] md:col-span-2">
+              {selectedReceipt ? (
+                <div className="flex flex-col gap-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Merchant</p>
+                      <p className="font-display text-xl font-bold">{selectedReceipt.merchant || 'Unknown'}</p>
+                    </div>
+                    <Badge variant={statusVariantMap[selectedReceipt.status] || 'outline'} className="capitalize">
+                      {selectedReceipt.status}
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <ReceiptMetadata label="Purchase Date" value={selectedReceipt.purchaseDate} />
-                  </Grid>
-                  <Grid item xs={12} sm={3}>
                     <ReceiptMetadata
                       label="Total"
                       value={selectedReceipt.total ? `${selectedReceipt.currency || '$'}${selectedReceipt.total}` : '—'}
                     />
-                  </Grid>
-                  <Grid item xs={12} sm={3}>
                     <ReceiptMetadata label="Items detected" value={selectedReceipt.items?.length || 0} />
-                  </Grid>
-                  <Grid item xs={12} sm={3}>
                     <ReceiptMetadata label="Pages combined" value={selectedReceipt.pageCount || 1} />
-                  </Grid>
-                </Grid>
+                  </div>
 
-                {selectedReceipt.items?.length > 0 && (
-                  <Box>
-                    <Typography variant="subtitle2" mb={1}>
-                      Items
-                    </Typography>
-                    <Paper variant="outlined" sx={{ borderRadius: 2, maxHeight: 180, overflowY: 'auto' }}>
-                      <List dense>
-                        {selectedReceipt.items.map((item) => (
-                          <ListItem key={`${selectedReceipt._id}-${item.name}`}>
-                            <ListItemText
-                              primary={item.name}
-                              secondary={item.price ? `${item.currency || selectedReceipt.currency || '$'}${item.price}` : '—'}
-                            />
-                          </ListItem>
-                        ))}
-                      </List>
-                    </Paper>
-                  </Box>
-                )}
-
-                {selectedReceipt.sourceImages?.length > 1 && (
-                  <Box>
-                    <Typography variant="subtitle2" mb={1}>
-                      Uploaded images
-                    </Typography>
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                      {selectedReceipt.sourceImages.map((image, index) => (
-                        <Chip
-                          key={`${selectedReceipt._id}-source-${image.filename || index}`}
-                          label={`${image.filename || `Image ${index + 1}`} ${formatBytes(image.size) ? `(${formatBytes(image.size)})` : ''}`}
-                          variant="outlined"
-                          size="small"
-                        />
-                      ))}
-                    </Stack>
-                  </Box>
-                )}
-
-                <Divider />
-
-                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-                  {receiptImageUrl(selectedReceipt._id) && (
-                    <Paper
-                      variant="outlined"
-                      sx={{
-                        flex: 1,
-                        borderRadius: 2,
-                        overflow: 'hidden',
-                        maxHeight: 320,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: 'background.default'
-                      }}
-                    >
-                      <img
-                        src={receiptImageUrl(selectedReceipt._id)}
-                        alt="Receipt"
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'contain'
-                        }}
-                      />
-                    </Paper>
+                  {selectedReceipt.items?.length > 0 && (
+                    <div>
+                      <p className="text-sm font-semibold mb-1.5">Items</p>
+                      <div className="rounded-xl border border-border max-h-44 overflow-y-auto">
+                        <ul className="divide-y divide-border">
+                          {selectedReceipt.items.map((item) => (
+                            <li key={`${selectedReceipt._id}-${item.name}`} className="flex justify-between px-3 py-2 text-sm">
+                              <span>{item.name}</span>
+                              <span className="text-muted-foreground">
+                                {item.price ? `${item.currency || selectedReceipt.currency || '$'}${item.price}` : '—'}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
                   )}
-                  <Paper
-                    variant="outlined"
-                    sx={{
-                      flex: 1,
-                      borderRadius: 2,
-                      p: 2,
-                      maxHeight: 320,
-                      overflowY: 'auto'
-                    }}
-                  >
-                    <Stack direction="row" spacing={1} alignItems="center" mb={1}>
-                      <ImageIcon fontSize="small" color="action" />
-                      <Typography variant="subtitle2">OCR Text</Typography>
-                    </Stack>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        whiteSpace: 'pre-wrap',
-                        fontFamily: 'monospace',
-                        fontSize: '0.85rem'
-                      }}
-                    >
-                      {selectedReceipt.rawText || 'No OCR output yet.'}
-                    </Typography>
-                  </Paper>
-                </Stack>
-              </Stack>
-            ) : (
-              <Box sx={{ textAlign: 'center', py: 6 }}>
-                <ImageIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
-                <Typography variant="h6" gutterBottom>
-                  Select a receipt to view details
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Choose a receipt from the list to see OCR output, metadata, and line items.
-                </Typography>
-              </Box>
-            )}
-          </Paper>
-        </Grid>
-      </Grid>
 
-      <ReceiptChatPanel
-        userId={user._id}
-        receipts={receipts}
-        onSelectReceipt={selectReceipt}
-      />
-      </>
-      )}
-    </Box>
+                  {selectedReceipt.sourceImages?.length > 1 && (
+                    <div>
+                      <p className="text-sm font-semibold mb-1.5">Uploaded images</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedReceipt.sourceImages.map((image, index) => (
+                          <Badge key={`${selectedReceipt._id}-source-${image.filename || index}`} variant="outline">
+                            {image.filename || `Image ${index + 1}`} {formatBytes(image.size) ? `(${formatBytes(image.size)})` : ''}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  <div className="flex flex-col md:flex-row gap-3">
+                    {receiptImageUrl(selectedReceipt._id) && (
+                      <div className="flex-1 rounded-xl border border-border overflow-hidden max-h-80 flex items-center justify-center bg-background">
+                        <img
+                          src={receiptImageUrl(selectedReceipt._id)}
+                          alt="Receipt"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 rounded-xl border border-border p-3 max-h-80 overflow-y-auto">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <ImageIcon className="size-4 text-muted-foreground" />
+                        <p className="text-sm font-semibold">OCR Text</p>
+                      </div>
+                      <p className="text-sm font-mono whitespace-pre-wrap">
+                        {selectedReceipt.rawText || 'No OCR output yet.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-10">
+                  <ImageIcon className="size-12 text-muted-foreground/50 mx-auto mb-3" />
+                  <p className="font-display font-semibold mb-1">Select a receipt to view details</p>
+                  <p className="text-sm text-muted-foreground">
+                    Choose a receipt from the list to see OCR output, metadata, and line items.
+                  </p>
+                </div>
+              )}
+            </Card>
+          </div>
+
+          <ReceiptChatPanel
+            userId={user._id}
+            receipts={receipts}
+            onSelectReceipt={selectReceipt}
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
 
@@ -475,4 +382,3 @@ ReceiptsPage.propTypes = {
 };
 
 export default ReceiptsPage;
-
