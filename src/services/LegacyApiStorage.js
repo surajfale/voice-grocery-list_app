@@ -169,6 +169,21 @@ class LegacyApiStorageService {
     }
   }
 
+  async getPredictions(userId, date, limit) {
+    try {
+      const result = await serviceManager.getService('groceryList').getPredictions(userId, date, limit);
+
+      if (result.success) {
+        return { success: true, predictions: result.data };
+      }
+
+      return { success: false, error: result.error };
+    } catch (error) {
+      logger.error('Error loading predictions:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   async addGroceryItem(userId, date, itemData) {
     try {
       const result = await serviceManager.getService('groceryList').addGroceryItem(userId, date, itemData);

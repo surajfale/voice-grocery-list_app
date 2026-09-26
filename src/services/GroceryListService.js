@@ -71,6 +71,28 @@ export class GroceryListService extends BaseService {
   }
 
   /**
+   * Get predicted items the user is likely to need on a date,
+   * based on how often they've completed (bought) items before
+   *
+   * @param {string} userId - User ID
+   * @param {string} date - Target date string (YYYY-MM-DD)
+   * @param {number} limit - Max predictions
+   * @returns {Promise} Ranked predictions
+   */
+  async getPredictions(userId, date, limit = 10) {
+    return this.executeWithRetry(async () => {
+      const query = `date=${encodeURIComponent(date)}&limit=${encodeURIComponent(limit)}`;
+      const result = await this.apiService.makeRequest(`/grocery-lists/user/${userId}/predictions?${query}`);
+
+      if (result.success) {
+        return this.createSuccessResponse(result.predictions, 'Predictions loaded successfully');
+      }
+
+      throw new Error(result.error || 'Failed to load predictions');
+    }, { context: { userId, date } });
+  }
+
+  /**
    * Add item to grocery list
    * 
    * @param {string} userId - User ID

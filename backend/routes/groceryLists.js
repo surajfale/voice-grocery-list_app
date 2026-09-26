@@ -1,6 +1,7 @@
 import express from 'express';
 import GroceryList from '../models/GroceryList.js';
 import { authenticate, requireOwnUserId } from '../middleware/auth.js';
+import { predictItems, isValidDateString } from '../services/groceryPrediction.js';
 const router = express.Router();
 
 router.use(authenticate);
@@ -44,6 +45,37 @@ router.get('/user/:userId', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch grocery lists'
+    });
+  }
+});
+
+// Predict items the user is likely to need, based on completed-item history
+// GET /user/:userId/predictions?date=YYYY-MM-DD&limit=10
+router.get('/user/:userId/predictions', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { date } = req.query;
+
+    if (date !== undefined && !isValidDateString(date)) {
+      return res.status(400).json({
+        success: false,
+        error: 'date must be in YYYY-MM-DD format'
+      });
+    }
+
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 25);
+    const predictions = await predictItems(userId, { date, limit });
+
+    res.json({
+      success: true,
+      predictions
+    });
+
+  } catch (error) {
+    console.error('Error generating predictions:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate predictions'
     });
   }
 });
