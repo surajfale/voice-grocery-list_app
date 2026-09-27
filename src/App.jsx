@@ -22,6 +22,9 @@ import {
   Eraser,
   Lock,
   CalendarDays,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './AuthContext';
 import { CustomThemeProvider, useThemeContext } from './contexts/ThemeContext';
@@ -185,6 +188,15 @@ const VoiceGroceryList = ({ user, logout }) => {
   const [moveDialogDates, setMoveDialogDates] = useState([]);
   const [moveTargetDate, setMoveTargetDate] = useState(() => dayjs());
   const [movingLists, setMovingLists] = useState(false);
+
+  // Header gets a soft accent shadow once the page scrolls
+  const [hasScrolled, setHasScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setHasScrolled(window.scrollY > 4);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   // Ref for the printable list component
   const printableListRef = useRef(null);
@@ -836,28 +848,44 @@ const VoiceGroceryList = ({ user, logout }) => {
       <div className="flex flex-col min-h-dvh">
         <ProjectDisclaimer />
 
-        <header className="sticky top-0 z-40 h-14 shrink-0 flex items-center gap-2 px-3 sm:px-5 bg-background/80 backdrop-blur-xl border-b border-border">
+        <header
+          className={`sticky top-0 z-40 h-14 shrink-0 flex items-center gap-2 px-3 sm:px-5 bg-background/75 backdrop-blur-xl transition-shadow duration-300 ${
+            hasScrolled ? 'shadow-[0_8px_24px_-16px_color-mix(in_oklch,var(--primary)_45%,transparent)]' : ''
+          }`}
+        >
+          {/* Accent hairline instead of a flat border */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,color-mix(in_oklch,var(--primary)_45%,transparent),transparent)]"
+          />
+
           {isMobile && !isReceiptsView && (
-            <Button
-              variant="ghost"
-              size="icon"
+            <button
+              type="button"
               onClick={() => setMobileDrawerOpen(true)}
-              className="-ml-1 size-9"
+              className="-ml-1 size-9 rounded-xl flex items-center justify-center hover:bg-primary/10 transition-colors"
               aria-label="Open lists"
             >
-              <MenuIcon />
-            </Button>
+              <MenuIcon className="size-5" />
+            </button>
           )}
 
           <div className="flex items-center gap-2.5 mr-auto min-w-0">
-            <div className="size-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shrink-0">
-              <ShoppingBasket className="size-4.5" />
+            <div className="btn-gradient size-9 rounded-xl flex items-center justify-center shrink-0">
+              <ShoppingBasket className="size-5" />
             </div>
-            <span className="hidden sm:block font-semibold tracking-tight truncate">Grocery List</span>
+            <span className="hidden sm:block font-bold tracking-tight truncate bg-clip-text text-transparent bg-[linear-gradient(135deg,var(--foreground)_30%,var(--primary))]">
+              Grocery List
+            </span>
           </div>
 
-          {/* Primary navigation */}
-          <nav aria-label="Primary" className="flex items-center rounded-full bg-muted p-0.5">
+          {/* Primary navigation: a gradient pill slides to the active tab */}
+          <nav aria-label="Primary" className="relative grid grid-cols-2 rounded-full bg-muted p-1">
+            <span
+              aria-hidden="true"
+              className="btn-gradient absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full transition-transform duration-300 ease-[cubic-bezier(0.34,1.4,0.64,1)]"
+              style={{ transform: activeView === 'receipts' ? 'translateX(100%)' : 'translateX(0)' }}
+            />
             {[
               { view: 'lists', label: 'Lists', Icon: ListChecks },
               { view: 'receipts', label: 'Receipts', Icon: Receipt },
@@ -869,8 +897,8 @@ const VoiceGroceryList = ({ user, logout }) => {
                   type="button"
                   onClick={() => setActiveView(view)}
                   aria-current={isActive ? 'page' : undefined}
-                  className={`h-8 px-3 sm:px-3.5 rounded-full text-sm font-medium inline-flex items-center gap-1.5 transition-[background-color,color,box-shadow] ${
-                    isActive ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                  className={`relative z-10 h-8 px-3 sm:px-4 rounded-full text-sm font-medium inline-flex items-center justify-center gap-1.5 transition-colors duration-200 ${
+                    isActive ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   <Icon className="size-4" />
@@ -886,48 +914,58 @@ const VoiceGroceryList = ({ user, logout }) => {
               <button
                 type="button"
                 aria-label="Account and settings"
-                className="ml-1 rounded-full transition-[box-shadow] hover:ring-2 hover:ring-border data-[state=open]:ring-2 data-[state=open]:ring-ring/40"
+                className="ml-1 rounded-full p-[2px] btn-gradient transition-transform hover:scale-105 active:scale-95 data-[state=open]:scale-105"
               >
-                <Avatar className="size-8">
-                  <AvatarFallback className="bg-muted text-foreground text-xs font-semibold">
+                <Avatar className="size-8 border-2 border-background">
+                  <AvatarFallback className="bg-card text-foreground text-xs font-bold">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-60">
-              <DropdownMenuLabel className="font-normal">
-                <p className="text-sm font-semibold text-foreground truncate">{user.firstName} {user.lastName}</p>
-                {user.email && <p className="text-xs text-muted-foreground truncate">{user.email}</p>}
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-xs font-medium text-muted-foreground py-1">Appearance</DropdownMenuLabel>
-              <DropdownMenuRadioGroup value={mode} onValueChange={setMode}>
-                <DropdownMenuRadioItem value="light">Light</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="dark">Dark</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="system">Match system</DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-              <DropdownMenuItem onClick={() => setShowThemeSettings(true)}>
-                <Palette />
-                Accent color…
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setShowHelpPage(true)}>
-                <HelpCircle />
-                Help &amp; tips
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleLogout}>
-                <LogOut />
-                Sign out
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={() => setShowDeleteAccountDialog(true)}
-              >
-                <Trash />
-                Delete account
-              </DropdownMenuItem>
+            <DropdownMenuContent align="end" className="min-w-64 p-0 overflow-hidden">
+              {/* Profile banner */}
+              <div className="hero-gradient px-4 py-3.5" style={{ boxShadow: 'none' }}>
+                <div className="relative z-10 flex items-center gap-3">
+                  <span className="size-10 rounded-full flex items-center justify-center text-sm font-bold bg-[color-mix(in_oklch,var(--primary-foreground)_20%,transparent)]">
+                    {initials}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold truncate">{user.firstName} {user.lastName}</p>
+                    {user.email && <p className="text-xs opacity-85 truncate">{user.email}</p>}
+                  </div>
+                </div>
+              </div>
+              <div className="p-1.5">
+                <DropdownMenuLabel className="text-xs font-medium text-muted-foreground py-1">Appearance</DropdownMenuLabel>
+                <DropdownMenuRadioGroup value={mode} onValueChange={setMode}>
+                  <DropdownMenuRadioItem value="light"><Sun className="size-4 text-muted-foreground" />Light</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="dark"><Moon className="size-4 text-muted-foreground" />Dark</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="system"><Monitor className="size-4 text-muted-foreground" />Match system</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+                <DropdownMenuItem onClick={() => setShowThemeSettings(true)}>
+                  <Palette />
+                  Accent color…
+                  <span aria-hidden="true" className="ml-auto size-4 rounded-full btn-gradient" style={{ boxShadow: 'none' }} />
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setShowHelpPage(true)}>
+                  <HelpCircle />
+                  Help &amp; tips
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut />
+                  Sign out
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => setShowDeleteAccountDialog(true)}
+                >
+                  <Trash />
+                  Delete account
+                </DropdownMenuItem>
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
         </header>
