@@ -21,6 +21,7 @@ import {
   MoreHorizontal,
   Eraser,
   Lock,
+  CalendarDays,
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './AuthContext';
 import { CustomThemeProvider, useThemeContext } from './contexts/ThemeContext';
@@ -520,9 +521,19 @@ const VoiceGroceryList = ({ user, logout }) => {
   const upcomingDates = sortedDates.filter(date => !dayjs(date).isBefore(todayStart)).reverse();
   const pastDates = sortedDates.filter(date => dayjs(date).isBefore(todayStart));
 
-  const renderDateRow = (date) => {
+  const renderDateRow = (date, index) => {
     const isSelected = date === currentDateString;
-    const itemCount = allLists[date]?.length || 0;
+    const dateObj = dayjs(date);
+    const isPast = dateObj.isBefore(todayStart);
+    const isToday = dateObj.isSame(todayStart, 'day');
+    const items = allLists[date] || [];
+    const doneCount = items.filter(item => item.completed).length;
+    const leftCount = items.length - doneCount;
+    const listProgress = items.length ? (doneCount / items.length) * 100 : 0;
+    let status = 'Empty';
+    if (items.length > 0) {
+      status = leftCount === 0 ? 'All done' : `${leftCount} of ${items.length} left`;
+    }
 
     const stopAnd = (fn) => ({
       onClick: (e) => {
@@ -538,16 +549,19 @@ const VoiceGroceryList = ({ user, logout }) => {
       },
     });
 
+    let tileClass = isPast ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary';
+    if (isSelected || isToday) {tileClass = 'btn-gradient';}
+
     return (
-      <li key={date}>
+      <li key={date} className="rise-in" style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}>
         <button
           type="button"
           onClick={() => (selectMode ? toggleDateSelection(date) : createNewListForDate(date))}
           aria-current={isSelected ? 'date' : undefined}
-          className={`group w-full flex items-center gap-2.5 rounded-lg pl-3 pr-1.5 h-10 text-left text-sm transition-colors ${
+          className={`group w-full flex items-center gap-3 rounded-2xl p-2 pr-1.5 text-left transition-[background-color,box-shadow] ${
             isSelected
-              ? 'bg-accent text-foreground font-medium'
-              : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+              ? 'bg-primary/10 ring-1 ring-primary/20'
+              : 'hover:bg-accent/70'
           }`}
         >
           {selectMode && (
@@ -557,19 +571,42 @@ const VoiceGroceryList = ({ user, logout }) => {
                 e.stopPropagation();
                 toggleDateSelection(date);
               }}
+              aria-label={`Select ${relativeDayLabel(date)}`}
             />
           )}
-          <span className="flex-1 truncate">{relativeDayLabel(date)}</span>
-          <span className="text-xs tabular-nums text-muted-foreground">{itemCount}</span>
+
+          {/* Calendar-style date tile */}
+          <span className={`size-11 rounded-xl flex flex-col items-center justify-center shrink-0 leading-none ${tileClass}`}>
+            <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80">{dateObj.format('ddd')}</span>
+            <span className="text-base font-bold tabular-nums mt-0.5">{dateObj.format('D')}</span>
+          </span>
+
+          <span className="flex-1 min-w-0">
+            <span className={`block text-sm truncate ${isSelected ? 'font-semibold text-foreground' : 'font-medium'}`}>
+              {relativeDayLabel(date)}
+            </span>
+            <span className={`block text-xs tabular-nums ${leftCount === 0 && items.length > 0 ? 'text-success' : 'text-muted-foreground'}`}>
+              {status}
+            </span>
+            {items.length > 0 && (
+              <span className="block h-1 mt-1.5 rounded-full bg-muted overflow-hidden">
+                <span
+                  className={`block h-full rounded-full transition-[width] duration-500 ${leftCount === 0 ? 'bg-success' : 'btn-gradient'}`}
+                  style={{ width: `${listProgress}%`, boxShadow: 'none' }}
+                />
+              </span>
+            )}
+          </span>
+
           {!selectMode && (
-            <span className="flex items-center md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 transition-opacity">
+            <span className="flex flex-col md:flex-row items-center md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 transition-opacity">
               <span
                 role="button"
                 tabIndex={0}
                 title="Move or merge into another date"
                 aria-label={`Move or merge ${relativeDayLabel(date)}`}
                 {...stopAnd(() => openMoveDialog([date]))}
-                className="p-1.5 rounded-md hover:bg-background text-muted-foreground hover:text-foreground"
+                className="p-1.5 rounded-lg hover:bg-background text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeftRight className="size-3.5" />
               </span>
@@ -580,7 +617,7 @@ const VoiceGroceryList = ({ user, logout }) => {
                   title="Delete list"
                   aria-label={`Delete ${relativeDayLabel(date)}`}
                   {...stopAnd(() => deleteList(date))}
-                  className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                  className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="size-3.5" />
                 </span>
@@ -592,23 +629,64 @@ const VoiceGroceryList = ({ user, logout }) => {
     );
   };
 
+  const todayItems = allLists[todayStart.format('YYYY-MM-DD')] || [];
+  const todayLeft = todayItems.filter(item => !item.completed).length;
+  const quickJumps = [
+    { label: 'Today', date: todayStart },
+    { label: 'Tomorrow', date: todayStart.add(1, 'day') },
+  ];
+
   // Drawer content for date selection and list management
   const drawerContent = (
     <nav aria-label="Grocery lists" className="w-full p-4 space-y-6">
-      <div>
-        <label htmlFor="list-date" className="section-label block px-1 mb-2">Go to date</label>
-        <Input
-          id="list-date"
-          type="date"
-          value={currentDate.format('YYYY-MM-DD')}
-          onChange={(e) => e.target.value && createNewListForDate(e.target.value)}
-          className="h-10"
-        />
+      {/* Summary + quick jumps on the accent gradient */}
+      <div className="hero-gradient rounded-3xl p-4" style={{ boxShadow: '0 14px 30px -18px color-mix(in oklch, var(--primary) 70%, transparent)' }}>
+        <div className="relative z-10">
+          <p className="text-lg font-semibold tracking-tight">Your lists</p>
+          <p className="text-xs opacity-85 tabular-nums">
+            {sortedDates.length} {sortedDates.length === 1 ? 'list' : 'lists'}
+            {todayItems.length > 0 && ` · ${todayLeft === 0 ? 'today’s all done' : `${todayLeft} left today`}`}
+          </p>
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            {quickJumps.map(({ label, date }) => {
+              const isActive = date.isSame(currentDate, 'day');
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => createNewListForDate(date)}
+                  aria-pressed={isActive}
+                  className={`h-9 rounded-xl text-sm font-medium transition-[background-color,color,transform] active:scale-[0.97] ${
+                    isActive
+                      ? 'bg-primary-foreground text-primary'
+                      : 'bg-[color-mix(in_oklch,var(--primary-foreground)_16%,transparent)] hover:bg-[color-mix(in_oklch,var(--primary-foreground)_26%,transparent)]'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       <div>
-        <div className="flex justify-between items-center mb-1 px-1">
-          <span className="section-label">Lists</span>
+        <label htmlFor="list-date" className="section-label block px-1 mb-2">Pick a date</label>
+        <div className="relative">
+          <CalendarDays className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-primary pointer-events-none" />
+          <Input
+            id="list-date"
+            type="date"
+            value={currentDate.format('YYYY-MM-DD')}
+            onChange={(e) => e.target.value && createNewListForDate(e.target.value)}
+            className="h-11 rounded-xl pl-10"
+          />
+        </div>
+      </div>
+
+      <div>
+        <div className="flex justify-between items-center mb-2 px-1">
+          <span className="section-label">{upcomingDates.length > 0 ? 'Upcoming' : 'Lists'}</span>
           {sortedDates.length > 1 && (
             <button
               type="button"
@@ -626,7 +704,7 @@ const VoiceGroceryList = ({ user, logout }) => {
         {selectMode && selectedDatesForMove.length > 0 && (
           <Button
             size="sm"
-            className="w-full my-2"
+            className="w-full mb-3 h-10 rounded-xl btn-gradient border-0 hover:opacity-95"
             onClick={() => openMoveDialog(selectedDatesForMove)}
           >
             <Merge />
@@ -635,16 +713,19 @@ const VoiceGroceryList = ({ user, logout }) => {
         )}
 
         {sortedDates.length === 0 ? (
-          <p className="text-sm text-muted-foreground px-1 py-2">No lists yet</p>
+          <div className="rounded-2xl border border-dashed border-border px-4 py-6 text-center">
+            <p className="text-sm font-medium">No lists yet</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Add an item to start today&apos;s list.</p>
+          </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {upcomingDates.length > 0 && (
-              <ul className="space-y-0.5">{upcomingDates.map(renderDateRow)}</ul>
+              <ul className="space-y-1">{upcomingDates.map(renderDateRow)}</ul>
             )}
             {pastDates.length > 0 && (
               <div>
-                <p className="text-xs text-muted-foreground px-3 mb-1">Past</p>
-                <ul className="space-y-0.5">{pastDates.map(renderDateRow)}</ul>
+                {upcomingDates.length > 0 && <p className="section-label px-1 mb-2">Past</p>}
+                <ul className="space-y-1">{pastDates.map((date, i) => renderDateRow(date, i + upcomingDates.length))}</ul>
               </div>
             )}
           </div>
