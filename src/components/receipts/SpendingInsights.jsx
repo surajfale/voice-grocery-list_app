@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { buildCategoryResolver, findCheapestStores, findPriceChanges, CHEAPEST_WINDOW_DAYS } from '../../utils/receiptInsights';
+import { buildCategoryResolver, findCheapestStores, findPriceChanges, getTopStore, CHEAPEST_WINDOW_DAYS } from '../../utils/receiptInsights';
 import { getCategoryStyle, hueFromString } from '../../utils/categoryStyles';
 import SpendingExportCard, { toCategoryRow, toStoreRow } from './SpendingExportCard.jsx';
 import { renderImage, saveBlob, shareImage } from '../../utils/downloadList';
@@ -105,7 +105,8 @@ const SpendingInsights = ({ receipts, loading = false }) => {
 
   const receiptCount = filteredReceipts.length;
   const avgPerReceipt = receiptCount > 0 ? totalSpent / receiptCount : 0;
-  const topStore = storeOptions[0] || '—';
+  // Most-visited store across all receipts, matching the Receipts header
+  const topStore = useMemo(() => getTopStore(receipts)?.name || '—', [receipts]);
 
   const monthlyTrend = useMemo(() => {
     const totals = new Map();
@@ -188,6 +189,7 @@ const SpendingInsights = ({ receipts, loading = false }) => {
       total,
       currency: inMonth.find((receipt) => receipt.currency)?.currency,
       count: inMonth.length,
+      topStore: getTopStore(inMonth)?.name || null,
       changePct,
       trend,
       stores: sumBy(inMonth, getStoreName, (receipt) => receipt.total).slice(0, SHARE_STORE_LIMIT).map(toStoreRow),
