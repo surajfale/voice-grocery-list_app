@@ -59,7 +59,7 @@ const groupChunksByReceipt = (chunks) => {
   const groups = new Map();
   for (const chunk of chunks) {
     const key = chunk.receiptId?.toString() || 'unknown';
-    if (!groups.has(key)) groups.set(key, []);
+    if (!groups.has(key)) { groups.set(key, []); }
     groups.get(key).push(chunk);
   }
   // Sort chunks within each receipt by chunkIndex
@@ -99,12 +99,12 @@ const ensureValidObjectId = (value, fieldName) => {
  * and legacy plain strings.
  */
 const formatItemEntry = (item) => {
-  if (typeof item === 'string') return item;
-  if (!item || !item.name) return null;
+  if (typeof item === 'string') { return item; }
+  if (!item || !item.name) { return null; }
 
   const parts = [item.name];
-  if (item.quantity && item.quantity !== 1) parts.push(`qty: ${item.quantity}`);
-  if (typeof item.price === 'number') parts.push(`$${item.price.toFixed(2)}`);
+  if (item.quantity && item.quantity !== 1) { parts.push(`qty: ${item.quantity}`); }
+  if (typeof item.price === 'number') { parts.push(`$${item.price.toFixed(2)}`); }
   return parts.join(' — ');
 };
 
@@ -142,7 +142,7 @@ const formatContextForPrompt = (chunks = [], maxChunks = DEFAULT_MAX_CONTEXT_CHU
  * This gives the LLM an unambiguous table of items + prices to calculate from.
  */
 const buildStructuredReceiptSummary = (receipts = []) => {
-  if (!receipts.length) return '';
+  if (!receipts.length) { return ''; }
 
   const lines = ['=== STRUCTURED RECEIPT DATA (AUTHORITATIVE — use these prices for calculations) ===', ''];
 
@@ -155,9 +155,9 @@ const buildStructuredReceiptSummary = (receipts = []) => {
 
     if (Array.isArray(receipt.items) && receipt.items.length) {
       for (const item of receipt.items) {
-        if (!item || !item.name) continue;
+        if (!item || !item.name) { continue; }
         const parts = [`  - ${item.name.trim()}`];
-        if (item.quantity && item.quantity !== 1) parts.push(`qty: ${item.quantity}`);
+        if (item.quantity && item.quantity !== 1) { parts.push(`qty: ${item.quantity}`); }
         if (typeof item.price === 'number') {
           parts.push(`$${item.price.toFixed(2)}`);
           if (item.quantity && item.quantity > 1) {

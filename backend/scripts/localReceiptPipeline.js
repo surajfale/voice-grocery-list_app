@@ -291,7 +291,7 @@ const invokedDirectly = (() => {
   }
   try {
     return import.meta.url === pathToFileURL(process.argv[1]).href;
-  } catch (_error) {
+  } catch {
     return false;
   }
 })();
@@ -300,6 +300,7 @@ if (invokedDirectly) {
   main().catch((error) => {
     console.error('Local receipt pipeline failed:', error);
     mongoose.disconnect().finally(() => {
+      // eslint-disable-next-line no-process-exit -- CLI entrypoint: exit non-zero once the DB connection is closed
       process.exit(1);
     });
   });

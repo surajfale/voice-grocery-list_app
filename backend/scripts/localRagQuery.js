@@ -57,7 +57,7 @@ const ensureEnv = (key) => {
 };
 
 const formatDate = (dateStr) => {
-  if (!dateStr) return 'N/A';
+  if (!dateStr) { return 'N/A'; }
   try {
     return new Date(dateStr).toISOString().split('T')[0];
   } catch {
@@ -66,11 +66,11 @@ const formatDate = (dateStr) => {
 };
 
 const formatUsage = (usage) => {
-  if (!usage) return 'N/A';
+  if (!usage) { return 'N/A'; }
   const parts = [];
-  if (usage.prompt_tokens) parts.push(`Prompt: ${usage.prompt_tokens}`);
-  if (usage.completion_tokens) parts.push(`Completion: ${usage.completion_tokens}`);
-  if (usage.total_tokens) parts.push(`Total: ${usage.total_tokens}`);
+  if (usage.prompt_tokens) { parts.push(`Prompt: ${usage.prompt_tokens}`); }
+  if (usage.completion_tokens) { parts.push(`Completion: ${usage.completion_tokens}`); }
+  if (usage.total_tokens) { parts.push(`Total: ${usage.total_tokens}`); }
   return parts.length > 0 ? parts.join(', ') : 'N/A';
 };
 
@@ -168,7 +168,7 @@ const invokedDirectly = (() => {
   }
   try {
     return import.meta.url === pathToFileURL(process.argv[1]).href;
-  } catch (_error) {
+  } catch {
     return false;
   }
 })();
@@ -177,6 +177,7 @@ if (invokedDirectly) {
   main().catch((error) => {
     console.error('Local RAG query failed:', error);
     mongoose.disconnect().finally(() => {
+      // eslint-disable-next-line no-process-exit -- CLI entrypoint: exit non-zero once the DB connection is closed
       process.exit(1);
     });
   });
