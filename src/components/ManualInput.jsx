@@ -1,12 +1,23 @@
 import React, { useState, useMemo, memo, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { Plus, Loader2, X } from 'lucide-react';
+import { Plus, Loader2, X, Sparkles } from 'lucide-react';
 import Fuse from 'fuse.js';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { describePrediction } from '../hooks/usePurchasePredictions';
 
-const ManualInput = memo(({ onAddItems, historicalItems = [], loading = false, disabled = false }) => {
+const MAX_EMPTY_SUGGESTIONS = 5;
+const MAX_PREDICTION_CHIPS = 6;
+
+const ManualInput = memo(({
+  onAddItems,
+  historicalItems = [],
+  predictions = [],
+  showPredictionChips = false,
+  loading = false,
+  disabled = false
+}) => {
   const [selectedItems, setSelectedItems] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [open, setOpen] = useState(false);
@@ -18,13 +29,30 @@ const ManualInput = memo(({ onAddItems, historicalItems = [], loading = false, d
     minMatchCharLength: 2,
   }), [historicalItems]);
 
+  // Lowercased prediction text -> rank (0 = most likely needed)
+  const predictionRank = useMemo(() => new Map(
+    predictions.map((prediction, index) => [prediction.text.toLowerCase(), index])
+  ), [predictions]);
+
   const suggestions = useMemo(() => {
     if (inputValue === '') {
-      // Show top 5 suggestions when empty if available, or nothing
-      return historicalItems.slice(0, 5);
+      // Predicted items first, then fill up with history (no case-variant repeats)
+      const seen = new Set();
+      return [...predictions.map((p) => p.text), ...historicalItems]
+        .filter((item) => {
+          const key = item.toLowerCase();
+          if (seen.has(key)) { return false; }
+          seen.add(key);
+          return true;
+        })
+        .slice(0, MAX_EMPTY_SUGGESTIONS);
     }
 
-    const results = fuse.search(inputValue).map(result => result.item);
+    // Keep Fuse's relevance order, but float predicted items to the top
+    const rankOf = (item) => predictionRank.get(item.toLowerCase()) ?? predictions.length;
+    const results = fuse.search(inputValue)
+      .map(result => result.item)
+      .sort((a, b) => rankOf(a) - rankOf(b));
 
     // Suggest the exact input if it's not in the list (and not empty)
     const isExisting = results.some((option) => option.toLowerCase() === inputValue.toLowerCase());
@@ -33,7 +61,14 @@ const ManualInput = memo(({ onAddItems, historicalItems = [], loading = false, d
     }
 
     return results;
-  }, [fuse, historicalItems, inputValue]);
+  }, [fuse, historicalItems, inputValue, predictions, predictionRank]);
+
+  const predictionChips = useMemo(() => {
+    const selected = new Set(selectedItems.map((item) => item.toLowerCase()));
+    return predictions
+      .filter((prediction) => !selected.has(prediction.text.toLowerCase()))
+      .slice(0, MAX_PREDICTION_CHIPS);
+  }, [predictions, selectedItems]);
 
   const addTag = (value) => {
     if (!value.trim()) { return; }
@@ -120,9 +155,15 @@ const ManualInput = memo(({ onAddItems, historicalItems = [], loading = false, d
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => addTag(suggestion)}
-                  className="w-full text-left px-3.5 py-2 text-sm hover:bg-accent"
+                  className="w-full text-left px-3.5 py-2 text-sm hover:bg-accent flex items-center justify-between gap-2"
                 >
-                  {suggestion}
+                  <span>{suggestion}</span>
+                  {predictionRank.has(suggestion.toLowerCase()) && (
+                    <span className="flex items-center gap-1 text-xs text-primary">
+                      <Sparkles className="size-3" />
+                      Due
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -147,6 +188,30 @@ const ManualInput = memo(({ onAddItems, historicalItems = [], loading = false, d
           )}
         </Button>
       </div>
+
+      {showPredictionChips && predictionChips.length > 0 && !isDisabled && (
+        <div className="mt-4">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-2">
+            <Sparkles className="size-3.5 text-primary" />
+            Running low? Based on how often you buy these
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {predictionChips.map((prediction) => (
+              <Badge key={prediction.key} variant="soft" asChild>
+                <button
+                  type="button"
+                  onClick={() => onAddItems([prediction.text])}
+                  title={describePrediction(prediction)}
+                  className="cursor-pointer font-medium hover:bg-primary/20"
+                >
+                  <Plus />
+                  {prediction.text}
+                </button>
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
     </Card>
   );
 });
@@ -157,6 +222,11 @@ ManualInput.displayName = 'ManualInput';
 ManualInput.propTypes = {
   onAddItems: PropTypes.func.isRequired,
   historicalItems: PropTypes.arrayOf(PropTypes.string),
+  predictions: PropTypes.arrayOf(PropTypes.shape({
+    key: PropTypes.string.isRequired,
+    text: PropTypes.string.isRequired
+  })),
+  showPredictionChips: PropTypes.bool,
   loading: PropTypes.bool,
   disabled: PropTypes.bool
 };

@@ -49,6 +49,7 @@ import CongratulationsDialog from './components/CongratulationsDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import ReceiptsPage from './pages/ReceiptsPage';
 import { useGroceryList } from './hooks/useGroceryList';
+import { usePurchasePredictions } from './hooks/usePurchasePredictions';
 import groceryIntelligence from './services/groceryIntelligence';
 import { downloadListAsImage, downloadListAsPDF, shareList } from './utils/downloadList';
 import { Button } from './components/ui/button';
@@ -474,6 +475,7 @@ const VoiceGroceryList = ({ user, logout }) => {
   }, [allLists]);
 
   const isPastDate = currentDate.isBefore(dayjs().startOf('day'));
+  const predictions = usePurchasePredictions(user, currentDateString, currentItems, !isPastDate);
 
   // Drawer content for date selection and list management
   const drawerContent = (
@@ -863,6 +865,8 @@ const VoiceGroceryList = ({ user, logout }) => {
                     <ManualInput
                       onAddItems={handleManualItems}
                       historicalItems={historicalItems}
+                      predictions={predictions}
+                      showPredictionChips={currentItems.length > 0}
                       loading={loading}
                       disabled={isPastDate}
                     />
@@ -960,6 +964,9 @@ const VoiceGroceryList = ({ user, logout }) => {
                       <EmptyState
                         currentDateString={currentDateString}
                         formatDateDisplay={formatDateDisplay}
+                        predictions={isPastDate ? [] : predictions}
+                        onAddItems={handleManualItems}
+                        loading={loading}
                       />
                     )}
                   </>

@@ -60,7 +60,7 @@ pnpm dev
 - `/backend/models/` - Mongoose schema definitions (User.js, GroceryList.js, Receipt.js, ReceiptChunk.js)
 - `/backend/routes/` - Express route handlers (auth.js, groceryLists.js, receipts.js)
 - `/backend/controllers/` - Route business logic (receiptController.js)
-- `/backend/services/` - Backend services (emailService.js, receiptOcr.js, ReceiptRagService.js, receiptChunker.js)
+- `/backend/services/` - Backend services (emailService.js, receiptOcr.js, ReceiptRagService.js, receiptChunker.js, groceryPrediction.js)
 - `/backend/utils/` - Shared backend utilities (embeddingClient.js, gridFs.js, costEstimator.js)
 - `/backend/jobs/` - Scheduled jobs (receiptEmbeddingJob.js for chunking/embedding pending receipts)
 
@@ -106,6 +106,7 @@ pnpm dev
 - **useNetworkStatus.js** - Network connectivity monitoring and offline handling
 - **useReceipts.js** - Receipt list/upload/selection state, backed by ReceiptService
 - **useReceiptChat.js** - RAG chat state (question history, date-range filters, streaming stages), backed by ReceiptRagClient
+- **usePurchasePredictions.js** - Fetches "you'll probably need" predictions for the selected date and filters out items already on the list
 
 ### Utilities (src/utils/)
 - **logger.js** - Centralized logging system with different log levels
@@ -144,6 +145,7 @@ pnpm dev
 - `/api/auth/login` - User login
 - `/api/auth/forgot-password` / `/api/auth/reset-password/:token` - Password reset flow
 - `/api/grocery-lists/` - CRUD operations for grocery lists
+- `/api/grocery-lists/user/:userId/predictions?date=YYYY-MM-DD&limit=10` - Stats-based purchase predictions (no AI calls): completed items = purchases; scores each item bought 2+ times by median gap between purchases vs. days since last purchase (`backend/services/groceryPrediction.js`)
 - `/api/receipts` - Upload a receipt (POST, multipart)
 - `/api/receipts/user/:userId` - List a user's receipts
 - `/api/receipts/:receiptId` / `/api/receipts/:receiptId/image` - Fetch a receipt / stream its image
