@@ -1,6 +1,7 @@
 import React, { useState, memo, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { ChevronDown, MoreHorizontal, Pencil, Trash2, Check, X, Tag, Hash } from 'lucide-react';
+import { ChevronDown, MoreHorizontal, Pencil, Trash2, Check, X, Tag, Hash, ArrowUp, BadgeDollarSign } from 'lucide-react';
+import dayjs from 'dayjs';
 import { Checkbox } from './ui/checkbox';
 import { Input } from './ui/input';
 import {
@@ -16,10 +17,72 @@ import {
   DropdownMenuRadioItem,
 } from './ui/dropdown-menu';
 import { getCategoryStyle } from '../utils/categoryStyles';
+import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
+import { formatMoney } from '../utils/money';
 
 const COUNT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 const STAGGER_MS = 60;
+
+/**
+ * Receipt-based price hint for a list item: a red "▲ 9%" when the price went up
+ * on the last purchase, or a green tag when another store was cheaper. Taps
+ * open the details (hover tooltips don't exist on phones).
+ */
+const PriceHint = ({ itemText, signal }) => {
+  const { rise, cheaper, currency } = signal;
+  const risePct = rise ? Math.round(rise.changePct * 100) : 0;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={rise ? `${itemText} price up ${risePct}%` : `${itemText} is cheaper at ${cheaper.store}`}
+          className={`shrink-0 inline-flex items-center gap-0.5 h-6 rounded-md px-1.5 text-[11px] font-semibold tabular-nums transition-colors ${
+            rise
+              ? 'bg-red-500/12 text-red-600 hover:bg-red-500/20 dark:text-red-400'
+              : 'bg-emerald-500/12 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400'
+          }`}
+        >
+          {rise ? (
+            <>
+              <ArrowUp className="size-3" strokeWidth={3} />
+              {risePct}%
+            </>
+          ) : (
+            <BadgeDollarSign className="size-3.5" />
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-64 p-3.5 text-sm">
+        <p className="font-semibold capitalize mb-2">{itemText}</p>
+        {rise && (
+          <div className="mb-2 last:mb-0">
+            <p className="text-red-600 dark:text-red-400 font-medium">Up {risePct}% at {rise.store}</p>
+            <p className="text-xs text-muted-foreground tabular-nums">
+              {formatMoney(rise.previous.unitPrice, currency)} ({dayjs(rise.previous.date).format('MMM D')}) → {formatMoney(rise.latest.unitPrice, currency)} ({dayjs(rise.latest.date).format('MMM D')})
+            </p>
+          </div>
+        )}
+        {cheaper && (
+          <p className="text-emerald-700 dark:text-emerald-400 font-medium">
+            Cheapest recently: {cheaper.store} {formatMoney(cheaper.unitPrice, currency)}
+          </p>
+        )}
+        <p className="text-[11px] text-muted-foreground mt-2">From your scanned receipts, per unit.</p>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+PriceHint.propTypes = {
+  itemText: PropTypes.string.isRequired,
+  signal: PropTypes.shape({
+    rise: PropTypes.object,
+    cheaper: PropTypes.object,
+    currency: PropTypes.string,
+  }).isRequired,
+};
 
 const GroceryListDisplay = memo(({
   groupedItems,
@@ -31,7 +94,8 @@ const GroceryListDisplay = memo(({
   onUpdateText,
   onUpdateCount,
   categoryList,
-  loading = false
+  loading = false,
+  priceSignalFor = null
 }) => {
   const [editingText, setEditingText] = useState(null);
   const [editedTextValue, setEditedTextValue] = useState('');
@@ -207,6 +271,9 @@ const GroceryListDisplay = memo(({
                           </div>
                         ) : (
                           <>
+                            {!item.completed && priceSignalFor?.(item.text) && (
+                              <PriceHint itemText={item.text} signal={priceSignalFor(item.text)} />
+                            )}
                             {count > 1 && (
                               <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
                                 ×{count}
@@ -301,7 +368,9 @@ GroceryListDisplay.propTypes = {
   onUpdateText: PropTypes.func.isRequired,
   onUpdateCount: PropTypes.func.isRequired,
   categoryList: PropTypes.array.isRequired,
-  loading: PropTypes.bool
+  loading: PropTypes.bool,
+  // (itemText) => { rise?, cheaper?, currency? } | null, from usePriceSignals
+  priceSignalFor: PropTypes.func
 };
 
 export default GroceryListDisplay;
