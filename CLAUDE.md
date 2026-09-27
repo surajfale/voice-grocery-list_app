@@ -82,7 +82,7 @@ pnpm dev
 - **EmptyState.jsx** - Empty list state with onboarding guidance
 - **ErrorBoundary.jsx** / **ApiErrorBoundary.jsx** - Error handling and recovery components
 - **receipts/ReceiptChatPanel.jsx** - Chat UI for asking natural-language questions about uploaded receipts (RAG-backed)
-- **receipts/SpendingInsights.jsx** - Spending summaries/insights derived from parsed receipt data
+- **receipts/SpendingInsights.jsx** - Spending summaries/insights derived from parsed receipt data. Store + month filters ("All time" default): the month filter drives the summary tiles and store/category charts; the monthly trend, Price changes and Where it's cheapest stay all-time by design
 
 ### Service Architecture (src/services/)
 - **ServiceManager.js** - Centralized service orchestration and dependency management
@@ -102,7 +102,7 @@ pnpm dev
 - **downloadListAsPDF** - Paginated A4 PDF via jsPDF; pages only break at elements marked `data-pdf-break` (`planPageSlices`), so rows are never split
 - **PrintableList.jsx** - A component wired to a `printableListRef` that provides the formatted list layout used by the export utilities (always light palette, user's accent)
 - **receipts/ReceiptExportCard.jsx** - Same treatment for a single receipt (Share / Download image on the receipt details)
-- **receipts/SpendingExportCard.jsx** - Shareable monthly spending summary (month picker next to Share, defaults to the latest month; respects the store filter) from the Spending tab
+- **receipts/SpendingExportCard.jsx** - Shareable monthly spending summary from the Spending tab: shares the month chosen in the tab's month filter (latest month when "All time"); respects the store filter
 
 ### Custom Hooks (src/hooks/)
 - **useGroceryList.js** - Grocery list state management and operations
