@@ -249,6 +249,12 @@ time {
   pointer-events: none;
 }
 
+/* Danger variant for destructive flows (e.g. delete account) */
+.hero-gradient.hero-danger {
+  color: var(--destructive-foreground);
+  background: linear-gradient(135deg, var(--destructive) 0%, color-mix(in oklch, var(--destructive) 60%, oklch(0.72 0.17 45)) 100%);
+}
+
 /* Same gradient for small controls (no decorative circle to cover labels) */
 .btn-gradient {
   color: var(--primary-foreground);
