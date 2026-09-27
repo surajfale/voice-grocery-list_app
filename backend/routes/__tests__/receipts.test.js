@@ -154,13 +154,13 @@ describe('Receipt update validation', () => {
   });
 
   it('ignores non-editable fields', () => {
-    expect(validateReceiptUpdate({ merchant: 'Costco', total: 1, userId: 'x' }, now))
+    expect(validateReceiptUpdate({ merchant: 'Costco', status: 'error', userId: 'x', embeddingStatus: 'synced' }, now))
       .toEqual({ updates: { merchant: 'Costco' } });
   });
 
   it.each([
     [{}, /Provide merchant/],
-    [{ total: 5 }, /Provide merchant/],
+    [{ userId: 'x' }, /Provide merchant/],
     [{ merchant: '   ' }, /non-empty/],
     [{ merchant: 42 }, /non-empty/],
     [{ merchant: 'x'.repeat(121) }, /120 characters/],
@@ -168,6 +168,46 @@ describe('Receipt update validation', () => {
     [{ purchaseDate: '2025-02-30' }, /valid calendar date/],
     [{ purchaseDate: '2026-10-05' }, /future/]
   ])('rejects %j', (body, message) => {
+    expect(validateReceiptUpdate(body, now).error).toMatch(message);
+  });
+
+  it('normalizes line items and total, dropping client currency', () => {
+    const { updates } = validateReceiptUpdate({
+      items: [
+        { name: '  Toor   dal ', quantity: 2, price: 6.999, currency: 'EUR' },
+        { name: 'Coupon', price: -1.5 },
+        { name: 'Bag' }
+      ],
+      total: 12.345
+    }, now);
+    expect(updates).toEqual({
+      items: [
+        { name: 'Toor dal', quantity: 2, price: 7 },
+        { name: 'Coupon', quantity: 1, price: -1.5 },
+        { name: 'Bag', quantity: 1, price: null }
+      ],
+      total: 12.35
+    });
+  });
+
+  it('accepts an empty item list', () => {
+    expect(validateReceiptUpdate({ items: [] }, now)).toEqual({ updates: { items: [] } });
+  });
+
+  it.each([
+    [{ items: 'milk' }, /must be an array/],
+    [{ items: [null] }, /Item 1 is invalid/],
+    [{ items: [{ name: ' ' }] }, /Item 1 needs a name/],
+    [{ items: [{ name: 'a' }, { name: 'x'.repeat(121) }] }, /Item 2 name/],
+    [{ items: [{ name: 'Milk', quantity: 0 }] }, /quantity/],
+    [{ items: [{ name: 'Milk', quantity: '2' }] }, /quantity/],
+    [{ items: [{ name: 'Milk', price: 'free' }] }, /price/],
+    [{ items: [{ name: 'Milk', price: 1e9 }] }, /price/],
+    [{ items: Array.from({ length: 201 }, () => ({ name: 'x' })) }, /at most 200/],
+    [{ total: -1 }, /Total/],
+    [{ total: '12' }, /Total/],
+    [{ total: Number.NaN }, /Total/]
+  ])('rejects items/total %j', (body, message) => {
     expect(validateReceiptUpdate(body, now).error).toMatch(message);
   });
 

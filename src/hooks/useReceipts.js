@@ -88,7 +88,7 @@ export const useReceipts = (user) => {
   }, [userId, refreshSelectedReceipt, setError]);
 
   /**
-   * Saves a user correction (store name / purchase date).
+   * Saves a user correction (store name, purchase date, line items, total).
    * Throws so the edit dialog can show the error inline and stay open.
    */
   const updateReceipt = useCallback(async (receiptId, updates) => {
@@ -101,7 +101,8 @@ export const useReceipts = (user) => {
       throw new Error(result.error || 'Failed to update receipt');
     }
 
-    const patch = { merchant: result.data.merchant, purchaseDate: result.data.purchaseDate };
+    const { merchant, purchaseDate, items, total } = result.data;
+    const patch = { merchant, purchaseDate, items, total };
     setReceipts((prev) => prev.map((receipt) => (receipt._id === receiptId ? { ...receipt, ...patch } : receipt)));
     setSelectedReceipt((prev) => (prev?._id === receiptId ? { ...prev, ...patch } : prev));
     return result.data;

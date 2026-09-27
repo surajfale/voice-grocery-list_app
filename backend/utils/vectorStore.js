@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import ragConfig from '../config/ragConfig.js';
 import ReceiptChunk from '../models/ReceiptChunk.js';
+import Receipt from '../models/Receipt.js';
 
 const { Types } = mongoose;
 
@@ -104,6 +105,20 @@ export const vectorStore = {
 
     try {
       const result = await ReceiptChunk.bulkWrite(operations, { ordered: false });
+
+      // Callers always pass every chunk of a receipt (chunkReceipt output), so
+      // anything beyond the new count is left over from a longer earlier
+      // version (e.g. after line items were removed) and must go
+      const chunkCounts = new Map();
+      chunks.forEach((chunk) => {
+        const key = chunk.receiptId.toString();
+        chunkCounts.set(key, Math.max(chunkCounts.get(key) || 0, chunk.chunkIndex + 1));
+      });
+      await Promise.all([...chunkCounts].map(([receiptId, count]) => ReceiptChunk.deleteMany({
+        receiptId: toObjectId(receiptId, 'receiptId'),
+        chunkIndex: { $gte: count }
+      })));
+
       return {
         success: true,
         matchedCount: result.matchedCount,
@@ -199,6 +214,38 @@ export const vectorStore = {
       console.error('❌ Failed to search receipt chunks:', error.message || error);
       throw new Error(`Failed to search receipt chunks: ${error.message || 'Unknown error'}`);
     }
+  },
+
+  /**
+   * Removes every chunk of a receipt (used when the receipt is deleted).
+   * @returns {Promise<number>} Deleted chunk count
+   */
+  async deleteChunksForReceipt(receiptId) {
+    const result = await ReceiptChunk.deleteMany({ receiptId: toObjectId(receiptId, 'receiptId') });
+    return result.deletedCount || 0;
+  },
+
+  /**
+   * Deletes chunks whose receipt no longer exists: left by deletes made before
+   * chunk cleanup existed, a failed cleanup, or an embed that finished after
+   * its receipt was deleted.
+   * @returns {Promise<number>} Deleted chunk count
+   */
+  async pruneOrphanChunks() {
+    const chunkReceiptIds = await ReceiptChunk.distinct('receiptId');
+    if (!chunkReceiptIds.length) {
+      return 0;
+    }
+
+    const existing = await Receipt.find({ _id: { $in: chunkReceiptIds } }).distinct('_id');
+    const existingIds = new Set(existing.map((id) => id.toString()));
+    const orphanIds = chunkReceiptIds.filter((id) => !existingIds.has(id.toString()));
+    if (!orphanIds.length) {
+      return 0;
+    }
+
+    const result = await ReceiptChunk.deleteMany({ receiptId: { $in: orphanIds } });
+    return result.deletedCount || 0;
   },
 
   async fetchAllChunks(userId) {

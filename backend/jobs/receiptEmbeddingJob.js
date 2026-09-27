@@ -154,6 +154,12 @@ const run = async () => {
     await connectToDatabase();
     console.log('✅ Connected to database');
 
+    const prunedChunks = await vectorStore.pruneOrphanChunks();
+    if (prunedChunks > 0) {
+      console.log(`🧹 Removed ${prunedChunks} chunk(s) belonging to deleted receipts`);
+    }
+    logger.info('ingest.orphans.pruned', { prunedChunks });
+
     const query = buildReceiptQuery(options);
     const startTime = Date.now();
     const stats = {

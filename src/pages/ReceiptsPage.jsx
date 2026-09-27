@@ -162,7 +162,7 @@ const ReceiptsPage = ({ user }) => {
   // Pre-render the export image whenever the shown receipt changes, so Share
   // can call navigator.share() within the tap's user activation (iOS Safari)
   const exportKey = selectedReceipt
-    ? `${selectedReceipt._id}|${selectedReceipt.merchant}|${selectedReceipt.purchaseDate}|${selectedReceipt.total}`
+    ? JSON.stringify([selectedReceipt._id, selectedReceipt.merchant, selectedReceipt.purchaseDate, selectedReceipt.total, selectedReceipt.items])
     : null;
   useEffect(() => {
     pendingExportRef.current = null;
