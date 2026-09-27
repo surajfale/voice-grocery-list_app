@@ -18,7 +18,7 @@ const PasswordRequirements = ({ password, showStrength = true }) => {
         <div className="mb-3">
           <div className="flex justify-between mb-1">
             <span className="text-xs font-semibold text-muted-foreground">
-              Password Strength:
+              Strength
             </span>
             <span
               className="text-xs font-bold uppercase"
@@ -38,7 +38,7 @@ const PasswordRequirements = ({ password, showStrength = true }) => {
 
       {/* Requirements List */}
       <p className="text-xs font-semibold text-muted-foreground mb-1.5">
-        Password must contain:
+        Your password needs
       </p>
       <ul className="space-y-1">
         {requirements.map((req) => (
@@ -49,7 +49,7 @@ const PasswordRequirements = ({ password, showStrength = true }) => {
               <Circle className="size-4 text-muted-foreground/50 shrink-0" />
             )}
             <span
-              className={`text-xs ${req.met ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}
+              className={`text-xs ${req.met ? 'text-success' : 'text-muted-foreground'}`}
             >
               {req.text}
             </span>

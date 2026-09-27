@@ -40,7 +40,7 @@ function SheetContent({ className, children, side = 'right', showCloseButton = t
       <SheetPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          'bg-card fixed z-50 flex flex-col gap-4 border-border shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out',
+          'bg-popover text-popover-foreground fixed z-50 flex flex-col gap-4 border-border shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 data-[state=open]:animate-in data-[state=closed]:animate-out',
           side === 'right' &&
             'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm',
           side === 'left' &&

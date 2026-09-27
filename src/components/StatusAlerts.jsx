@@ -14,7 +14,7 @@ const StatusAlerts = memo(({
     <>
       {/* Error Display */}
       {error && (
-        <Alert variant="destructive" className="mb-3 pr-10">
+        <Alert variant="destructive" className="mb-4 pr-10">
           <AlertDescription>{error}</AlertDescription>
           {onClearError && (
             <button
@@ -31,31 +31,29 @@ const StatusAlerts = memo(({
 
       {/* Voice Recognition Status */}
       {isListening && (
-        <Alert variant="info" className="mb-3 shadow-[0_2px_16px_-4px_var(--primary)] animate-pulse">
+        <Alert variant="info" className="mb-4">
           <div className="flex items-center gap-2 col-start-2">
             <span className="size-2 rounded-full bg-destructive animate-pulse" />
-            <span className="text-sm font-semibold">🎤 Listening... Say your grocery items!</span>
+            <span className="text-sm font-medium">Listening… say your grocery items</span>
           </div>
         </Alert>
       )}
 
       {/* Last Transcript */}
       {transcript && (
-        <Alert variant="success" className="mb-3 animate-in fade-in slide-in-from-top-2 duration-300">
+        <Alert className="mb-4 animate-in fade-in slide-in-from-top-2 duration-300">
           <AlertDescription>
-            <span className="text-muted-foreground mr-1">Last heard:</span>
-            <span className="font-semibold italic text-success bg-success/10 px-1.5 py-0.5 rounded">
-              &quot;{transcript}&quot;
-            </span>
+            <span className="text-muted-foreground mr-1">Heard:</span>
+            <span className="italic">&ldquo;{transcript}&rdquo;</span>
           </AlertDescription>
         </Alert>
       )}
 
       {/* Skipped Duplicates */}
       {skippedDuplicates.length > 0 && (
-        <Alert variant="info" className="mb-3">
+        <Alert className="mb-4">
           <AlertDescription>
-            Skipped duplicate items: {skippedDuplicates.join(', ')}
+            Already on your list: {skippedDuplicates.join(', ')}
           </AlertDescription>
         </Alert>
       )}

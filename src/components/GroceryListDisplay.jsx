@@ -1,39 +1,22 @@
 import React, { useState, memo, useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { ChevronUp, ChevronDown, Pencil, Trash2, Check, X } from 'lucide-react';
-import { Card } from './ui/card';
+import { ChevronDown, MoreHorizontal, Pencil, Trash2, Check, X, Tag, Hash } from 'lucide-react';
 import { Checkbox } from './ui/checkbox';
-import { Badge } from './ui/badge';
 import { Input } from './ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from './ui/select';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from './ui/dropdown-menu';
 
-const ACCENT_CLASSES = {
-  primary: { dot: 'bg-primary', chip: 'bg-primary/10 text-primary', hoverBorder: 'hover:border-primary/40', iconHover: 'hover:bg-primary/10 hover:text-primary' },
-  success: { dot: 'bg-success', chip: 'bg-success/10 text-success', hoverBorder: 'hover:border-success/40', iconHover: 'hover:bg-success/10 hover:text-success' },
-  secondary: { dot: 'bg-secondary', chip: 'bg-secondary/10 text-secondary', hoverBorder: 'hover:border-secondary/40', iconHover: 'hover:bg-secondary/10 hover:text-secondary' },
-  warning: { dot: 'bg-warning', chip: 'bg-warning/10 text-warning', hoverBorder: 'hover:border-warning/40', iconHover: 'hover:bg-warning/10 hover:text-warning' },
-};
-
-const getCategoryAccentKey = (category) => {
-  if (category === 'Other') { return 'warning'; }
-  if (category === 'Produce') { return 'success'; }
-  if (category === 'Asian Pantry' || category === 'Indian Pantry') { return 'secondary'; }
-  return 'primary';
-};
-
-const COUNT_OPTIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const COUNT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 const GroceryListDisplay = memo(({
   groupedItems,
@@ -47,7 +30,6 @@ const GroceryListDisplay = memo(({
   categoryList,
   loading = false
 }) => {
-  const [editingCategory, setEditingCategory] = useState(null);
   const [editingText, setEditingText] = useState(null);
   const [editedTextValue, setEditedTextValue] = useState('');
   const [removingIds, setRemovingIds] = useState(() => new Set());
@@ -66,10 +48,7 @@ const GroceryListDisplay = memo(({
     }, 200);
   };
 
-  const handleUpdateCategory = async (id, newCategory) => {
-    await onUpdateCategory(id, newCategory);
-    setEditingCategory(null);
-  };
+  const handleUpdateCategory = (id, newCategory) => onUpdateCategory(id, newCategory);
 
   const handleStartEditText = (item) => {
     setEditingText(item.id);
@@ -89,129 +68,77 @@ const GroceryListDisplay = memo(({
     setEditedTextValue('');
   };
 
-  const handleCountChange = async (itemId, newCount) => {
-    if (newCount === 0) {
-      // Remove item when count is 0
-      requestRemoveItem(itemId);
-    } else {
-      await onUpdateCount(itemId, newCount);
-    }
-  };
+  const handleCountChange = (itemId, newCount) => onUpdateCount(itemId, newCount);
 
   // Memoize the grouped items processing
   const processedGroupedItems = useMemo(() => {
     return Object.entries(groupedItems).map(([category, categoryItems]) => {
       const isExpanded = expandedCategories[category] !== false;
       const completedCount = categoryItems.filter(item => item.completed).length;
-      const progress = (completedCount / categoryItems.length) * 100;
 
       return {
         category,
         categoryItems,
         isExpanded,
-        completedCount,
-        progress
+        completedCount
       };
     });
   }, [groupedItems, expandedCategories]);
 
   return (
-    <div className="grid md:grid-cols-2 gap-4 sm:gap-5">
-      {processedGroupedItems.map(({ category, categoryItems, isExpanded, completedCount, progress }) => {
-        const accent = ACCENT_CLASSES[getCategoryAccentKey(category)];
-        const isComplete = progress === 100;
+    <div className="space-y-6">
+      {processedGroupedItems.map(({ category, categoryItems, isExpanded, completedCount }) => {
+        const isComplete = completedCount === categoryItems.length;
+        const sectionId = `category-${category.replace(/\W+/g, '-').toLowerCase()}`;
 
         return (
-          <Card
-            key={category}
-            className={`h-fit p-5 transition-all hover:-translate-y-1 ${accent.hoverBorder}`}
-          >
-            {/* Category Header */}
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <span className={`size-3 rounded-full shrink-0 ${accent.dot}`} />
-                <h6 className="font-display font-bold text-base">{category}</h6>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <Badge className={`${isComplete ? 'bg-success/15 text-success' : accent.chip} border-transparent`}>
-                  {completedCount}/{categoryItems.length}
-                </Badge>
-                <button
-                  type="button"
-                  onClick={() => onToggleCategory(category)}
-                  className={`size-8 rounded-lg flex items-center justify-center transition-transform hover:scale-110 ${accent.iconHover}`}
-                >
-                  {isExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="h-1 rounded-full bg-border overflow-hidden mb-1.5">
-              <div
-                className={`h-full transition-[width] duration-300 ${isComplete ? 'bg-success' : accent.dot}`}
-                style={{ width: `${progress}%` }}
+          <section key={category} aria-labelledby={`${sectionId}-label`}>
+            {/* Category header: quiet label, count, collapse */}
+            <button
+              type="button"
+              onClick={() => onToggleCategory(category)}
+              aria-expanded={isExpanded}
+              aria-controls={sectionId}
+              className="group/header flex w-full items-center gap-2 px-1 pb-2 text-left"
+            >
+              <span id={`${sectionId}-label`} className="section-label">{category}</span>
+              <span className={`text-xs tabular-nums ${isComplete ? 'text-success' : 'text-muted-foreground'}`}>
+                {isComplete ? <Check className="size-3.5 inline -mt-0.5" aria-label="All done" /> : `${completedCount}/${categoryItems.length}`}
+              </span>
+              <span className="flex-1" />
+              <ChevronDown
+                className={`size-4 text-muted-foreground transition-transform duration-200 group-hover/header:text-foreground ${isExpanded ? '' : '-rotate-90'}`}
               />
-            </div>
-            <p className="text-xs font-medium text-muted-foreground">
-              {isComplete ? 'Complete!' : `${Math.round(progress)}% complete`}
-            </p>
+            </button>
 
-            {/* Items List */}
+            {/* Items: one surface, hairline dividers */}
             <div
+              id={sectionId}
               className="grid transition-[grid-template-rows] duration-300 ease-out"
               style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}
             >
               <div className="overflow-hidden">
-                <div className="mt-3 space-y-1.5">
+                <ul className="rounded-xl border border-border bg-card shadow-xs divide-y divide-border">
                   {categoryItems.map((item) => {
                     const isRemoving = removingIds.has(item.id);
                     const isEditingThis = editingText === item.id;
+                    const count = item.count || 1;
 
                     return (
-                      <div
+                      <li
                         key={item.id}
-                        className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all duration-200 animate-in fade-in slide-in-from-top-1 ${
-                          isRemoving ? 'opacity-0 scale-95 -translate-x-2' : 'opacity-100'
-                        } ${
-                          item.completed
-                            ? 'bg-success/8 border-success/20 hover:bg-success/12 hover:border-success/30'
-                            : 'bg-background border-border hover:border-primary hover:bg-accent'
-                        } hover:translate-x-1`}
+                        className={`group flex items-center gap-3 min-h-13 pl-3.5 pr-1.5 py-1.5 transition-[opacity,transform,background-color] duration-200 animate-in fade-in first:rounded-t-xl last:rounded-b-xl hover:bg-accent/50 ${
+                          isRemoving ? 'opacity-0 -translate-x-2' : 'opacity-100'
+                        }`}
                       >
                         <Checkbox
                           checked={item.completed}
                           onCheckedChange={() => onToggleItem(item.id)}
                           onClick={(e) => e.stopPropagation()}
                           disabled={loading || isEditingThis}
-                          className="shrink-0 data-[state=checked]:bg-success data-[state=checked]:border-success"
+                          aria-label={`Mark ${item.text} as ${item.completed ? 'not bought' : 'bought'}`}
+                          className="size-5 rounded-full border-[1.5px] border-muted-foreground/50 data-[state=checked]:border-primary transition-colors"
                         />
-
-                        {/* Count Chip */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              disabled={loading || isEditingThis}
-                              className="inline-flex items-center justify-center text-xs font-bold h-7 min-w-[42px] px-2 rounded-full bg-primary/10 text-primary shrink-0 transition-transform select-none active:scale-95 disabled:opacity-50 disabled:pointer-events-none hover:bg-primary/20"
-                            >
-                              ×{item.count || 1}
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="min-w-[8rem] max-h-64 overflow-y-auto">
-                            {COUNT_OPTIONS.map((num) => (
-                              <DropdownMenuItem
-                                key={num}
-                                variant={num === 0 ? 'destructive' : 'default'}
-                                onClick={() => handleCountChange(item.id, num)}
-                                className={num === 0 ? 'font-semibold' : ''}
-                              >
-                                {num === 0 ? '🗑️ Remove Item' : `×${num}`}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
 
                         <div className="flex-1 min-w-0">
                           {isEditingThis ? (
@@ -227,95 +154,123 @@ const GroceryListDisplay = memo(({
                               }}
                               autoFocus
                               disabled={loading}
-                              className="h-8 text-sm font-medium"
+                              aria-label="Item name"
+                              className="h-9"
                             />
                           ) : (
                             <button
                               type="button"
-                              onClick={() => !loading && handleStartEditText(item)}
+                              onClick={() => !loading && onToggleItem(item.id)}
                               disabled={loading}
-                              className={`text-sm font-medium text-left break-words w-full disabled:cursor-default ${
-                                item.completed ? 'line-through opacity-70 text-muted-foreground' : 'text-foreground'
-                              } hover:text-primary hover:underline`}
+                              className={`w-full text-left text-[15px] break-words py-1 transition-colors disabled:cursor-default ${
+                                item.completed
+                                  ? 'text-muted-foreground line-through decoration-muted-foreground/50'
+                                  : 'text-foreground'
+                              }`}
                             >
                               {item.text}
                             </button>
                           )}
                         </div>
 
-                        {/* Action Buttons */}
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          {isEditingThis ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handleSaveText(item.id, item.text)}
-                                disabled={loading || !editedTextValue.trim()}
-                                className="size-7 rounded-lg flex items-center justify-center text-success hover:bg-success/10 disabled:opacity-40"
-                              >
-                                <Check className="size-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={handleCancelEditText}
-                                disabled={loading}
-                                className="size-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
-                              >
-                                <X className="size-4" />
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              {editingCategory === item.id ? (
-                                <Select
-                                  value={item.category}
-                                  onValueChange={(value) => handleUpdateCategory(item.id, value)}
-                                  disabled={loading}
-                                >
-                                  <SelectTrigger size="sm" className="h-8 min-w-[6.5rem] text-xs">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {categoryList.map(cat => (
-                                      <SelectItem key={cat} value={cat} className="text-xs">
-                                        {cat}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              ) : (
+                        {isEditingThis ? (
+                          <div className="flex items-center shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleSaveText(item.id, item.text)}
+                              disabled={loading || !editedTextValue.trim()}
+                              aria-label="Save name"
+                              className="size-9 rounded-lg flex items-center justify-center text-primary hover:bg-accent disabled:opacity-40"
+                            >
+                              <Check className="size-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCancelEditText}
+                              disabled={loading}
+                              aria-label="Cancel editing"
+                              className="size-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-accent disabled:opacity-40"
+                            >
+                              <X className="size-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            {count > 1 && (
+                              <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+                                ×{count}
+                              </span>
+                            )}
+
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
                                 <button
                                   type="button"
-                                  onClick={() => setEditingCategory(item.id)}
                                   disabled={loading}
-                                  className={`size-7 rounded-lg flex items-center justify-center disabled:opacity-40 ${
-                                    item.category === 'Other'
-                                      ? 'text-warning hover:bg-warning/10'
-                                      : 'text-muted-foreground hover:bg-primary/8 hover:text-primary'
-                                  }`}
+                                  aria-label={`Options for ${item.text}`}
+                                  className="size-9 shrink-0 rounded-lg flex items-center justify-center text-muted-foreground/70 hover:text-foreground hover:bg-accent data-[state=open]:bg-accent data-[state=open]:text-foreground disabled:opacity-40 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 md:data-[state=open]:opacity-100"
                                 >
-                                  <Pencil className="size-4" />
+                                  <MoreHorizontal className="size-4" />
                                 </button>
-                              )}
-
-                              <button
-                                type="button"
-                                onClick={() => requestRemoveItem(item.id)}
-                                disabled={loading}
-                                className="size-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-40"
-                              >
-                                <Trash2 className="size-4" />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="min-w-44">
+                                <DropdownMenuItem onClick={() => handleStartEditText(item)}>
+                                  <Pencil />
+                                  Rename
+                                </DropdownMenuItem>
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger>
+                                    <Hash className="size-4 text-muted-foreground mr-2" />
+                                    Quantity
+                                    <span className="ml-auto pl-3 text-xs tabular-nums text-muted-foreground">×{count}</span>
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent className="max-h-72 overflow-y-auto">
+                                    <DropdownMenuRadioGroup
+                                      value={String(count)}
+                                      onValueChange={(value) => handleCountChange(item.id, Number(value))}
+                                    >
+                                      {COUNT_OPTIONS.map((num) => (
+                                        <DropdownMenuRadioItem key={num} value={String(num)} className="tabular-nums">
+                                          ×{num}
+                                        </DropdownMenuRadioItem>
+                                      ))}
+                                    </DropdownMenuRadioGroup>
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger>
+                                    <Tag className="size-4 text-muted-foreground mr-2" />
+                                    Category
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent className="max-h-72 overflow-y-auto">
+                                    <DropdownMenuRadioGroup
+                                      value={item.category}
+                                      onValueChange={(value) => handleUpdateCategory(item.id, value)}
+                                    >
+                                      {categoryList.map((cat) => (
+                                        <DropdownMenuRadioItem key={cat} value={cat}>
+                                          {cat}
+                                        </DropdownMenuRadioItem>
+                                      ))}
+                                    </DropdownMenuRadioGroup>
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem variant="destructive" onClick={() => requestRemoveItem(item.id)}>
+                                  <Trash2 />
+                                  Remove
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </>
+                        )}
+                      </li>
                     );
                   })}
-                </div>
+                </ul>
               </div>
             </div>
-          </Card>
+          </section>
         );
       })}
     </div>

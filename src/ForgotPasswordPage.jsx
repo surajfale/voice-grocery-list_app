@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import { ShoppingCart, Mail, ArrowLeft, Send, Info } from 'lucide-react';
-import { Card } from './components/ui/card';
+import { Mail, ArrowLeft, Send } from 'lucide-react';
+import AuthLayout from './components/AuthLayout';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Button } from './components/ui/button';
@@ -54,22 +54,10 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <Card className="p-8 shadow-lg">
-          {/* Header */}
-          <div className="text-center mb-6">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <ShoppingCart className="size-10 text-primary" strokeWidth={2.25} />
-              <h1 className="font-display text-3xl font-bold text-primary">
-                Grocery List
-              </h1>
-            </div>
-            <h2 className="font-display text-xl font-semibold mb-1">Forgot Password?</h2>
-            <p className="text-sm text-muted-foreground">
-              Enter your email address and we&apos;ll send you a link to reset your password
-            </p>
-          </div>
+    <AuthLayout
+      title="Reset your password"
+      subtitle="Enter your email and we'll send you a reset link."
+    >
 
           {/* Error Alert */}
           {error && (
@@ -87,18 +75,15 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
 
           {/* Info Note */}
           {!success && (
-            <Alert variant="info" className="mb-4">
-              <Info />
-              <AlertDescription>
-                <strong className="text-foreground">Note:</strong> For security reasons, we&apos;ll send a password reset email only if an account exists with the provided email address. If you don&apos;t receive an email within a few minutes, please check your spam folder or verify that you entered the correct email.
-              </AlertDescription>
-            </Alert>
+            <p className="text-sm text-muted-foreground mb-4">
+              If an account exists for that email, a link arrives within a few minutes. Check spam if you don&apos;t see it.
+            </p>
           )}
 
           {/* Forgot Password Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="email">Email</Label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <Input
@@ -114,11 +99,11 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
 
             <Button type="submit" size="lg" disabled={loading} className="w-full">
               <Send />
-              {loading ? 'Sending...' : 'Send Reset Link'}
+              {loading ? 'Sending…' : 'Send reset link'}
             </Button>
           </form>
 
-          {/* Back to Login */}
+          {/* Back to sign in */}
           <div className="text-center mt-5">
             <button
               type="button"
@@ -126,17 +111,11 @@ const ForgotPasswordPage = ({ onBackToLogin }) => {
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
             >
               <ArrowLeft className="size-4" />
-              Back to Login
+              Back to sign in
             </button>
           </div>
 
-          {/* Privacy Note */}
-          <p className="text-center text-xs text-muted-foreground mt-4">
-            Your data is securely encrypted and stored in the cloud.
-          </p>
-        </Card>
-      </div>
-    </div>
+    </AuthLayout>
   );
 };
 
