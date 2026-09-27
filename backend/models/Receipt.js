@@ -4,7 +4,9 @@ const ReceiptItemSchema = new mongoose.Schema({
   name: { type: String, trim: true },
   quantity: { type: Number, default: 1 },
   price: { type: Number, default: null },
-  currency: { type: String, trim: true }
+  currency: { type: String, trim: true },
+  // User-chosen spending category; absent means "guess from the name"
+  category: { type: String, trim: true }
 }, { _id: false });
 
 const ReceiptSchema = new mongoose.Schema({

@@ -8,6 +8,8 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import DialogHero from '../DialogHero';
 import { formatMoney } from '../../utils/money';
+import { getCategoryStyle } from '../../utils/categoryStyles';
+import { RECEIPT_CATEGORIES } from '../../utils/receiptInsights';
 
 // Mirror backend validateReceiptUpdate limits
 const MERCHANT_MAX_LENGTH = 120;
@@ -20,6 +22,7 @@ const toRow = (item = {}) => ({
   name: item.name || '',
   quantity: item.quantity !== undefined && item.quantity !== null ? String(item.quantity) : '1',
   price: typeof item.price === 'number' ? item.price.toFixed(2) : '',
+  category: item.category || '', // '' = auto (guess from the name)
 });
 
 /** Same shape the backend stores, for change detection */
@@ -27,6 +30,7 @@ const normalizeItems = (items = []) => items.map((item) => ({
   name: (item.name || '').trim().replace(/\s+/g, ' '),
   quantity: item.quantity ?? 1,
   price: typeof item.price === 'number' ? Math.round(item.price * 100) / 100 : null,
+  ...(item.category ? { category: item.category } : {}),
 }));
 
 const parseAmount = (value) => {
@@ -47,17 +51,62 @@ const parseRows = (rows) => {
     if (!Number.isFinite(quantity) || quantity <= 0) { return { error: `${label}: quantity must be more than 0.` }; }
     const price = parseAmount(row.price);
     if (price !== null && !Number.isFinite(price)) { return { error: `${label}: price isn’t a number.` }; }
-    items.push({ name, quantity, price: price === null ? null : Math.round(price * 100) / 100 });
+    items.push({
+      name,
+      quantity,
+      price: price === null ? null : Math.round(price * 100) / 100,
+      ...(row.category ? { category: row.category } : {}),
+    });
   }
   return { items };
 };
 
 /**
+ * Compact category chip for an item row. Empty value = "Auto": the spending
+ * charts use the guess (remembered pick or keyword match) shown in the label.
+ */
+const CategoryPicker = ({ value, guess, label, onChange }) => {
+  const shown = value || guess;
+  const { emoji, hue } = getCategoryStyle(shown);
+  return (
+    <div className="col-span-3 -mt-0.5 flex items-center gap-2">
+      <span
+        aria-hidden="true"
+        className="cat-tile size-6 rounded-md flex items-center justify-center text-xs shrink-0"
+        style={{ '--cat-h': hue }}
+      >
+        {emoji}
+      </span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        aria-label={label}
+        className={`h-7 min-w-0 max-w-full rounded-md border border-transparent bg-transparent pl-1 pr-6 text-xs font-medium hover:border-border focus-visible:border-ring focus-visible:outline-none cursor-pointer ${
+          value ? 'text-foreground' : 'text-muted-foreground'
+        }`}
+      >
+        <option value="">Auto · {guess}</option>
+        {RECEIPT_CATEGORIES.map((category) => (
+          <option key={category} value={category}>{category}</option>
+        ))}
+      </select>
+    </div>
+  );
+};
+
+CategoryPicker.propTypes = {
+  value: PropTypes.string.isRequired,
+  guess: PropTypes.string.isRequired,
+  label: PropTypes.string.isRequired,
+  onChange: PropTypes.func.isRequired,
+};
+
+/**
  * Lets the user correct what OCR got wrong: store name, purchase date, line
- * items and total. Only changed fields are sent; errors stay inline and keep
+ * items (including their spending category) and total. Only changed fields are sent; errors stay inline and keep
  * the dialog open.
  */
-const EditReceiptDialog = ({ open, receipt, onOpenChange, onSave }) => {
+const EditReceiptDialog = ({ open, receipt, onOpenChange, onSave, guessCategory = () => 'Other' }) => {
   const [merchant, setMerchant] = useState('');
   const [purchaseDate, setPurchaseDate] = useState('');
   const [rows, setRows] = useState([]);
@@ -67,17 +116,23 @@ const EditReceiptDialog = ({ open, receipt, onOpenChange, onSave }) => {
   const focusRowKey = useRef(null);
   const listRef = useRef(null);
 
-  // Reset the form each time the dialog opens for a receipt
+  // Reset the form when the dialog opens (or switches receipt) — not on every
+  // new receipt object: the selected receipt is re-fetched after selection,
+  // and that refresh must not wipe what the user is typing
+  const receiptRef = useRef(receipt);
+  receiptRef.current = receipt;
+  const receiptId = receipt?._id;
   useEffect(() => {
-    if (open && receipt) {
-      setMerchant(receipt.merchant || '');
-      setPurchaseDate(receipt.purchaseDate || '');
-      setRows((receipt.items || []).filter((item) => item?.name).map(toRow));
-      setTotal(typeof receipt.total === 'number' ? receipt.total.toFixed(2) : '');
+    const current = receiptRef.current;
+    if (open && current) {
+      setMerchant(current.merchant || '');
+      setPurchaseDate(current.purchaseDate || '');
+      setRows((current.items || []).filter((item) => item?.name).map(toRow));
+      setTotal(typeof current.total === 'number' ? current.total.toFixed(2) : '');
       setError('');
       setSaving(false);
     }
-  }, [open, receipt]);
+  }, [open, receiptId]);
 
   // Focus the name field of a freshly added row
   useEffect(() => {
@@ -226,7 +281,7 @@ const EditReceiptDialog = ({ open, receipt, onOpenChange, onSave }) => {
                 </div>
               )}
 
-              <ul ref={listRef} className="space-y-1.5">
+              <ul ref={listRef} className="space-y-3">
                 {rows.map((row, index) => (
                   <li
                     key={row.key}
@@ -265,6 +320,12 @@ const EditReceiptDialog = ({ open, receipt, onOpenChange, onSave }) => {
                     >
                       <X className="size-4" />
                     </button>
+                    <CategoryPicker
+                      value={row.category}
+                      guess={guessCategory(row.name)}
+                      label={`Item ${index + 1} category`}
+                      onChange={(value) => updateRow(row.key, 'category', value)}
+                    />
                   </li>
                 ))}
               </ul>
@@ -340,6 +401,7 @@ EditReceiptDialog.propTypes = {
   }),
   onOpenChange: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
+  guessCategory: PropTypes.func,
 };
 
 export default EditReceiptDialog;
