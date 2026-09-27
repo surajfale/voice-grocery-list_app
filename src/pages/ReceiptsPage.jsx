@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import dayjs from 'dayjs';
-import { CloudUpload, Trash2, Image as ImageIcon, RefreshCw, ChevronLeft, ChevronRight, Loader2, ReceiptText } from 'lucide-react';
+import { CloudUpload, Trash2, Image as ImageIcon, RefreshCw, ChevronLeft, ChevronRight, Loader2, ReceiptText, Pencil, Share2, Download } from 'lucide-react';
+import { toast } from 'sonner';
 import useReceipts from '../hooks/useReceipts.js';
 import ReceiptChatPanel from '../components/receipts/ReceiptChatPanel.jsx';
 import SpendingInsights from '../components/receipts/SpendingInsights.jsx';
+import EditReceiptDialog from '../components/receipts/EditReceiptDialog.jsx';
+import ReceiptExportCard from '../components/receipts/ReceiptExportCard.jsx';
+import { renderImage, saveBlob, shareImage } from '../utils/downloadList';
 import { Card } from '../components/ui/card';
 import { buttonVariants } from '../components/ui/button';
 import { cn } from '../lib/utils';
@@ -77,12 +81,33 @@ const formatBytes = (bytes) => {
 
 const RECEIPTS_PER_PAGE = 5;
 
+const receiptFileName = (receipt) => {
+  const store = (receipt.merchant || 'receipt').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'receipt';
+  return `receipt-${store}${receipt.purchaseDate ? `-${receipt.purchaseDate}` : ''}.png`;
+};
+
+const receiptShareText = (receipt) => {
+  const lines = [`${receipt.merchant || 'Receipt'}${receipt.purchaseDate ? ` · ${receipt.purchaseDate}` : ''}`, ''];
+  (receipt.items || []).filter((item) => item?.name).forEach((item) => {
+    const qty = item.quantity > 1 ? ` ×${item.quantity}` : '';
+    const price = typeof item.price === 'number' ? ` — ${formatMoney(item.price, item.currency || receipt.currency)}` : '';
+    lines.push(`${item.name}${qty}${price}`);
+  });
+  lines.push('', `Total: ${formatMoney(receipt.total, receipt.currency)}`);
+  return lines.join('\n');
+};
+
+const detailActionClass = 'inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-border bg-card text-sm font-medium hover:bg-accent transition-[background-color,transform] active:scale-[0.97] disabled:opacity-50 [&_svg]:size-4';
+
 const ReceiptsPage = ({ user }) => {
   const fileInputRef = useRef(null);
   const [localError, setLocalError] = useState('');
   const [page, setPage] = useState(1);
   const [activeTab, setActiveTab] = useState('receipts');
   const [isDragging, setIsDragging] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const exportCardRef = useRef(null);
+  const pendingExportRef = useRef(null);
 
   const {
     receipts,
@@ -93,6 +118,7 @@ const ReceiptsPage = ({ user }) => {
     error,
     clearError,
     uploadReceipt,
+    updateReceipt,
     deleteReceipt,
     selectReceipt,
     receiptImageUrl,
@@ -132,6 +158,61 @@ const ReceiptsPage = ({ user }) => {
     const start = (page - 1) * RECEIPTS_PER_PAGE;
     return receipts.slice(start, start + RECEIPTS_PER_PAGE);
   }, [receipts, page]);
+
+  // Pre-render the export image whenever the shown receipt changes, so Share
+  // can call navigator.share() within the tap's user activation (iOS Safari)
+  const exportKey = selectedReceipt
+    ? `${selectedReceipt._id}|${selectedReceipt.merchant}|${selectedReceipt.purchaseDate}|${selectedReceipt.total}`
+    : null;
+  useEffect(() => {
+    pendingExportRef.current = null;
+    if (!exportKey) { return undefined; }
+    const timer = setTimeout(() => {
+      if (exportCardRef.current) {
+        pendingExportRef.current = renderImage(exportCardRef.current);
+        pendingExportRef.current.catch(() => {});
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [exportKey]);
+
+  const getReceiptImage = () => {
+    if (!pendingExportRef.current && exportCardRef.current) {
+      pendingExportRef.current = renderImage(exportCardRef.current);
+    }
+    return pendingExportRef.current;
+  };
+
+  const handleShareReceipt = async () => {
+    const image = getReceiptImage();
+    if (!image || !selectedReceipt) { return; }
+    try {
+      const result = await shareImage(image, {
+        fileName: receiptFileName(selectedReceipt),
+        title: `Receipt · ${selectedReceipt.merchant || 'Unknown store'}`,
+        text: receiptShareText(selectedReceipt),
+      });
+      if (result === 'downloaded') { toast.success('Sharing isn’t available here, so the image was downloaded'); }
+    } catch {
+      setLocalError('Failed to share receipt. Please try downloading instead.');
+    }
+  };
+
+  const handleDownloadReceipt = async () => {
+    const image = getReceiptImage();
+    if (!image || !selectedReceipt) { return; }
+    try {
+      saveBlob(await image, receiptFileName(selectedReceipt));
+      toast.success('Receipt image downloaded');
+    } catch {
+      setLocalError('Failed to download receipt image. Please try again.');
+    }
+  };
+
+  const handleSaveReceipt = async (receiptId, updates) => {
+    await updateReceipt(receiptId, updates);
+    toast.success('Receipt updated');
+  };
 
   const handleFiles = (fileList) => {
     const files = Array.from(fileList || []).filter(Boolean);
@@ -398,6 +479,21 @@ const ReceiptsPage = ({ user }) => {
                     </div>
                   </div>
 
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" className={detailActionClass} onClick={() => setEditOpen(true)}>
+                      <Pencil />
+                      Edit
+                    </button>
+                    <button type="button" className={detailActionClass} onClick={handleShareReceipt}>
+                      <Share2 />
+                      Share
+                    </button>
+                    <button type="button" className={detailActionClass} onClick={handleDownloadReceipt}>
+                      <Download />
+                      Download image
+                    </button>
+                  </div>
+
                   <div className="grid grid-cols-3 gap-2">
                     <ReceiptMetadata label="Items" value={selectedReceipt.items?.length || 0} />
                     <ReceiptMetadata label="Pages" value={selectedReceipt.pageCount || 1} />
@@ -482,6 +578,20 @@ const ReceiptsPage = ({ user }) => {
           />
         </TabsContent>
       </Tabs>
+
+      <EditReceiptDialog
+        open={editOpen && Boolean(selectedReceipt)}
+        receipt={selectedReceipt}
+        onOpenChange={setEditOpen}
+        onSave={handleSaveReceipt}
+      />
+
+      {/* Hidden export card for Share / Download image */}
+      {selectedReceipt && (
+        <div className="absolute -left-[9999px] top-0" aria-hidden="true">
+          <ReceiptExportCard ref={exportCardRef} receipt={selectedReceipt} />
+        </div>
+      )}
     </div>
   );
 };

@@ -83,6 +83,23 @@ export class ReceiptService extends BaseService {
     }, { context: { userId, receiptId } });
   }
 
+  async updateReceipt(userId, receiptId, updates) {
+    return this.executeWithRetry(async () => {
+      const result = await this.apiService.makeRequest(`/receipts/${receiptId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updates)
+      });
+
+      if (result.success) {
+        return this.createSuccessResponse(result.receipt, 'Receipt updated');
+      }
+
+      throw new Error(result.error || 'Failed to update receipt');
+      // Single attempt: ApiService surfaces 400s as bare messages, which the
+      // retry loop can't tell apart from transient failures
+    }, { context: { userId, receiptId }, maxAttempts: 1 });
+  }
+
   async deleteReceipt(userId, receiptId) {
     return this.executeWithRetry(async () => {
       const params = new globalThis.URLSearchParams({ userId });

@@ -6,6 +6,7 @@ import receiptsRouter from '../receipts.js';
 import { chatMock } from '../../services/ReceiptRagService.js';
 import { limiterState } from '../../middleware/rateLimiter.js';
 import mongoose from 'mongoose';
+import { validateReceiptUpdate } from '../../controllers/receiptController.js';
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret';
 
@@ -143,3 +144,63 @@ describe('Receipts chat route', () => {
 });
 
 
+
+describe('Receipt update validation', () => {
+  const now = new Date('2026-09-27T12:00:00Z');
+
+  it('accepts and normalizes a merchant and date', () => {
+    expect(validateReceiptUpdate({ merchant: '  Trader   Joe\'s ', purchaseDate: '2026-09-20' }, now))
+      .toEqual({ updates: { merchant: 'Trader Joe\'s', purchaseDate: '2026-09-20' } });
+  });
+
+  it('ignores non-editable fields', () => {
+    expect(validateReceiptUpdate({ merchant: 'Costco', total: 1, userId: 'x' }, now))
+      .toEqual({ updates: { merchant: 'Costco' } });
+  });
+
+  it.each([
+    [{}, /Provide merchant/],
+    [{ total: 5 }, /Provide merchant/],
+    [{ merchant: '   ' }, /non-empty/],
+    [{ merchant: 42 }, /non-empty/],
+    [{ merchant: 'x'.repeat(121) }, /120 characters/],
+    [{ purchaseDate: '09/20/2026' }, /YYYY-MM-DD/],
+    [{ purchaseDate: '2025-02-30' }, /valid calendar date/],
+    [{ purchaseDate: '2026-10-05' }, /future/]
+  ])('rejects %j', (body, message) => {
+    expect(validateReceiptUpdate(body, now).error).toMatch(message);
+  });
+
+  it('allows one day of timezone slack', () => {
+    expect(validateReceiptUpdate({ purchaseDate: '2026-09-28' }, now).error).toBeUndefined();
+  });
+});
+
+describe('PATCH /api/receipts/:receiptId', () => {
+  const app = buildApp();
+  const userId = new mongoose.Types.ObjectId().toString();
+  const authToken = jwt.sign({ userId }, process.env.JWT_SECRET);
+  const receiptId = new mongoose.Types.ObjectId().toString();
+
+  it('requires authentication', async () => {
+    const res = await request(app).patch(`/api/receipts/${receiptId}`).send({ merchant: 'Costco' });
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects an invalid receipt id', async () => {
+    const res = await request(app)
+      .patch('/api/receipts/not-an-id')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ merchant: 'Costco' });
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects an invalid body before touching the database', async () => {
+    const res = await request(app)
+      .patch(`/api/receipts/${receiptId}`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({ purchaseDate: 'yesterday' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/YYYY-MM-DD/);
+  });
+});

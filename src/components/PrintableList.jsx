@@ -10,7 +10,7 @@ import { getCategoryStyle } from '../utils/categoryStyles';
 const INK = '#1c1917';
 const MUTED = '#78716c';
 const LINE = '#ece9e6';
-const FONT = '"Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+const FONT = '"Geist Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 // Same warm blend as .hero-gradient / .btn-gradient in index.css
 const gradient = (accent) =>
@@ -99,7 +99,8 @@ const PrintableList = React.forwardRef(({ items, dateString }, ref) => {
             const { emoji, hue } = getCategoryStyle(category);
             const left = list.filter((item) => !item.completed).length;
             return (
-              <div key={category} style={{ marginBottom: '22px' }}>
+              // data-pdf-break marks where a PDF page may start (see downloadListAsPDF)
+              <div key={category} data-pdf-break="" style={{ marginBottom: '22px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
                   <span style={{ width: '32px', height: '32px', borderRadius: '10px', background: `oklch(0.935 0.055 ${hue})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '17px' }}>{emoji}</span>
                   <span style={{ fontSize: '16px', fontWeight: 700, color: `oklch(0.45 0.12 ${hue})` }}>{category}</span>
@@ -108,9 +109,11 @@ const PrintableList = React.forwardRef(({ items, dateString }, ref) => {
                   </span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {list.map((item) => (
+                  {list.map((item, index) => (
                     <div
                       key={item.id}
+                      // Never break between a category header and its first item
+                      data-pdf-break={index > 0 ? '' : undefined}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -162,7 +165,7 @@ const PrintableList = React.forwardRef(({ items, dateString }, ref) => {
         </div>
 
         {/* Footer */}
-        <div style={{ margin: '0 28px', padding: '14px 0 20px', borderTop: `1px solid ${LINE}`, display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: MUTED }}>
+        <div data-pdf-break="" style={{ margin: '0 28px', padding: '14px 0 20px', borderTop: `1px solid ${LINE}`, display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: MUTED }}>
           <span style={{ fontWeight: 600 }}>Made with Grocery List</span>
           <span>{dayjs().format('MMM D, YYYY · h:mm A')}</span>
         </div>
