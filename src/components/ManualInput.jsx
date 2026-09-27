@@ -14,7 +14,8 @@ const ManualInput = memo(({
   disabled = false,
   trailing = null,
   dropUp = false,
-  listening = false
+  listening = false,
+  floating = false
 }) => {
   const [selectedItems, setSelectedItems] = useState([]);
   const [inputValue, setInputValue] = useState('');
@@ -111,7 +112,9 @@ const ManualInput = memo(({
     <div className="flex items-end gap-2">
       <div className="relative flex-1 min-w-0">
         <div
-          className={`flex flex-wrap gap-1.5 items-center min-h-11 w-full rounded-[22px] border border-input bg-card pl-4 pr-1 py-1 shadow-xs transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/20 ${isDisabled && !loading ? 'opacity-60' : ''}`}
+          className={`flex flex-wrap gap-1.5 items-center min-h-11 w-full rounded-[22px] border bg-card pl-4 pr-1 py-1 transition-[border-color,box-shadow] ${
+            floating ? 'border-transparent shadow-lg dark:border-border' : 'border-input shadow-xs'
+          } focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/20 ${isDisabled && !loading ? 'opacity-60' : ''}`}
         >
           {selectedItems.map((item, index) => (
             <Badge key={`${item}-${index}`} variant="secondary" className="gap-1 pl-2 pr-1 h-7 text-[13px] font-medium">
@@ -202,7 +205,8 @@ ManualInput.propTypes = {
   disabled: PropTypes.bool,
   trailing: PropTypes.node,
   dropUp: PropTypes.bool,
-  listening: PropTypes.bool
+  listening: PropTypes.bool,
+  floating: PropTypes.bool
 };
 
 export default ManualInput;

@@ -262,7 +262,7 @@ const VoiceRecognition = memo(({ onItemsDetected, disabled = false, onListeningC
         className={`relative size-11 rounded-full flex items-center justify-center transition-[background-color,color,transform] duration-150 active:scale-95 disabled:opacity-40 disabled:pointer-events-none ${
           isListening
             ? 'bg-destructive text-destructive-foreground'
-            : 'bg-primary text-primary-foreground hover:bg-primary/90'
+            : 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_10px_24px_-8px_color-mix(in_oklch,var(--primary)_75%,transparent)]'
         }`}
       >
         {isListening ? <Square className="size-4 fill-current" /> : <Mic className="size-5" />}

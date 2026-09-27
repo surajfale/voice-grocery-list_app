@@ -41,7 +41,7 @@ const EmptyState = memo(({
             </Button>
           </div>
 
-          <ul className="rounded-xl border border-border bg-card shadow-xs divide-y divide-border">
+          <ul className="rounded-2xl border border-primary/20 bg-card divide-y divide-border shadow-[0_8px_24px_-14px_color-mix(in_oklch,var(--primary)_45%,transparent)]">
             {topPredictions.map((prediction) => (
               <li key={prediction.key}>
                 <button
@@ -49,7 +49,7 @@ const EmptyState = memo(({
                   onClick={() => onAddItems([prediction.text])}
                   disabled={loading}
                   title={describePrediction(prediction)}
-                  className="w-full flex items-center gap-3 min-h-13 px-3.5 py-2 text-left transition-colors hover:bg-accent/50 first:rounded-t-xl last:rounded-b-xl disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full flex items-center gap-3 min-h-13 px-3.5 py-2 text-left transition-colors hover:bg-accent/50 first:rounded-t-2xl last:rounded-b-2xl disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <span className="size-5 rounded-full border-[1.5px] border-dashed border-muted-foreground/50 flex items-center justify-center shrink-0">
                     <Plus className="size-3 text-primary" />
