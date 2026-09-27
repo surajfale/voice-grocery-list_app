@@ -42,6 +42,7 @@ import CorrectionDialog from './components/CorrectionDialog';
 import ProjectDisclaimer from './components/ProjectDisclaimer';
 import Footer from './components/Footer';
 import EmptyState from './components/EmptyState';
+import DialogHero from './components/DialogHero';
 import PredictionChips from './components/PredictionChips';
 import StatusAlerts from './components/StatusAlerts';
 import ManualInput from './components/ManualInput';
@@ -59,13 +60,7 @@ import { Skeleton } from './components/ui/skeleton';
 import { Checkbox } from './components/ui/checkbox';
 import { Input } from './components/ui/input';
 import { Sheet, SheetContent } from './components/ui/sheet';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from './components/ui/dialog';
+import { Dialog, DialogContent } from './components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -820,28 +815,58 @@ const VoiceGroceryList = ({ user, logout }) => {
 
       {/* Move/Merge Lists Dialog */}
       <Dialog open={moveDialogOpen} onOpenChange={(open) => !open && closeMoveDialog()}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{moveDialogDates.length > 1 ? 'Merge lists' : 'Move list'}</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            {moveDialogDates.length > 1
-              ? `Combine ${moveDialogDates.length} lists into one date. Items already on that date won't be duplicated.`
-              : 'Pick a new date. If that date already has a list, the items are merged without duplicates.'}
-          </p>
-          <Input
-            type="date"
-            value={moveTargetDate.format('YYYY-MM-DD')}
-            min={dayjs().format('YYYY-MM-DD')}
-            onChange={(e) => e.target.value && setMoveTargetDate(dayjs(e.target.value))}
-            aria-label="Target date"
+        <DialogContent
+          showCloseButton={false}
+          className="sm:max-w-sm p-0 gap-0 overflow-hidden focus-visible:outline-none"
+          onOpenAutoFocus={(event) => {
+            event.preventDefault();
+            event.currentTarget?.focus?.();
+          }}
+        >
+          <DialogHero
+            icon={moveDialogDates.length > 1 ? Merge : ArrowLeftRight}
+            title={moveDialogDates.length > 1 ? 'Merge lists' : 'Move list'}
+            description={moveDialogDates.length > 1
+              ? 'Combine them into one date. Items already there won’t be duplicated.'
+              : 'Pick a new date. If it already has a list, items merge without duplicates.'}
           />
-          <DialogFooter>
-            <Button variant="outline" onClick={closeMoveDialog}>Cancel</Button>
-            <Button onClick={handleConfirmMove} disabled={movingLists}>
-              {movingLists ? 'Moving…' : moveDialogDates.length > 1 ? 'Merge' : 'Move'}
-            </Button>
-          </DialogFooter>
+          <div className="px-6 pt-5 pb-6 space-y-4">
+            {/* From → To */}
+            <div>
+              <p className="section-label mb-2 px-1">From</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[...moveDialogDates].sort().map((date) => (
+                  <span key={date} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 pl-1 pr-3 py-1 text-xs font-medium">
+                    <span className="size-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[11px] font-bold tabular-nums">
+                      {dayjs(date).format('D')}
+                    </span>
+                    {relativeDayLabel(date)}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label htmlFor="move-target-date" className="section-label block mb-2 px-1">To</label>
+              <div className="relative">
+                <CalendarDays className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-primary pointer-events-none" />
+                <Input
+                  id="move-target-date"
+                  type="date"
+                  value={moveTargetDate.format('YYYY-MM-DD')}
+                  min={dayjs().format('YYYY-MM-DD')}
+                  onChange={(e) => e.target.value && setMoveTargetDate(dayjs(e.target.value))}
+                  className="h-11 rounded-xl pl-10"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <Button variant="outline" onClick={closeMoveDialog} className="h-11 rounded-xl">Cancel</Button>
+              <Button onClick={handleConfirmMove} disabled={movingLists} className="h-11 rounded-xl btn-gradient border-0 hover:opacity-95">
+                {movingLists && <Loader2 className="animate-spin" />}
+                {movingLists ? 'Moving…' : moveDialogDates.length > 1 ? 'Merge' : 'Move'}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
