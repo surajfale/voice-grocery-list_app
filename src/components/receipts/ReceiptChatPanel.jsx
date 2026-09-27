@@ -61,6 +61,13 @@ MarkdownRenderer.propTypes = {
   children: PropTypes.string.isRequired
 };
 
+const EXAMPLE_QUESTIONS = [
+  'How much did I spend this month?',
+  'Where do I shop most?',
+  'What was my biggest purchase?',
+  'How much did I spend on produce?',
+];
+
 const SourceCard = ({ source, onSelectReceipt }) => (
   <Card
     className={`p-3 transition-colors ${onSelectReceipt ? 'cursor-pointer hover:border-primary' : ''}`}
@@ -277,7 +284,7 @@ const ReceiptChatPanel = ({ userId, receipts, onSelectReceipt }) => {
           </Alert>
         )}
 
-        <Card className="p-4 gap-0">
+        <Card className="p-4 gap-0 rounded-2xl border-primary/15 bg-primary/[0.04]">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <Filter className="size-4 text-muted-foreground" />
@@ -351,6 +358,20 @@ const ReceiptChatPanel = ({ userId, receipts, onSelectReceipt }) => {
         <div className="flex flex-col gap-3">
           <div>
             <label htmlFor="receipt-question" className="block text-sm font-medium mb-1.5">Your question</label>
+            {/* One-tap starters: fill the box so people see what they can ask */}
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 -mx-1 px-1">
+              {EXAMPLE_QUESTIONS.map((example) => (
+                <button
+                  key={example}
+                  type="button"
+                  onClick={() => setQuestion(example)}
+                  disabled={isLoading}
+                  className="shrink-0 h-8 px-3 rounded-full border border-primary/25 bg-primary/10 text-xs font-medium hover:bg-primary/15 active:scale-[0.97] transition-[background-color,transform] disabled:opacity-50"
+                >
+                  {example}
+                </button>
+              ))}
+            </div>
             <Textarea
               id="receipt-question"
               placeholder="e.g. How much did I spend on produce last month?"
@@ -362,7 +383,11 @@ const ReceiptChatPanel = ({ userId, receipts, onSelectReceipt }) => {
             />
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <Button onClick={handleAsk} disabled={!canSubmit}>
+            <Button
+              onClick={handleAsk}
+              disabled={!canSubmit}
+              className="btn-gradient border-0 hover:opacity-95 disabled:shadow-none"
+            >
               {isLoading ? <Loader2 className="animate-spin" /> : <Sparkles />}
               {isLoading ? statusMessage : 'Ask'}
             </Button>
@@ -393,7 +418,7 @@ const ReceiptChatPanel = ({ userId, receipts, onSelectReceipt }) => {
         ) : (
           <div className="flex flex-col gap-3">
             {history.map((entry) => (
-              <Card key={entry.id} className="p-4">
+              <Card key={entry.id} className="p-4 rounded-2xl animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <div className="flex flex-col gap-2">
                   <p className="text-xs text-muted-foreground">You asked</p>
                   <p className="font-medium">{entry.question}</p>

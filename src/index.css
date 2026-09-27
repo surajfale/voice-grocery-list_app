@@ -201,6 +201,17 @@ time {
   outline-offset: 2px;
 }
 
+/* Horizontal chip rows: scrollable but without a visible bar (the global
+   ::-webkit-scrollbar sizing above would otherwise force one in WebKit) */
+.no-scrollbar {
+  scrollbar-width: none;
+  scrollbar-color: auto; /* let WebKit-only engines fall through to the pseudo-element below */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Small caps-style section labels (used for list category headers) */
 .section-label {
   font-size: 0.75rem;
@@ -214,6 +225,124 @@ time {
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* ---------- Vibrant list styling ---------- */
+
+/* "Today" hero: accent gradient that follows the chosen preset in both modes */
+.hero-gradient {
+  position: relative;
+  overflow: hidden;
+  color: var(--primary-foreground);
+  background: linear-gradient(135deg, var(--primary) 0%, color-mix(in oklch, var(--primary) 58%, oklch(0.76 0.16 62)) 100%);
+  box-shadow: 0 18px 40px -16px color-mix(in oklch, var(--primary) 70%, transparent);
+}
+
+.hero-gradient::after {
+  content: "";
+  position: absolute;
+  right: -48px;
+  top: -72px;
+  width: 210px;
+  height: 210px;
+  border-radius: 9999px;
+  background: color-mix(in oklch, var(--primary-foreground) 14%, transparent);
+  pointer-events: none;
+}
+
+/* Same gradient for small controls (no decorative circle to cover labels) */
+.btn-gradient {
+  color: var(--primary-foreground);
+  background: linear-gradient(135deg, var(--primary) 0%, color-mix(in oklch, var(--primary) 58%, oklch(0.76 0.16 62)) 100%);
+  box-shadow: 0 10px 24px -10px color-mix(in oklch, var(--primary) 75%, transparent);
+}
+
+/* Per-category color: components set --cat-h (a hue) inline */
+.cat-tile { background: oklch(0.935 0.055 var(--cat-h)); }
+.cat-label { color: oklch(0.45 0.12 var(--cat-h)); }
+.cat-card {
+  border-color: oklch(0.9 0.04 var(--cat-h));
+  box-shadow: 0 8px 24px -14px oklch(0.55 0.12 var(--cat-h) / 0.4);
+}
+.cat-check:not([data-state="checked"]) { border-color: oklch(0.66 0.11 var(--cat-h)); }
+
+.dark .cat-tile { background: oklch(0.31 0.065 var(--cat-h)); }
+.dark .cat-label { color: oklch(0.82 0.1 var(--cat-h)); }
+.dark .cat-card { border-color: oklch(0.42 0.06 var(--cat-h) / 0.5); box-shadow: none; }
+.dark .cat-check:not([data-state="checked"]) { border-color: oklch(0.7 0.1 var(--cat-h)); }
+
+/* ---------- Motion ---------- */
+
+/* Check-off: the box pops, then a strike line sweeps across the text */
+@keyframes check-pop {
+  0% { transform: scale(0.75); }
+  55% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+[data-slot="checkbox"][data-state="checked"].pop-on-check {
+  animation: check-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.strike-sweep {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 55%;
+  background-size: 0% 1.5px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  transition: background-size 320ms cubic-bezier(0.22, 1, 0.36, 1), color 200ms ease;
+}
+
+.strike-sweep[data-done="true"] { background-size: 100% 1.5px; }
+
+/* Progress: the count "bumps" whenever it changes */
+@keyframes count-bump {
+  0% { transform: translateY(0); }
+  35% { transform: translateY(-3px) scale(1.06); }
+  100% { transform: translateY(0); }
+}
+
+.count-bump {
+  /* transforms need a box: add inline-block when used on inline text */
+  animation: count-bump 360ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Completion burst: little dots fly out from the progress bar's end */
+@keyframes burst-dot {
+  0% { transform: translate(0, 0) scale(0.6); opacity: 1; }
+  65% { opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.4); opacity: 0; }
+}
+
+.burst-dot {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 9999px;
+  opacity: 0;
+  animation: burst-dot 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  pointer-events: none;
+}
+
+/* Staggered entry for list sections (delay set inline per index) */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rise-in {
+  animation: rise-in 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+/* Rise direct children in one after another (auth forms) */
+.stagger-children > * {
+  animation: rise-in 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.stagger-children > :nth-child(2) { animation-delay: 60ms; }
+.stagger-children > :nth-child(3) { animation-delay: 120ms; }
+.stagger-children > :nth-child(4) { animation-delay: 180ms; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

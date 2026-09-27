@@ -15,8 +15,11 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from './ui/dropdown-menu';
+import { getCategoryStyle } from '../utils/categoryStyles';
 
 const COUNT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+const STAGGER_MS = 60;
 
 const GroceryListDisplay = memo(({
   groupedItems,
@@ -87,21 +90,30 @@ const GroceryListDisplay = memo(({
 
   return (
     <div className="space-y-6">
-      {processedGroupedItems.map(({ category, categoryItems, isExpanded, completedCount }) => {
+      {processedGroupedItems.map(({ category, categoryItems, isExpanded, completedCount }, index) => {
         const isComplete = completedCount === categoryItems.length;
+        const { emoji, hue } = getCategoryStyle(category);
         const sectionId = `category-${category.replace(/\W+/g, '-').toLowerCase()}`;
 
         return (
-          <section key={category} aria-labelledby={`${sectionId}-label`}>
-            {/* Category header: quiet label, count, collapse */}
+          <section
+            key={category}
+            aria-labelledby={`${sectionId}-label`}
+            className="rise-in"
+            style={{ '--cat-h': hue, animationDelay: `${index * STAGGER_MS}ms` }}
+          >
+            {/* Category header: emoji tile, tinted label, count, collapse */}
             <button
               type="button"
               onClick={() => onToggleCategory(category)}
               aria-expanded={isExpanded}
               aria-controls={sectionId}
-              className="group/header flex w-full items-center gap-2 px-1 pb-2 text-left"
+              className="group/header flex w-full items-center gap-2.5 px-1 pb-2.5 text-left"
             >
-              <span id={`${sectionId}-label`} className="section-label">{category}</span>
+              <span aria-hidden="true" className="cat-tile size-8 rounded-[10px] flex items-center justify-center text-base shrink-0">
+                {emoji}
+              </span>
+              <span id={`${sectionId}-label`} className="section-label cat-label">{category}</span>
               <span className={`text-xs tabular-nums ${isComplete ? 'text-success' : 'text-muted-foreground'}`}>
                 {isComplete ? <Check className="size-3.5 inline -mt-0.5" aria-label="All done" /> : `${completedCount}/${categoryItems.length}`}
               </span>
@@ -111,14 +123,14 @@ const GroceryListDisplay = memo(({
               />
             </button>
 
-            {/* Items: one surface, hairline dividers */}
+            {/* Items: one tinted surface, hairline dividers */}
             <div
               id={sectionId}
               className="grid transition-[grid-template-rows] duration-300 ease-out"
               style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}
             >
               <div className="overflow-hidden">
-                <ul className="rounded-xl border border-border bg-card shadow-xs divide-y divide-border">
+                <ul className="cat-card rounded-2xl border bg-card divide-y divide-border">
                   {categoryItems.map((item) => {
                     const isRemoving = removingIds.has(item.id);
                     const isEditingThis = editingText === item.id;
@@ -127,7 +139,7 @@ const GroceryListDisplay = memo(({
                     return (
                       <li
                         key={item.id}
-                        className={`group flex items-center gap-3 min-h-13 pl-3.5 pr-1.5 py-1.5 transition-[opacity,transform,background-color] duration-200 animate-in fade-in first:rounded-t-xl last:rounded-b-xl hover:bg-accent/50 ${
+                        className={`group flex items-center gap-3 min-h-13 pl-3.5 pr-1.5 py-1.5 transition-[opacity,transform,background-color] duration-200 animate-in fade-in first:rounded-t-2xl last:rounded-b-2xl hover:bg-accent/50 ${
                           isRemoving ? 'opacity-0 -translate-x-2' : 'opacity-100'
                         }`}
                       >
@@ -137,7 +149,7 @@ const GroceryListDisplay = memo(({
                           onClick={(e) => e.stopPropagation()}
                           disabled={loading || isEditingThis}
                           aria-label={`Mark ${item.text} as ${item.completed ? 'not bought' : 'bought'}`}
-                          className="size-5 rounded-full border-[1.5px] border-muted-foreground/50 data-[state=checked]:border-primary transition-colors"
+                          className="cat-check pop-on-check size-5 rounded-full border-2 data-[state=checked]:border-primary transition-colors"
                         />
 
                         <div className="flex-1 min-w-0">
@@ -163,12 +175,11 @@ const GroceryListDisplay = memo(({
                               onClick={() => !loading && onToggleItem(item.id)}
                               disabled={loading}
                               className={`w-full text-left text-[15px] break-words py-1 transition-colors disabled:cursor-default ${
-                                item.completed
-                                  ? 'text-muted-foreground line-through decoration-muted-foreground/50'
-                                  : 'text-foreground'
+                                item.completed ? 'text-muted-foreground' : 'text-foreground'
                               }`}
                             >
-                              {item.text}
+                              {/* Strike line sweeps in on check (see .strike-sweep) */}
+                              <span className="strike-sweep" data-done={item.completed}>{item.text}</span>
                             </button>
                           )}
                         </div>

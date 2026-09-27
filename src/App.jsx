@@ -75,6 +75,22 @@ import {
 } from './components/ui/dropdown-menu';
 import { Toaster } from './components/ui/sonner';
 
+// Twelve dots fanned left/up/down from the progress bar's end (the bar ends at the
+// card's right edge, so dots flying right would just be clipped)
+// Wait for the progress fill (700ms ease-out) to mostly arrive before bursting
+const BURST_DELAY_MS = 380;
+// High contrast on the accent gradient in both modes
+const BURST_COLORS = ['var(--primary-foreground)', 'oklch(0.93 0.16 95)', 'var(--primary-foreground)', 'oklch(0.97 0.05 95)'];
+const BURST_DOTS = Array.from({ length: 12 }, (_, i) => {
+  const angle = (Math.PI * (100 + (160 * i) / 11)) / 180; // 100°..260°
+  const distance = 34 + (i % 3) * 14;
+  return {
+    dx: Math.round(Math.cos(angle) * distance),
+    dy: Math.round(Math.sin(angle) * distance),
+    color: BURST_COLORS[i % BURST_COLORS.length],
+  };
+});
+
 const Spinner = ({ className = 'size-8' }) => (
   <Loader2 className={`${className} animate-spin text-primary`} />
 );
@@ -225,7 +241,8 @@ const VoiceGroceryList = ({ user, logout }) => {
 
     // Only trigger when we transition from not-all-complete to all-complete
     if (allCompleted && !prevAllCompletedRef.current && !congratsDismissed) {
-      const timer = setTimeout(() => setShowCongratulations(true), 500);
+      // Let the progress fill + burst play (~1.2s) before the dialog covers them
+      const timer = setTimeout(() => setShowCongratulations(true), 1300);
       // Update previous state after scheduling the dialog
       prevAllCompletedRef.current = true;
       return () => clearTimeout(timer);
@@ -488,6 +505,17 @@ const VoiceGroceryList = ({ user, logout }) => {
   const remainingCount = currentItems.length - completedCount;
   const progressPercent = currentItems.length ? (completedCount / currentItems.length) * 100 : 0;
 
+  // Completion burst: bump a key only when the list goes from "some left" to "all done"
+  const [burstKey, setBurstKey] = useState(0);
+  const prevRemainingRef = useRef(null);
+  useEffect(() => {
+    const prev = prevRemainingRef.current;
+    prevRemainingRef.current = { date: currentDateString, remaining: remainingCount };
+    if (prev && prev.date === currentDateString && prev.remaining > 0 && remainingCount === 0 && currentItems.length > 0) {
+      setBurstKey((key) => key + 1);
+    }
+  }, [remainingCount, currentDateString, currentItems.length]);
+
   const todayStart = dayjs().startOf('day');
   const upcomingDates = sortedDates.filter(date => !dayjs(date).isBefore(todayStart)).reverse();
   const pastDates = sortedDates.filter(date => dayjs(date).isBefore(todayStart));
@@ -632,7 +660,7 @@ const VoiceGroceryList = ({ user, logout }) => {
 
   const initials = `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase();
 
-  const composer = (
+  const renderComposer = ({ floating = false } = {}) => (
     <ManualInput
       onAddItems={handleManualItems}
       historicalItems={historicalItems}
@@ -641,6 +669,7 @@ const VoiceGroceryList = ({ user, logout }) => {
       disabled={isPastDate}
       dropUp={isMobile}
       listening={isListening}
+      floating={floating}
       trailing={(
         <VoiceRecognition
           onItemsDetected={handleVoiceItems}
@@ -855,43 +884,52 @@ const VoiceGroceryList = ({ user, logout }) => {
                 <ReceiptsPage user={user} />
               ) : (
                 <div className="flex-1">
-                  {/* List header */}
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div className="min-w-0">
-                      <button
-                        type="button"
-                        onClick={() => isMobile && setMobileDrawerOpen(true)}
-                        className={`flex items-center gap-1.5 text-left ${isMobile ? '' : 'cursor-default'}`}
-                        tabIndex={isMobile ? 0 : -1}
-                        aria-label={isMobile ? 'Change list date' : undefined}
-                      >
-                        <h1 className="text-[28px] sm:text-3xl font-semibold tracking-tight leading-tight">
-                          {relativeDayLabel(currentDateString)}
-                        </h1>
-                        {isMobile && <ChevronDown className="size-5 text-muted-foreground mt-1" />}
-                      </button>
-                      <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
-                        <time dateTime={currentDateString}>{currentDate.format('dddd, MMMM D')}</time>
-                        {currentItems.length > 0 && (
-                          <span className="tabular-nums">
-                            · {remainingCount === 0 ? 'all done' : `${remainingCount} of ${currentItems.length} left`}
-                          </span>
-                        )}
-                        {isPastDate && (
-                          <span className="inline-flex items-center gap-1">
-                            · <Lock className="size-3" /> read-only
-                          </span>
-                        )}
-                      </p>
-                    </div>
+                  {/* Hero: date, progress and list actions on an accent gradient */}
+                  <div className="hero-gradient rounded-[28px] px-5 pt-5 pb-5 mb-6">
+                    <div className="relative z-10">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <button
+                            type="button"
+                            onClick={() => isMobile && setMobileDrawerOpen(true)}
+                            className={`flex items-center gap-1.5 text-left ${isMobile ? '' : 'cursor-default'}`}
+                            tabIndex={isMobile ? 0 : -1}
+                            aria-label={isMobile ? 'Change list date' : undefined}
+                          >
+                            <h1 className="text-[30px] sm:text-4xl font-semibold tracking-tight leading-tight">
+                              {relativeDayLabel(currentDateString)}
+                            </h1>
+                            {isMobile && <ChevronDown className="size-5 opacity-80 mt-1" />}
+                          </button>
+                          <p className="text-sm mt-1 flex items-center gap-1.5 flex-wrap opacity-85">
+                            <time dateTime={currentDateString}>{currentDate.format('dddd, MMMM D')}</time>
+                            {currentItems.length > 0 && (
+                              <span className="tabular-nums">
+                                ·{' '}
+                                <span key={completedCount} className="count-bump inline-block">
+                                  {remainingCount === 0 ? 'all done' : `${remainingCount} of ${currentItems.length} left`}
+                                </span>
+                              </span>
+                            )}
+                            {isPastDate && (
+                              <span className="inline-flex items-center gap-1">
+                                · <Lock className="size-3" /> read-only
+                              </span>
+                            )}
+                          </p>
+                        </div>
 
-                    {currentItems.length > 0 && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="icon" className="size-9 shrink-0" aria-label="List options">
-                            <MoreHorizontal />
-                          </Button>
-                        </DropdownMenuTrigger>
+                        {currentItems.length > 0 && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                aria-label="List options"
+                                className="size-9 shrink-0 rounded-xl flex items-center justify-center border border-[color-mix(in_oklch,var(--primary-foreground)_25%,transparent)] bg-[color-mix(in_oklch,var(--primary-foreground)_14%,transparent)] hover:bg-[color-mix(in_oklch,var(--primary-foreground)_24%,transparent)] transition-colors"
+                              >
+                                <MoreHorizontal className="size-4" />
+                              </button>
+                            </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="min-w-52">
                           <DropdownMenuCheckboxItem
                             checked={showOnlyRemaining}
@@ -922,28 +960,42 @@ const VoiceGroceryList = ({ user, logout }) => {
                             </>
                           )}
                         </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
+                          </DropdownMenu>
+                        )}
+                      </div>
+
+                      {currentItems.length > 0 && (
+                        <div
+                          className="relative mt-5 h-2 rounded-full bg-[color-mix(in_oklch,var(--primary-foreground)_24%,transparent)]"
+                          role="progressbar"
+                          aria-label="Items bought"
+                          aria-valuemin={0}
+                          aria-valuemax={currentItems.length}
+                          aria-valuenow={completedCount}
+                        >
+                          <div
+                            className="h-full rounded-full bg-primary-foreground transition-[width] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                          {/* One-shot burst when the last item gets checked off */}
+                          {burstKey > 0 && (
+                            <span key={burstKey} aria-hidden="true" className="absolute right-0 top-1/2">
+                              {BURST_DOTS.map(({ dx, dy, color }, i) => (
+                                <span
+                                  key={i}
+                                  className="burst-dot"
+                                  style={{ '--dx': `${dx}px`, '--dy': `${dy}px`, backgroundColor: color, animationDelay: `${BURST_DELAY_MS + i * 12}ms` }}
+                                />
+                              ))}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {currentItems.length > 0 && (
-                    <div
-                      className="h-1 rounded-full bg-muted overflow-hidden mb-6"
-                      role="progressbar"
-                      aria-label="Items bought"
-                      aria-valuemin={0}
-                      aria-valuemax={currentItems.length}
-                      aria-valuenow={completedCount}
-                    >
-                      <div
-                        className={`h-full rounded-full transition-[width] duration-500 ease-out ${remainingCount === 0 ? 'bg-success' : 'bg-primary'}`}
-                        style={{ width: `${progressPercent}%` }}
-                      />
-                    </div>
-                  )}
-
                   {/* Desktop composer sits inline; mobile gets a bottom bar */}
-                  {!isMobile && <div className="mb-6">{composer}</div>}
+                  {!isMobile && <div className="mb-6">{renderComposer()}</div>}
 
                   <StatusAlerts
                     isListening={false}
@@ -969,6 +1021,7 @@ const VoiceGroceryList = ({ user, logout }) => {
                       )}
                       {filteredItems.length > 0 ? (
                         <GroceryListDisplay
+                          key={currentDateString}
                           groupedItems={groupedItems}
                           expandedCategories={expandedCategories}
                           onToggleCategory={toggleCategoryExpansion}
@@ -1025,8 +1078,8 @@ const VoiceGroceryList = ({ user, logout }) => {
 
               {/* Mobile: composer pinned to the thumb zone */}
               {isMobile && (
-                <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/85 backdrop-blur-xl px-3 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
-                  {composer}
+                <div className="fixed inset-x-0 bottom-0 z-30 bg-gradient-to-t from-background via-background/90 to-transparent px-3 pt-6 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                  {renderComposer({ floating: true })}
                 </div>
               )}
             </>
