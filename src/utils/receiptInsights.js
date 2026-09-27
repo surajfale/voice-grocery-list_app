@@ -89,6 +89,31 @@ export const buildCategoryResolver = (receipts = []) => {
   };
 };
 
+/**
+ * The store visited most often (receipt count), ties broken by money spent.
+ * Store names are matched ignoring case and spacing; the label shown is the
+ * spelling on the most recent receipt. Used everywhere "Top store" appears.
+ * @param {Array} receipts
+ * @returns {null | { name: string, visits: number, total: number }}
+ */
+export const getTopStore = (receipts = []) => {
+  const stores = new Map();
+  [...receipts]
+    .sort((a, b) => String(a.purchaseDate || a.createdAt || '').localeCompare(String(b.purchaseDate || b.createdAt || '')))
+    .forEach((receipt) => {
+      const name = receipt?.merchant?.trim();
+      if (!name) { return; }
+      const key = normalizeName(name);
+      const entry = stores.get(key) || { name, visits: 0, total: 0 };
+      entry.name = name; // oldest → newest, so the latest spelling wins
+      entry.visits += 1;
+      entry.total += typeof receipt.total === 'number' ? receipt.total : 0;
+      stores.set(key, entry);
+    });
+  const [top] = [...stores.values()].sort((a, b) => (b.visits - a.visits) || (b.total - a.total));
+  return top ? { ...top, total: Math.round(top.total * 100) / 100 } : null;
+};
+
 /** Relative gap between line items and total that triggers a "Check total" flag */
 export const TOTAL_MISMATCH_THRESHOLD = 0.15;
 

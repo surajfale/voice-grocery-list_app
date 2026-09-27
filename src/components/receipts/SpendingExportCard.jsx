@@ -61,7 +61,7 @@ BarList.propTypes = {
 const SpendingExportCard = React.forwardRef(({ summary, storeFilter = null }, ref) => {
   const { colorTheme } = useThemeContext();
   const { primary: accent, foreground: onAccent } = (colorThemes[colorTheme] ?? colorThemes.indigo).light;
-  const { month, total, currency, count, changePct, stores, categories, trend } = summary;
+  const { month, total, currency, count, changePct, topStore, stores, categories, trend } = summary;
   const trendMax = Math.max(...trend.map((point) => point.total), 1);
 
   return (
@@ -91,7 +91,7 @@ const SpendingExportCard = React.forwardRef(({ summary, storeFilter = null }, re
               {[
                 ['Receipts', String(count)],
                 ['Avg per trip', formatMoney(count ? total / count : 0, currency)],
-                ['Top store', stores[0]?.label || '—'],
+                ['Top store', topStore || '—'],
               ].map(([label, value]) => (
                 <div key={label} style={{ flex: 1, minWidth: 0, padding: '9px 12px', borderRadius: '14px', background: 'rgba(255,255,255,0.14)' }}>
                   <div style={{ fontSize: '11px', opacity: 0.85 }}>{label}</div>
@@ -130,7 +130,7 @@ const SpendingExportCard = React.forwardRef(({ summary, storeFilter = null }, re
 
           {stores.length > 0 && (
             <div>
-              <SectionTitle>Top stores</SectionTitle>
+              <SectionTitle>Spend by store</SectionTitle>
               <BarList rows={stores} currency={currency} />
             </div>
           )}
@@ -161,6 +161,7 @@ SpendingExportCard.propTypes = {
     currency: PropTypes.string,
     count: PropTypes.number.isRequired,
     changePct: PropTypes.number,
+    topStore: PropTypes.string,
     stores: PropTypes.array.isRequired,
     categories: PropTypes.array.isRequired,
     trend: PropTypes.array.isRequired,

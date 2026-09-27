@@ -18,7 +18,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { hueFromString } from '../utils/categoryStyles';
 import { formatMoney } from '../utils/money';
-import { buildCategoryResolver, getTotalMismatch } from '../utils/receiptInsights';
+import { buildCategoryResolver, getTopStore, getTotalMismatch } from '../utils/receiptInsights';
 
 const ALLOWED_FILE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'];
 
@@ -133,17 +133,14 @@ const ReceiptsPage = ({ user }) => {
     const monthKey = dayjs().format('YYYY-MM');
     let monthTotal = 0;
     let currency;
-    const visits = new Map();
     receipts.forEach((receipt) => {
       const when = dayjs(receipt.purchaseDate || receipt.createdAt);
       if (typeof receipt.total === 'number' && when.isValid() && when.format('YYYY-MM') === monthKey) {
         monthTotal += receipt.total;
         currency = currency || receipt.currency;
       }
-      const store = receipt.merchant?.trim();
-      if (store) {visits.set(store, (visits.get(store) || 0) + 1);}
     });
-    const topStore = [...visits.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
+    const topStore = getTopStore(receipts)?.name || '—';
     return { monthTotal: formatMoney(monthTotal, currency), count: receipts.length, topStore };
   }, [receipts]);
 

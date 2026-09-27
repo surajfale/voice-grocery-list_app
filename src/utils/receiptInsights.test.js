@@ -4,6 +4,7 @@ import {
   sizesCompatible,
   buildCategoryResolver,
   getTotalMismatch,
+  getTopStore,
   findPriceChanges,
   findCheapestStores,
   buildPriceSignals,
@@ -198,5 +199,24 @@ describe('buildPriceSignals', () => {
       receipt('b', 'Costco', '2026-09-10', [{ name: 'Paneer', price: 3.99 }]),
     ], new Date('2026-09-27T12:00:00Z'));
     expect(signals.get('paneer')?.cheaper).toBeUndefined();
+  });
+});
+
+describe('getTopStore', () => {
+  it('picks the most-visited store, not the biggest spender', () => {
+    expect(getTopStore([
+      receipt('a', 'Costco', '2026-09-03', [], { total: 187.9 }),
+      receipt('b', 'Patel Brothers', '2026-09-10', [], { total: 46.1 }),
+      receipt('c', 'patel brothers ', '2026-09-21', [], { total: 49.9 }),
+    ])).toEqual({ name: 'patel brothers', visits: 2, total: 96 });
+  });
+
+  it('breaks ties by money spent and skips unnamed receipts', () => {
+    expect(getTopStore([
+      receipt('a', "Trader Joe's", '2026-09-01', [], { total: 30 }),
+      receipt('b', 'Costco', '2026-09-02', [], { total: 150 }),
+      receipt('c', '', '2026-09-03', [], { total: 999 }),
+    ])?.name).toBe('Costco');
+    expect(getTopStore([])).toBeNull();
   });
 });
