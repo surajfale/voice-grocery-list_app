@@ -53,7 +53,7 @@ import ReceiptsPage from './pages/ReceiptsPage';
 import { useGroceryList } from './hooks/useGroceryList';
 import { usePurchasePredictions } from './hooks/usePurchasePredictions';
 import groceryIntelligence from './services/groceryIntelligence';
-import { downloadListAsImage, downloadListAsPDF, shareList } from './utils/downloadList';
+import { downloadListAsImage, downloadListAsPDF, generateListText, renderListImage, shareList } from './utils/downloadList';
 import { Button } from './components/ui/button';
 import { Avatar, AvatarFallback } from './components/ui/avatar';
 import { Skeleton } from './components/ui/skeleton';
@@ -73,6 +73,7 @@ import {
   DropdownMenuRadioItem,
 } from './components/ui/dropdown-menu';
 import { Toaster } from './components/ui/sonner';
+import { toast } from 'sonner';
 
 // Twelve dots fanned left/up/down from the progress bar's end (the bar ends at the
 // card's right edge, so dots flying right would just be clipped)
@@ -195,6 +196,9 @@ const VoiceGroceryList = ({ user, logout }) => {
 
   // Ref for the printable list component
   const printableListRef = useRef(null);
+  // Image render started when the list menu opens, so Share can call
+  // navigator.share() while the tap still counts as a user gesture
+  const pendingExportRef = useRef(null);
 
   // Responsive design helpers
   const isMobile = useIsMobile(900);
@@ -274,15 +278,38 @@ const VoiceGroceryList = ({ user, logout }) => {
   };
 
   /**
+   * Renders the export image, reusing the render started when the menu opened
+   */
+  const getExportImage = () => {
+    if (!pendingExportRef.current && printableListRef.current) {
+      pendingExportRef.current = renderListImage(printableListRef.current);
+    }
+    return pendingExportRef.current;
+  };
+
+  const handleListMenuOpenChange = (open) => {
+    // Items can't change while the menu is open, so a render started now is
+    // exactly what gets exported; drop it on close so edits re-render
+    pendingExportRef.current = null;
+    if (open && currentItems.length > 0) { getExportImage()?.catch(() => {}); }
+  };
+
+  /**
    * Handle share action (Web Share API on mobile, download on desktop)
    */
   const handleShare = async () => {
-    if (printableListRef.current) {
-      try {
-        await shareList(printableListRef.current, currentDateString, formatDateDisplay);
-      } catch {
-        setError('Failed to share list. Please try downloading instead.');
-      }
+    const image = getExportImage();
+    if (!image) { return; }
+    try {
+      const title = `Grocery list · ${formatDateDisplay(currentDateString)}`;
+      const result = await shareList(image, {
+        dateString: currentDateString,
+        title,
+        text: generateListText(currentItems, title),
+      });
+      if (result === 'downloaded') { toast.success('Sharing isn’t available here, so the image was downloaded'); }
+    } catch {
+      setError('Failed to share list. Please try downloading instead.');
     }
   };
 
@@ -290,12 +317,13 @@ const VoiceGroceryList = ({ user, logout }) => {
    * Handle download as image
    */
   const handleDownloadImage = async () => {
-    if (printableListRef.current) {
-      try {
-        await downloadListAsImage(printableListRef.current, currentDateString);
-      } catch {
-        setError('Failed to download image. Please try again.');
-      }
+    const image = getExportImage();
+    if (!image) { return; }
+    try {
+      await downloadListAsImage(image, currentDateString);
+      toast.success('Image downloaded');
+    } catch {
+      setError('Failed to download image. Please try again.');
     }
   };
 
@@ -303,12 +331,14 @@ const VoiceGroceryList = ({ user, logout }) => {
    * Handle download as PDF
    */
   const handleDownloadPDF = async () => {
-    if (printableListRef.current) {
-      try {
-        await downloadListAsPDF(printableListRef.current, currentDateString);
-      } catch {
-        setError('Failed to download PDF. Please try again.');
-      }
+    if (!printableListRef.current) { return; }
+    const id = toast.loading('Preparing PDF…');
+    try {
+      await downloadListAsPDF(printableListRef.current, currentDateString);
+      toast.success('PDF downloaded', { id });
+    } catch {
+      toast.dismiss(id);
+      setError('Failed to download PDF. Please try again.');
     }
   };
 
@@ -1064,7 +1094,7 @@ const VoiceGroceryList = ({ user, logout }) => {
                         </div>
 
                         {currentItems.length > 0 && (
-                          <DropdownMenu>
+                          <DropdownMenu onOpenChange={handleListMenuOpenChange}>
                             <DropdownMenuTrigger asChild>
                               <button
                                 type="button"
@@ -1216,7 +1246,6 @@ const VoiceGroceryList = ({ user, logout }) => {
                   ref={printableListRef}
                   items={currentItems}
                   dateString={currentDateString}
-                  formatDateDisplay={formatDateDisplay}
                 />
               </div>
 
