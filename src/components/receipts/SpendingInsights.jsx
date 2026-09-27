@@ -150,20 +150,20 @@ const SpendingInsights = ({ receipts, loading = false }) => {
       <div className="grid sm:grid-cols-3 gap-3">
         <Card className="p-4">
           <p className="text-xs text-muted-foreground">Total spent</p>
-          <p className="font-display text-xl font-bold">{formatCurrency(totalSpent)}</p>
+          <p className="text-2xl font-semibold tracking-tight tabular-nums">{formatCurrency(totalSpent)}</p>
         </Card>
         <Card className="p-4">
           <p className="text-xs text-muted-foreground">Avg per receipt</p>
-          <p className="font-display text-xl font-bold">{formatCurrency(avgPerReceipt)}</p>
+          <p className="text-2xl font-semibold tracking-tight tabular-nums">{formatCurrency(avgPerReceipt)}</p>
         </Card>
         <Card className="p-4">
           <p className="text-xs text-muted-foreground">Top store</p>
-          <p className="font-display text-xl font-bold truncate" title={topStore}>{topStore}</p>
+          <p className="text-2xl font-semibold tracking-tight tabular-nums truncate" title={topStore}>{topStore}</p>
         </Card>
       </div>
 
       <Card className="p-5">
-        <h6 className="font-display font-semibold mb-3">
+        <h6 className="font-medium mb-3">
           Monthly spend trend{selectedStore !== 'all' ? ` — ${selectedStore}` : ''}
         </h6>
         {monthlyTrend.length > 0 ? (
@@ -183,7 +183,7 @@ const SpendingInsights = ({ receipts, loading = false }) => {
 
       <div className="grid md:grid-cols-2 gap-4">
         <Card className="p-5">
-          <h6 className="font-display font-semibold mb-3">Spend by store</h6>
+          <h6 className="font-medium mb-3">Spend by store</h6>
           {storeTotals.length > 0 ? (
             <ResponsiveContainer width="100%" height={320}>
               <BarChart data={storeTotals} layout="vertical" margin={{ left: 16, right: 16 }}>
@@ -199,7 +199,7 @@ const SpendingInsights = ({ receipts, loading = false }) => {
           )}
         </Card>
         <Card className="p-5">
-          <h6 className="font-display font-semibold mb-3">
+          <h6 className="font-medium mb-3">
             Spend by category{selectedStore !== 'all' ? ` — ${selectedStore}` : ''}
           </h6>
           {categoryTotals.length > 0 ? (

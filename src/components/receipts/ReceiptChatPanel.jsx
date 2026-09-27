@@ -236,15 +236,18 @@ const ReceiptChatPanel = ({ userId, receipts, onSelectReceipt }) => {
   const today = dayjs().format('YYYY-MM-DD');
 
   return (
-    <Card className="p-5">
+    <section aria-labelledby="receipt-chat-heading" className="pt-4">
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Sparkles className="size-5 text-primary" />
-            <h6 className="font-display text-lg font-bold">AI Insights</h6>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-1">
+          <div>
+            <h2 id="receipt-chat-heading" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+              <Sparkles className="size-4.5 text-primary" />
+              Ask about your receipts
+            </h2>
+            <p className="text-sm text-muted-foreground">Answers are grounded in the receipts you&apos;ve uploaded.</p>
           </div>
-          <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-            <History className="size-4" />
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <History className="size-3.5" />
             {networkStatusMessage}
           </p>
         </div>
@@ -274,11 +277,11 @@ const ReceiptChatPanel = ({ userId, receipts, onSelectReceipt }) => {
           </Alert>
         )}
 
-        <Card className="p-4">
+        <Card className="p-4 gap-0">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <Filter className="size-4 text-muted-foreground" />
-              <p className="text-sm font-semibold">Filters</p>
+              <p className="text-sm font-medium">Filters</p>
             </div>
 
             <div className="grid sm:grid-cols-2 gap-3">
@@ -347,8 +350,9 @@ const ReceiptChatPanel = ({ userId, receipts, onSelectReceipt }) => {
 
         <div className="flex flex-col gap-3">
           <div>
-            <label className="block text-sm font-medium mb-1.5">Ask a question about your receipts</label>
+            <label htmlFor="receipt-question" className="block text-sm font-medium mb-1.5">Your question</label>
             <Textarea
+              id="receipt-question"
               placeholder="e.g. How much did I spend on produce last month?"
               rows={3}
               value={question}
@@ -370,20 +374,18 @@ const ReceiptChatPanel = ({ userId, receipts, onSelectReceipt }) => {
         </div>
 
         {isLoading && (
-          <Card className="p-3">
-            <div className="flex items-center gap-3">
-              <Loader2 className="size-5 animate-spin text-primary" />
-              <p className="text-sm">{statusMessage}</p>
-            </div>
-          </Card>
+          <div className="flex items-center gap-3 rounded-xl bg-muted px-4 py-3" role="status">
+            <Loader2 className="size-4 animate-spin text-primary" />
+            <p className="text-sm">{statusMessage}</p>
+          </div>
         )}
 
         <Separator />
 
         {history.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-10 text-center">
-            <Sparkles className="size-11 text-muted-foreground/40" />
-            <h6 className="font-display font-semibold">Ask your first question</h6>
+            <Sparkles className="size-8 text-muted-foreground/50" />
+            <p className="font-medium">Ask your first question</p>
             <p className="text-sm text-muted-foreground max-w-md">
               Once you upload receipts, you can ask questions like &quot;What did I spend on coffee in October?&quot; or &quot;Show me my largest purchases last month.&quot;
             </p>
@@ -394,7 +396,7 @@ const ReceiptChatPanel = ({ userId, receipts, onSelectReceipt }) => {
               <Card key={entry.id} className="p-4">
                 <div className="flex flex-col gap-2">
                   <p className="text-xs text-muted-foreground">You asked</p>
-                  <p className="font-semibold">{entry.question}</p>
+                  <p className="font-medium">{entry.question}</p>
                   <Separator />
                   <p className="text-xs text-muted-foreground">Assistant</p>
                   <MarkdownRenderer>
@@ -466,7 +468,7 @@ const ReceiptChatPanel = ({ userId, receipts, onSelectReceipt }) => {
           </div>
         )}
       </div>
-    </Card>
+    </section>
   );
 };
 

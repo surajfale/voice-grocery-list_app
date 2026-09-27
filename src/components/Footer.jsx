@@ -2,18 +2,18 @@ import React from 'react';
 
 const Footer = () => {
   return (
-    <footer className="mt-auto py-6 text-center border-t border-border">
-      <p className="text-sm text-muted-foreground">
-        © 2025 Grocery List App. Built by{' '}
+    <footer className="mt-auto pt-12 pb-2 text-center">
+      <p className="text-xs text-muted-foreground">
+        Built by{' '}
         <a
           href="https://github.com/surajfale"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary font-medium hover:underline"
+          className="font-medium text-foreground/80 hover:text-foreground underline-offset-4 hover:underline"
         >
           Suraj
         </a>
-        {' '}with React + shadcn/ui.
+        {' '}· © {new Date().getFullYear()}
       </p>
     </footer>
   );

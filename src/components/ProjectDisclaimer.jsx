@@ -26,20 +26,21 @@ const ProjectDisclaimer = () => {
 
     return (
         <div
-            className={`relative z-50 w-full bg-primary/10 border-b border-primary/20 overflow-hidden transition-[max-height,opacity] duration-300 ${open ? 'max-h-20 opacity-100' : 'max-h-0 opacity-0'}`}
+            role="note"
+            className={`relative w-full bg-muted border-b border-border overflow-hidden transition-[max-height,opacity] duration-300 ${open ? 'max-h-24 opacity-100' : 'max-h-0 opacity-0'}`}
         >
-            <div className="flex items-center justify-center gap-2 py-2.5 px-10 relative text-center">
-                <Info className="size-4 text-primary shrink-0" />
-                <p className="text-sm font-medium text-foreground">
-                    <strong>Learning Project:</strong> This is a personal study project. Service availability is not guaranteed and data may be periodically reset.
+            <div className="flex items-center justify-center gap-2 py-2 pl-4 pr-10 text-center">
+                <Info className="size-3.5 text-muted-foreground shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">Learning project.</span> Availability isn&apos;t guaranteed and data may be reset.
                 </p>
                 <button
                     type="button"
-                    aria-label="close"
+                    aria-label="Dismiss notice"
                     onClick={handleClose}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-primary/15 text-muted-foreground"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-background text-muted-foreground hover:text-foreground"
                 >
-                    <X className="size-4" />
+                    <X className="size-3.5" />
                 </button>
             </div>
         </div>

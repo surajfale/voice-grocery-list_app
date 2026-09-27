@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import isEmail from 'validator/lib/isEmail';
 import PropTypes from 'prop-types';
-import { ShoppingCart, User, Mail, Lock, UserPlus, Eye, EyeOff, Info } from 'lucide-react';
+import { User, Mail, Lock, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import PasswordRequirements from './components/PasswordRequirements';
 import { validatePassword } from './utils/passwordValidator';
-import { Card } from './components/ui/card';
+import AuthLayout from './components/AuthLayout';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Button } from './components/ui/button';
@@ -103,30 +103,10 @@ const RegisterPage = ({ onSwitchToLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <Card className="p-8 shadow-lg">
-          {/* Header */}
-          <div className="text-center mb-6">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <ShoppingCart className="size-10 text-primary" strokeWidth={2.25} />
-              <h1 className="font-display text-3xl font-bold text-primary">
-                Grocery List
-              </h1>
-            </div>
-            <h2 className="font-display text-xl font-semibold mb-1">Create Your Account</h2>
-            <p className="text-sm text-muted-foreground">
-              Join us to start organizing your grocery shopping
-            </p>
-          </div>
-
-          {/* Project Disclaimer Alert */}
-          <Alert variant="info" className="mb-4">
-            <Info />
-            <AlertDescription>
-              <strong className="text-foreground">Note:</strong> This is a personal learning project. Service availability is not guaranteed and data may be reset.
-            </AlertDescription>
-          </Alert>
+    <AuthLayout
+      title="Create your account"
+      subtitle="Your lists, synced across devices."
+    >
 
           {/* Error Alert */}
           {error && (
@@ -139,7 +119,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="firstName">First Name</Label>
+                <Label htmlFor="firstName">First name</Label>
                 <div className="relative">
                   <User className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                   <Input
@@ -152,7 +132,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="lastName">Last Name</Label>
+                <Label htmlFor="lastName">Last name</Label>
                 <div className="relative">
                   <User className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                   <Input
@@ -167,7 +147,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="email">Email</Label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <Input
@@ -208,7 +188,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
             <PasswordRequirements password={formData.password} />
 
             <div className="space-y-1.5">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Label htmlFor="confirmPassword">Confirm password</Label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <Input
@@ -232,7 +212,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
 
             <Button type="submit" size="lg" disabled={loading} className="w-full">
               <UserPlus />
-              {loading ? 'Creating Account...' : 'Create Account'}
+              {loading ? 'Creating account…' : 'Create account'}
             </Button>
           </form>
 
@@ -244,19 +224,11 @@ const RegisterPage = ({ onSwitchToLogin }) => {
               onClick={onSwitchToLogin}
               className="font-semibold text-primary hover:underline"
             >
-              Sign In
+              Sign in
             </button>
           </p>
 
-          {/* Privacy Note */}
-          <p className="text-center text-xs text-muted-foreground mt-4">
-            Your data is securely encrypted and stored in the cloud.
-            <br />
-            We never share your personal information.
-          </p>
-        </Card>
-      </div>
-    </div>
+    </AuthLayout>
   );
 };
 

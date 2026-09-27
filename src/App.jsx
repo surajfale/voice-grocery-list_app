@@ -3,19 +3,11 @@ import PropTypes from 'prop-types';
 import dayjs from 'dayjs';
 import {
   Trash2,
-  CalendarDays,
-  ShoppingCart,
+  ShoppingBasket,
   Menu as MenuIcon,
-  X,
   LogOut,
   HelpCircle,
   Palette,
-  Sun,
-  Moon,
-  Settings,
-  ListFilter,
-  ListX,
-  Download,
   Share2,
   ImageIcon,
   FileText,
@@ -25,6 +17,10 @@ import {
   ArrowLeftRight,
   Merge,
   Loader2,
+  ListChecks,
+  MoreHorizontal,
+  Eraser,
+  Lock,
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './AuthContext';
 import { CustomThemeProvider, useThemeContext } from './contexts/ThemeContext';
@@ -42,6 +38,7 @@ import CorrectionDialog from './components/CorrectionDialog';
 import ProjectDisclaimer from './components/ProjectDisclaimer';
 import Footer from './components/Footer';
 import EmptyState from './components/EmptyState';
+import PredictionChips from './components/PredictionChips';
 import StatusAlerts from './components/StatusAlerts';
 import ManualInput from './components/ManualInput';
 import PrintableList from './components/PrintableList';
@@ -53,12 +50,9 @@ import { usePurchasePredictions } from './hooks/usePurchasePredictions';
 import groceryIntelligence from './services/groceryIntelligence';
 import { downloadListAsImage, downloadListAsPDF, shareList } from './utils/downloadList';
 import { Button } from './components/ui/button';
-import { Badge } from './components/ui/badge';
 import { Avatar, AvatarFallback } from './components/ui/avatar';
-import { Card } from './components/ui/card';
+import { Skeleton } from './components/ui/skeleton';
 import { Checkbox } from './components/ui/checkbox';
-import { Separator } from './components/ui/separator';
-import { Alert, AlertTitle, AlertDescription } from './components/ui/alert';
 import { Input } from './components/ui/input';
 import { Sheet, SheetContent } from './components/ui/sheet';
 import {
@@ -75,6 +69,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from './components/ui/dropdown-menu';
 import { Toaster } from './components/ui/sonner';
 
@@ -107,8 +104,8 @@ const VoiceGroceryListApp = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <Spinner className="size-12" />
+      <div className="flex justify-center items-center min-h-dvh">
+        <Spinner className="size-8" />
       </div>
     );
   }
@@ -149,7 +146,7 @@ const VoiceGroceryListApp = () => {
  */
 const VoiceGroceryList = ({ user, logout }) => {
   // Theme and UI state
-  const { mode, toggleMode } = useThemeContext();
+  const { mode, setMode } = useThemeContext();
   const { deleteAccount } = useAuth();
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState({});
@@ -159,7 +156,7 @@ const VoiceGroceryList = ({ user, logout }) => {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showCongratulations, setShowCongratulations] = useState(false);
   const [congratsDismissed, setCongratsDismissed] = useState(false);
-  const [isListening, _setIsListening] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const [transcript, _setTranscript] = useState('');
   const [showOnlyRemaining, setShowOnlyRemaining] = useState(false);
   const [activeView, setActiveView] = useState('lists');
@@ -369,6 +366,16 @@ const VoiceGroceryList = ({ user, logout }) => {
     return date.format('ddd, MMM D, YYYY');
   };
 
+  // "Today" / "Tomorrow" / "Yesterday", else a short weekday date
+  const relativeDayLabel = (dateString) => {
+    const date = dayjs(dateString);
+    const today = dayjs();
+    if (date.isSame(today, 'day')) { return 'Today'; }
+    if (date.isSame(today.add(1, 'day'), 'day')) { return 'Tomorrow'; }
+    if (date.isSame(today.subtract(1, 'day'), 'day')) { return 'Yesterday'; }
+    return date.format(date.isSame(today, 'year') ? 'ddd, MMM D' : 'ddd, MMM D, YYYY');
+  };
+
   /**
    * Create a new list for a specific date
    * Sets the current date and closes mobile drawer
@@ -477,141 +484,172 @@ const VoiceGroceryList = ({ user, logout }) => {
   const isPastDate = currentDate.isBefore(dayjs().startOf('day'));
   const predictions = usePurchasePredictions(user, currentDateString, currentItems, !isPastDate);
 
+  const completedCount = currentItems.filter(item => item.completed).length;
+  const remainingCount = currentItems.length - completedCount;
+  const progressPercent = currentItems.length ? (completedCount / currentItems.length) * 100 : 0;
+
+  const todayStart = dayjs().startOf('day');
+  const upcomingDates = sortedDates.filter(date => !dayjs(date).isBefore(todayStart)).reverse();
+  const pastDates = sortedDates.filter(date => dayjs(date).isBefore(todayStart));
+
+  const renderDateRow = (date) => {
+    const isSelected = date === currentDateString;
+    const itemCount = allLists[date]?.length || 0;
+
+    const stopAnd = (fn) => ({
+      onClick: (e) => {
+        e.stopPropagation();
+        fn();
+      },
+      onKeyDown: (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          fn();
+        }
+      },
+    });
+
+    return (
+      <li key={date}>
+        <button
+          type="button"
+          onClick={() => (selectMode ? toggleDateSelection(date) : createNewListForDate(date))}
+          aria-current={isSelected ? 'date' : undefined}
+          className={`group w-full flex items-center gap-2.5 rounded-lg pl-3 pr-1.5 h-10 text-left text-sm transition-colors ${
+            isSelected
+              ? 'bg-accent text-foreground font-medium'
+              : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
+          }`}
+        >
+          {selectMode && (
+            <Checkbox
+              checked={selectedDatesForMove.includes(date)}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleDateSelection(date);
+              }}
+            />
+          )}
+          <span className="flex-1 truncate">{relativeDayLabel(date)}</span>
+          <span className="text-xs tabular-nums text-muted-foreground">{itemCount}</span>
+          {!selectMode && (
+            <span className="flex items-center md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100 transition-opacity">
+              <span
+                role="button"
+                tabIndex={0}
+                title="Move or merge into another date"
+                aria-label={`Move or merge ${relativeDayLabel(date)}`}
+                {...stopAnd(() => openMoveDialog([date]))}
+                className="p-1.5 rounded-md hover:bg-background text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeftRight className="size-3.5" />
+              </span>
+              {!isSelected && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  title="Delete list"
+                  aria-label={`Delete ${relativeDayLabel(date)}`}
+                  {...stopAnd(() => deleteList(date))}
+                  className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 className="size-3.5" />
+                </span>
+              )}
+            </span>
+          )}
+        </button>
+      </li>
+    );
+  };
+
   // Drawer content for date selection and list management
   const drawerContent = (
-    <div className="w-full p-4">
-      <h6 className="flex items-center gap-2 text-base font-display font-semibold mb-3">
-        <CalendarDays className="size-4.5" />
-        Grocery Lists
-      </h6>
-      <Separator className="mb-4" />
-
-      <Input
-        type="date"
-        value={currentDate.format('YYYY-MM-DD')}
-        onChange={(e) => e.target.value && createNewListForDate(e.target.value)}
-        className="mb-4"
-        aria-label="Select date"
-      />
-
-      <div className="flex justify-between items-center mb-2">
-        <span className="text-xs font-semibold text-muted-foreground">Your Lists</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setSelectMode(prev => !prev);
-            setSelectedDatesForMove([]);
-          }}
-        >
-          {selectMode ? 'Cancel' : 'Select'}
-        </Button>
+    <nav aria-label="Grocery lists" className="w-full p-4 space-y-6">
+      <div>
+        <label htmlFor="list-date" className="section-label block px-1 mb-2">Go to date</label>
+        <Input
+          id="list-date"
+          type="date"
+          value={currentDate.format('YYYY-MM-DD')}
+          onChange={(e) => e.target.value && createNewListForDate(e.target.value)}
+          className="h-10"
+        />
       </div>
 
-      {selectMode && selectedDatesForMove.length > 0 && (
-        <Button
-          className="w-full mb-2"
-          onClick={() => openMoveDialog(selectedDatesForMove)}
-        >
-          <Merge />
-          Move/Merge {selectedDatesForMove.length} list{selectedDatesForMove.length > 1 ? 's' : ''}
-        </Button>
-      )}
+      <div>
+        <div className="flex justify-between items-center mb-1 px-1">
+          <span className="section-label">Lists</span>
+          {sortedDates.length > 1 && (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectMode(prev => !prev);
+                setSelectedDatesForMove([]);
+              }}
+              className="text-xs font-medium text-primary hover:underline underline-offset-4"
+            >
+              {selectMode ? 'Cancel' : 'Select'}
+            </button>
+          )}
+        </div>
 
-      <ul className="space-y-1">
-        {sortedDates.length > 0 ? (
-          sortedDates.map(date => {
-            const dateObj = dayjs(date);
-            const today = dayjs().startOf('day');
-            const isPast = dateObj.isBefore(today);
-            const hasItems = allLists[date]?.length > 0;
-            const isSelected = date === currentDateString;
-
-            return (
-              <li key={date}>
-                <button
-                  type="button"
-                  onClick={() => (selectMode ? toggleDateSelection(date) : createNewListForDate(date))}
-                  className={`w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-colors group ${
-                    isSelected ? 'bg-primary/10' : 'hover:bg-accent'
-                  } ${isPast && hasItems ? 'border-l-4 border-l-primary/60' : ''}`}
-                >
-                  {selectMode && (
-                    <Checkbox
-                      checked={selectedDatesForMove.includes(date)}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleDateSelection(date);
-                      }}
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className={`text-sm truncate ${isSelected ? 'font-bold' : 'font-medium'} ${isPast && hasItems ? 'text-primary' : ''}`}>
-                        {formatDateDisplay(date)}
-                      </span>
-                      {isPast && hasItems && (
-                        <Badge variant="soft" className="text-[10px] h-4 px-1.5">Past</Badge>
-                      )}
-                    </div>
-                    <span className="text-xs text-muted-foreground">{allLists[date]?.length || 0} items</span>
-                  </div>
-                  {!selectMode && (
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      title="Move/merge to another date"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openMoveDialog([date]);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          openMoveDialog([date]);
-                        }
-                      }}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-background text-muted-foreground"
-                    >
-                      <ArrowLeftRight className="size-3.5" />
-                    </span>
-                  )}
-                  {!selectMode && !isSelected && (
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteList(date);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          deleteList(date);
-                        }
-                      }}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-destructive/10 text-destructive"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </span>
-                  )}
-                </button>
-              </li>
-            );
-          })
-        ) : (
-          <li className="text-sm text-muted-foreground px-2.5 py-2">No grocery lists yet</li>
+        {selectMode && selectedDatesForMove.length > 0 && (
+          <Button
+            size="sm"
+            className="w-full my-2"
+            onClick={() => openMoveDialog(selectedDatesForMove)}
+          >
+            <Merge />
+            Merge {selectedDatesForMove.length} list{selectedDatesForMove.length > 1 ? 's' : ''}
+          </Button>
         )}
-      </ul>
-    </div>
+
+        {sortedDates.length === 0 ? (
+          <p className="text-sm text-muted-foreground px-1 py-2">No lists yet</p>
+        ) : (
+          <div className="space-y-4">
+            {upcomingDates.length > 0 && (
+              <ul className="space-y-0.5">{upcomingDates.map(renderDateRow)}</ul>
+            )}
+            {pastDates.length > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground px-3 mb-1">Past</p>
+                <ul className="space-y-0.5">{pastDates.map(renderDateRow)}</ul>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </nav>
   );
 
   // Show help page if requested
   if (showHelpPage) {
     return <HelpPage onBack={() => setShowHelpPage(false)} />;
   }
+
+  const initials = `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase();
+
+  const composer = (
+    <ManualInput
+      onAddItems={handleManualItems}
+      historicalItems={historicalItems}
+      predictions={predictions}
+      loading={loading}
+      disabled={isPastDate}
+      dropUp={isMobile}
+      listening={isListening}
+      trailing={(
+        <VoiceRecognition
+          onItemsDetected={handleVoiceItems}
+          disabled={loading || isPastDate}
+          onListeningChange={setIsListening}
+        />
+      )}
+    />
+  );
 
   // Main component render
   return (
@@ -635,7 +673,7 @@ const VoiceGroceryList = ({ user, logout }) => {
           setCongratsDismissed(true);
         }}
         itemCount={currentItems.length}
-        currentDate={formatDateDisplay(currentDateString)}
+        currentDate={relativeDayLabel(currentDateString)}
       />
 
       {/* Theme Settings Dialog */}
@@ -660,163 +698,140 @@ const VoiceGroceryList = ({ user, logout }) => {
 
       {/* Move/Merge Lists Dialog */}
       <Dialog open={moveDialogOpen} onOpenChange={(open) => !open && closeMoveDialog()}>
-        <DialogContent className="sm:max-w-xs">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>Move/Merge to Date</DialogTitle>
+            <DialogTitle>{moveDialogDates.length > 1 ? 'Merge lists' : 'Move list'}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             {moveDialogDates.length > 1
-              ? `Merge ${moveDialogDates.length} lists into one date. Items already on the target date won't be duplicated.`
-              : 'Move this list to a new date. If the target date already has a list, items will be merged without duplicates.'}
+              ? `Combine ${moveDialogDates.length} lists into one date. Items already on that date won't be duplicated.`
+              : 'Pick a new date. If that date already has a list, the items are merged without duplicates.'}
           </p>
           <Input
             type="date"
             value={moveTargetDate.format('YYYY-MM-DD')}
             min={dayjs().format('YYYY-MM-DD')}
             onChange={(e) => e.target.value && setMoveTargetDate(dayjs(e.target.value))}
+            aria-label="Target date"
           />
           <DialogFooter>
             <Button variant="outline" onClick={closeMoveDialog}>Cancel</Button>
             <Button onClick={handleConfirmMove} disabled={movingLists}>
-              {movingLists ? 'Moving...' : 'Confirm'}
+              {movingLists ? 'Moving…' : moveDialogDates.length > 1 ? 'Merge' : 'Move'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col min-h-dvh">
         <ProjectDisclaimer />
-        {/* Modern App Bar */}
-        <header className="sticky top-0 z-40 h-[72px] shrink-0 flex items-center px-3 sm:px-6 bg-card/85 backdrop-blur-xl border-b border-border">
-            {isMobile && !isReceiptsView && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setMobileDrawerOpen(true)}
-                className="mr-2"
-                aria-label="Open menu"
-              >
-                <MenuIcon />
-              </Button>
-            )}
 
-            {/* Logo and Brand */}
-            <div className="flex items-center mr-2 sm:mr-6">
-              <div className="size-8 sm:size-10 rounded-xl bg-primary flex items-center justify-center mr-2 sm:mr-3 shadow-[0_4px_12px_-2px_var(--primary)]">
-                <ShoppingCart className="text-white size-4 sm:size-5" />
-              </div>
-              <div className="hidden sm:block">
-                <h1 className="font-display font-bold text-xl text-primary leading-tight">
-                  Grocery List
-                </h1>
-                <p className="text-xs text-muted-foreground font-medium">Smart Shopping Lists</p>
-              </div>
-            </div>
-
-            <div className="flex-1" />
-
-            {/* Current Date Badge */}
-            {!isReceiptsView && (
-              <Badge variant="outline" className="hidden md:flex mr-3 h-8 px-3 font-semibold text-muted-foreground">
-                {formatDateDisplay(currentDateString)}
-              </Badge>
-            )}
-
+        <header className="sticky top-0 z-40 h-14 shrink-0 flex items-center gap-2 px-3 sm:px-5 bg-background/80 backdrop-blur-xl border-b border-border">
+          {isMobile && !isReceiptsView && (
             <Button
-              variant={isReceiptsView ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActiveView(isReceiptsView ? 'lists' : 'receipts')}
-              className="rounded-full mr-2"
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileDrawerOpen(true)}
+              className="-ml-1 size-9"
+              aria-label="Open lists"
             >
-              <Receipt className="size-4" />
-              {isReceiptsView ? 'Back to Lists' : 'Receipts'}
+              <MenuIcon />
             </Button>
+          )}
 
-            {/* Settings Menu (theme + help) */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="mr-1 sm:mr-2 text-muted-foreground">
-                  <Settings />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-60">
-                <DropdownMenuItem onClick={toggleMode}>
-                  {mode === 'dark' ? <Sun /> : <Moon />}
-                  <div>
-                    <div className="font-semibold">{mode === 'dark' ? 'Light mode' : 'Dark mode'}</div>
-                    <div className="text-xs text-muted-foreground">Toggle base theme</div>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowThemeSettings(true)}>
-                  <Palette />
-                  <div>
-                    <div className="font-semibold">Theme settings</div>
-                    <div className="text-xs text-muted-foreground">Accent colors &amp; hues</div>
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setShowHelpPage(true)}>
-                  <HelpCircle />
-                  <div>
-                    <div className="font-semibold">Help &amp; tips</div>
-                    <div className="text-xs text-muted-foreground">Guides and shortcuts</div>
-                  </div>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* User Profile Section */}
-            <div className="flex items-center gap-1.5 sm:gap-3">
-              <div className="text-right min-w-0 hidden xs:block">
-                <p className="font-semibold text-foreground leading-tight text-xs sm:text-sm truncate max-w-[80px] sm:max-w-[150px] md:max-w-[200px]">
-                  {user.firstName} {user.lastName}
-                </p>
-                <p className="text-muted-foreground text-[0.6rem] sm:text-xs hidden sm:block">
-                  {currentItems.length} items today
-                </p>
-              </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button type="button" className="rounded-full hover:scale-105 transition-transform">
-                    <Avatar className="size-8 sm:size-11 shadow-[0_4px_12px_-2px_var(--secondary)]">
-                      <AvatarFallback className="bg-secondary text-secondary-foreground text-xs sm:text-base">
-                        {user.firstName[0]}{user.lastName[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel className="font-normal">
-                    <p className="text-xs text-muted-foreground">Signed in as</p>
-                    <p className="text-sm font-bold text-foreground">{user.firstName} {user.lastName}</p>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={() => setShowDeleteAccountDialog(true)}
-                  >
-                    <Trash />
-                    Delete Account
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+          <div className="flex items-center gap-2.5 mr-auto min-w-0">
+            <div className="size-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+              <ShoppingBasket className="size-4.5" />
             </div>
+            <span className="hidden sm:block font-semibold tracking-tight truncate">Grocery List</span>
+          </div>
+
+          {/* Primary navigation */}
+          <nav aria-label="Primary" className="flex items-center rounded-full bg-muted p-0.5">
+            {[
+              { view: 'lists', label: 'Lists', Icon: ListChecks },
+              { view: 'receipts', label: 'Receipts', Icon: Receipt },
+            ].map(({ view, label, Icon }) => {
+              const isActive = activeView === view;
+              return (
+                <button
+                  key={view}
+                  type="button"
+                  onClick={() => setActiveView(view)}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`h-8 px-3 sm:px-3.5 rounded-full text-sm font-medium inline-flex items-center gap-1.5 transition-[background-color,color,box-shadow] ${
+                    isActive ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Icon className="size-4" />
+                  {label}
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* Account + preferences */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Account and settings"
+                className="ml-1 rounded-full transition-[box-shadow] hover:ring-2 hover:ring-border data-[state=open]:ring-2 data-[state=open]:ring-ring/40"
+              >
+                <Avatar className="size-8">
+                  <AvatarFallback className="bg-muted text-foreground text-xs font-semibold">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-60">
+              <DropdownMenuLabel className="font-normal">
+                <p className="text-sm font-semibold text-foreground truncate">{user.firstName} {user.lastName}</p>
+                {user.email && <p className="text-xs text-muted-foreground truncate">{user.email}</p>}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-xs font-medium text-muted-foreground py-1">Appearance</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={mode} onValueChange={setMode}>
+                <DropdownMenuRadioItem value="light">Light</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="dark">Dark</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="system">Match system</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+              <DropdownMenuItem onClick={() => setShowThemeSettings(true)}>
+                <Palette />
+                Accent color…
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setShowHelpPage(true)}>
+                <HelpCircle />
+                Help &amp; tips
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut />
+                Sign out
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => setShowDeleteAccountDialog(true)}
+              >
+                <Trash />
+                Delete account
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </header>
 
         <div className="flex flex-1">
           {/* Navigation Drawer */}
           {!isReceiptsView && (
             !isMobile ? (
-              <aside className="w-80 shrink-0 border-r border-border bg-card/60 hidden md:block">
+              <aside className="w-72 shrink-0 border-r border-border sticky top-14 self-start h-[calc(100dvh-3.5rem)] overflow-y-auto">
                 {drawerContent}
               </aside>
             ) : (
               <Sheet open={mobileDrawerOpen} onOpenChange={setMobileDrawerOpen}>
-                <SheetContent side="left" className="w-80 p-0 pt-4">
+                <SheetContent side="left" className="w-80 max-w-[85vw] p-0 pt-10">
                   {drawerContent}
                 </SheetContent>
               </Sheet>
@@ -824,120 +839,135 @@ const VoiceGroceryList = ({ user, logout }) => {
           )}
 
           {/* Main Content */}
-          <main className="flex-1 flex flex-col p-4 sm:p-6 md:p-8 bg-background">
-            <div className="max-w-5xl w-full mx-auto py-4 sm:py-6 md:py-8 flex-1 flex flex-col">
-              <div
-                className="flex-1 w-full transition-opacity"
-                style={{ opacity: viewContentVisible ? 1 : 0, transitionDuration: viewContentVisible ? '200ms' : '120ms' }}
-              >
-                {displayedView === 'receipts' ? (
-                  <ReceiptsPage user={user} />
-                ) : (
-                  <>
-                    {/* Loading Indicator */}
-                    {dataLoading && (
-                      <div className="flex justify-center py-8">
-                        <Spinner />
-                      </div>
-                    )}
+          <main
+            id="main"
+            className={`flex-1 min-w-0 flex flex-col px-4 sm:px-6 ${
+              isMobile && !isReceiptsView ? 'pb-32' : 'pb-8'
+            }`}
+          >
+            <div
+              className={`w-full mx-auto pt-6 sm:pt-10 flex-1 flex flex-col transition-opacity ${
+                displayedView === 'receipts' ? 'max-w-5xl' : 'max-w-2xl'
+              }`}
+              style={{ opacity: viewContentVisible ? 1 : 0, transitionDuration: viewContentVisible ? '200ms' : '120ms' }}
+            >
+              {displayedView === 'receipts' ? (
+                <ReceiptsPage user={user} />
+              ) : (
+                <div className="flex-1">
+                  {/* List header */}
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => isMobile && setMobileDrawerOpen(true)}
+                        className={`flex items-center gap-1.5 text-left ${isMobile ? '' : 'cursor-default'}`}
+                        tabIndex={isMobile ? 0 : -1}
+                        aria-label={isMobile ? 'Change list date' : undefined}
+                      >
+                        <h1 className="text-[28px] sm:text-3xl font-semibold tracking-tight leading-tight">
+                          {relativeDayLabel(currentDateString)}
+                        </h1>
+                        {isMobile && <ChevronDown className="size-5 text-muted-foreground mt-1" />}
+                      </button>
+                      <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
+                        <time dateTime={currentDateString}>{currentDate.format('dddd, MMMM D')}</time>
+                        {currentItems.length > 0 && (
+                          <span className="tabular-nums">
+                            · {remainingCount === 0 ? 'all done' : `${remainingCount} of ${currentItems.length} left`}
+                          </span>
+                        )}
+                        {isPastDate && (
+                          <span className="inline-flex items-center gap-1">
+                            · <Lock className="size-3" /> read-only
+                          </span>
+                        )}
+                      </p>
+                    </div>
 
-                    {/* Status Alerts */}
-                    <StatusAlerts
-                      isListening={isListening}
-                      transcript={transcript}
-                      skippedDuplicates={skippedDuplicates}
-                      error={error}
-                      onClearError={() => setError('')}
-                    />
-
-                    {/* Past Date Warning */}
-                    {isPastDate && (
-                      <Alert variant="warning" className="mb-4">
-                        <AlertTitle>📅 Past Date Selected</AlertTitle>
-                        <AlertDescription>
-                          You are viewing a past grocery list. You cannot add new items to past dates.
-                          {currentItems.length === 0 && ' This date has no existing list.'}
-                        </AlertDescription>
-                      </Alert>
-                    )}
-
-                    {/* Manual Input Section */}
-                    <ManualInput
-                      onAddItems={handleManualItems}
-                      historicalItems={historicalItems}
-                      predictions={predictions}
-                      showPredictionChips={currentItems.length > 0}
-                      loading={loading}
-                      disabled={isPastDate}
-                    />
-
-                    {/* List Stats and Controls */}
                     {currentItems.length > 0 && (
-                      <Card className="p-4 mb-4">
-                        <div className="flex justify-between items-center flex-wrap gap-3">
-                          <p className="text-sm text-muted-foreground">
-                            {currentItems.filter(item => !item.completed).length} of {currentItems.length} items remaining
-                          </p>
-                          <div className="flex gap-2 flex-wrap">
-                            <Button
-                              variant={showOnlyRemaining ? 'default' : 'outline'}
-                              size="sm"
-                              onClick={() => setShowOnlyRemaining(!showOnlyRemaining)}
-                              disabled={loading}
-                            >
-                              {showOnlyRemaining ? <ListX /> : <ListFilter />}
-                              {showOnlyRemaining ? 'Show All' : 'Remaining Only'}
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" disabled={loading}>
-                                  <Download />
-                                  Download
-                                  <ChevronDown />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={handleShare}>
-                                  <Share2 />
-                                  <div>
-                                    <div className="font-semibold">Share Image</div>
-                                    <div className="text-xs text-muted-foreground">Best for mobile sharing</div>
-                                  </div>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={handleDownloadImage}>
-                                  <ImageIcon />
-                                  <div>
-                                    <div className="font-semibold">Download Image</div>
-                                    <div className="text-xs text-muted-foreground">PNG format</div>
-                                  </div>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={handleDownloadPDF}>
-                                  <FileText />
-                                  <div>
-                                    <div className="font-semibold">Download PDF</div>
-                                    <div className="text-xs text-muted-foreground">Professional format</div>
-                                  </div>
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={clearCurrentList}
-                              disabled={loading}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <X />
-                              {loading ? 'Clearing...' : 'Clear List'}
-                            </Button>
-                          </div>
-                        </div>
-                      </Card>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="icon" className="size-9 shrink-0" aria-label="List options">
+                            <MoreHorizontal />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-52">
+                          <DropdownMenuCheckboxItem
+                            checked={showOnlyRemaining}
+                            onCheckedChange={(checked) => setShowOnlyRemaining(Boolean(checked))}
+                          >
+                            Hide bought items
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={handleShare}>
+                            <Share2 />
+                            Share as image
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={handleDownloadImage}>
+                            <ImageIcon />
+                            Download PNG
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={handleDownloadPDF}>
+                            <FileText />
+                            Download PDF
+                          </DropdownMenuItem>
+                          {!isPastDate && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem variant="destructive" onClick={clearCurrentList} disabled={loading}>
+                                <Eraser />
+                                Clear list
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
+                  </div>
 
-                    {/* Grocery List Display */}
-                    {currentItems.length > 0 ? (
-                      filteredItems.length > 0 ? (
+                  {currentItems.length > 0 && (
+                    <div
+                      className="h-1 rounded-full bg-muted overflow-hidden mb-6"
+                      role="progressbar"
+                      aria-label="Items bought"
+                      aria-valuemin={0}
+                      aria-valuemax={currentItems.length}
+                      aria-valuenow={completedCount}
+                    >
+                      <div
+                        className={`h-full rounded-full transition-[width] duration-500 ease-out ${remainingCount === 0 ? 'bg-success' : 'bg-primary'}`}
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Desktop composer sits inline; mobile gets a bottom bar */}
+                  {!isMobile && <div className="mb-6">{composer}</div>}
+
+                  <StatusAlerts
+                    isListening={false}
+                    transcript={transcript}
+                    skippedDuplicates={skippedDuplicates}
+                    error={error}
+                    onClearError={() => setError('')}
+                  />
+
+                  {dataLoading ? (
+                    <div className="rounded-xl border border-border bg-card divide-y divide-border" aria-busy="true" aria-label="Loading list">
+                      {[70, 45, 60, 35, 55].map((width) => (
+                        <div key={width} className="flex items-center gap-3 h-13 px-3.5">
+                          <Skeleton className="size-5 rounded-full" />
+                          <Skeleton className="h-3.5" style={{ width: `${width}%` }} />
+                        </div>
+                      ))}
+                    </div>
+                  ) : currentItems.length > 0 ? (
+                    <>
+                      {!isPastDate && (
+                        <PredictionChips predictions={predictions} onAddItems={handleManualItems} disabled={loading} />
+                      )}
+                      {filteredItems.length > 0 ? (
                         <GroceryListDisplay
                           groupedItems={groupedItems}
                           expandedCategories={expandedCategories}
@@ -951,29 +981,32 @@ const VoiceGroceryList = ({ user, logout }) => {
                           loading={loading}
                         />
                       ) : (
-                        <Card className="p-8 text-center">
-                          <p className="font-display text-lg font-semibold text-muted-foreground mb-1">
-                            🎉 All items completed!
+                        <div className="text-center py-12">
+                          <p className="font-medium">Everything&apos;s bought</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Bought items are hidden.{' '}
+                            <button
+                              type="button"
+                              onClick={() => setShowOnlyRemaining(false)}
+                              className="text-primary font-medium hover:underline underline-offset-4"
+                            >
+                              Show them
+                            </button>
                           </p>
-                          <p className="text-sm text-muted-foreground">
-                            You&apos;ve checked off all items. Toggle &quot;Show All&quot; to see completed items.
-                          </p>
-                        </Card>
-                      )
-                    ) : (
-                      <EmptyState
-                        currentDateString={currentDateString}
-                        formatDateDisplay={formatDateDisplay}
-                        predictions={isPastDate ? [] : predictions}
-                        onAddItems={handleManualItems}
-                        loading={loading}
-                      />
-                    )}
-                  </>
-                )}
-              </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <EmptyState
+                      predictions={isPastDate ? [] : predictions}
+                      onAddItems={handleManualItems}
+                      loading={loading}
+                      readOnly={isPastDate}
+                    />
+                  )}
+                </div>
+              )}
 
-              {/* Footer */}
               <Footer />
             </div>
           </main>
@@ -981,7 +1014,7 @@ const VoiceGroceryList = ({ user, logout }) => {
           {!isReceiptsView && (
             <>
               {/* Hidden Printable List Component for Export */}
-              <div className="absolute -left-[9999px] top-0">
+              <div className="absolute -left-[9999px] top-0" aria-hidden="true">
                 <PrintableList
                   ref={printableListRef}
                   items={currentItems}
@@ -990,11 +1023,12 @@ const VoiceGroceryList = ({ user, logout }) => {
                 />
               </div>
 
-              {/* Voice Recognition Component */}
-              <VoiceRecognition
-                onItemsDetected={handleVoiceItems}
-                disabled={loading || isPastDate}
-              />
+              {/* Mobile: composer pinned to the thumb zone */}
+              {isMobile && (
+                <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/85 backdrop-blur-xl px-3 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
+                  {composer}
+                </div>
+              )}
             </>
           )}
         </div>

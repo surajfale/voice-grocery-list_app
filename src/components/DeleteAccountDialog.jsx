@@ -71,11 +71,11 @@ const DeleteAccountDialog = ({ open, onClose, onDeleteAccount, user, loading = f
       <DialogContent showCloseButton={!loading} className="sm:max-w-lg">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="size-10 rounded-xl bg-destructive flex items-center justify-center shrink-0 shadow-[0_4px_12px_-2px_var(--destructive)]">
-              <Trash2 className="text-white size-5" />
+            <div className="size-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+              <Trash2 className="text-destructive size-5" />
             </div>
             <div>
-              <DialogTitle>Delete Account</DialogTitle>
+              <DialogTitle>Delete account</DialogTitle>
               <p className="text-xs text-muted-foreground">
                 {step === 1 && 'Please read carefully'}
                 {step === 2 && 'Confirm your identity'}
@@ -207,7 +207,7 @@ const DeleteAccountDialog = ({ open, onClose, onDeleteAccount, user, loading = f
             <Button
               onClick={handleNextStep}
               disabled={!allChecksConfirmed}
-              className="bg-destructive text-white hover:bg-destructive/90 disabled:bg-destructive/30"
+              variant="destructive"
             >
               Continue
             </Button>
@@ -217,10 +217,10 @@ const DeleteAccountDialog = ({ open, onClose, onDeleteAccount, user, loading = f
             <Button
               onClick={handleDeleteAccount}
               disabled={loading || !password.trim()}
-              className="bg-destructive text-white hover:bg-destructive/90 disabled:bg-destructive/30"
+              variant="destructive"
             >
               {loading && <Loader2 className="animate-spin" />}
-              {loading ? 'Deleting...' : 'Delete My Account'}
+              {loading ? 'Deleting…' : 'Delete my account'}
             </Button>
           )}
         </DialogFooter>

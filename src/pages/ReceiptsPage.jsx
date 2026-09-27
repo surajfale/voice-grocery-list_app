@@ -15,15 +15,15 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs'
 const ALLOWED_FILE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'];
 
 const statusVariantMap = {
-  ready: 'default',
+  ready: 'secondary',
   processing: 'outline',
   error: 'destructive'
 };
 
 const ReceiptMetadata = ({ label, value }) => (
   <div>
-    <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-    <p className="font-semibold">{value ?? '—'}</p>
+    <p className="text-xs text-muted-foreground">{label}</p>
+    <p className="font-medium tabular-nums">{value ?? '—'}</p>
   </div>
 );
 
@@ -135,11 +135,17 @@ const ReceiptsPage = ({ user }) => {
         </Alert>
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="receipts">Receipts</TabsTrigger>
-          <TabsTrigger value="insights">Spending Insights</TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="text-[28px] sm:text-3xl font-semibold tracking-tight leading-tight">Receipts</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Upload receipt photos, then ask about your spending.</p>
+          </div>
+          <TabsList>
+            <TabsTrigger value="receipts">Receipts</TabsTrigger>
+            <TabsTrigger value="insights">Spending</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="insights">
           <SpendingInsights receipts={receipts} loading={loading} />
@@ -147,26 +153,22 @@ const ReceiptsPage = ({ user }) => {
 
         <TabsContent value="receipts" className="flex flex-col gap-4">
           <Card
-            className="p-5 border-2 border-dashed flex flex-wrap items-center justify-between gap-4"
+            className="p-5 border-dashed border-input bg-transparent shadow-none flex-row flex-wrap items-center justify-between gap-4"
             onDragOver={(event) => event.preventDefault()}
             onDrop={(event) => {
               event.preventDefault();
               handleFiles(event.dataTransfer.files);
             }}
           >
-            <div>
-              <h6 className="font-display font-semibold mb-1">Upload grocery receipt</h6>
-              <p className="text-sm text-muted-foreground">
-                Drop one or more receipt photos (max 10) or choose files to have them stitched, OCR&rsquo;d, and added to your history.
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Tip: Select images in order from top to bottom—the server will stitch them vertically into a single receipt.
+            <div className="min-w-0 flex-1">
+              <h2 className="font-medium">Add a receipt</h2>
+              <p className="text-sm text-muted-foreground mt-0.5 max-w-prose">
+                Drop up to 10 photos here. For a long receipt, pick the photos top to bottom and they&rsquo;re stitched into one.
               </p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={reloadReceipts} disabled={loading}>
-                <RefreshCw />
-                Refresh
+              <Button variant="ghost" size="icon" onClick={reloadReceipts} disabled={loading} aria-label="Refresh receipts" title="Refresh">
+                <RefreshCw className={loading ? 'animate-spin' : ''} />
               </Button>
               <label
                 className={cn(
@@ -175,7 +177,7 @@ const ReceiptsPage = ({ user }) => {
                 )}
               >
                 <CloudUpload />
-                {uploading ? 'Uploading...' : 'Choose Image(s)'}
+                {uploading ? 'Uploading…' : 'Upload photos'}
                 <input
                   type="file"
                   accept="image/*"
@@ -192,7 +194,7 @@ const ReceiptsPage = ({ user }) => {
           <div className="grid md:grid-cols-3 gap-4">
             <Card className="p-4 min-h-[420px] md:col-span-1">
               <div className="flex justify-between items-center mb-3">
-                <h6 className="font-display font-semibold">Receipts</h6>
+                <h2 className="section-label">History</h2>
                 {loading && <Loader2 className="size-4 animate-spin text-primary" />}
               </div>
 
@@ -215,12 +217,13 @@ const ReceiptsPage = ({ user }) => {
                             selectReceipt(receipt._id);
                           }
                         }}
-                        className={`flex items-center gap-3 rounded-xl border p-2.5 cursor-pointer transition-colors ${
-                          receipt._id === selectedReceiptId ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent'
+                        aria-current={receipt._id === selectedReceiptId ? 'true' : undefined}
+                        className={`group flex items-center gap-3 rounded-lg px-2.5 py-2 cursor-pointer transition-colors ${
+                          receipt._id === selectedReceiptId ? 'bg-accent' : 'hover:bg-accent/60'
                         }`}
                       >
-                        <div className="size-9 rounded-full bg-muted flex items-center justify-center shrink-0">
-                          <FileText className="size-4" />
+                        <div className="size-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                          <FileText className="size-4 text-muted-foreground" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">
@@ -229,10 +232,12 @@ const ReceiptsPage = ({ user }) => {
                               : 'Unknown merchant'}
                           </p>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-xs text-muted-foreground">{receipt.purchaseDate || 'No date'}</span>
-                            <Badge variant={statusVariantMap[receipt.status] || 'outline'} className="capitalize">
-                              {receipt.status}
-                            </Badge>
+                            <span className="text-xs text-muted-foreground tabular-nums">{receipt.purchaseDate || 'No date'}</span>
+                            {receipt.status !== 'ready' && (
+                              <Badge variant={statusVariantMap[receipt.status] || 'outline'} className="capitalize">
+                                {receipt.status}
+                              </Badge>
+                            )}
                           </div>
                         </div>
                         <button
@@ -242,7 +247,7 @@ const ReceiptsPage = ({ user }) => {
                             event.stopPropagation();
                             deleteReceipt(receipt._id);
                           }}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive shrink-0"
+                          className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive shrink-0 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100"
                         >
                           <Trash2 className="size-4" />
                         </button>
@@ -281,7 +286,7 @@ const ReceiptsPage = ({ user }) => {
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-sm text-muted-foreground">Merchant</p>
-                      <p className="font-display text-xl font-bold">{selectedReceipt.merchant || 'Unknown'}</p>
+                      <p className="text-xl font-semibold tracking-tight">{selectedReceipt.merchant || 'Unknown'}</p>
                     </div>
                     <Badge variant={statusVariantMap[selectedReceipt.status] || 'outline'} className="capitalize">
                       {selectedReceipt.status}
@@ -289,7 +294,7 @@ const ReceiptsPage = ({ user }) => {
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <ReceiptMetadata label="Purchase Date" value={selectedReceipt.purchaseDate} />
+                    <ReceiptMetadata label="Purchase date" value={selectedReceipt.purchaseDate} />
                     <ReceiptMetadata
                       label="Total"
                       value={selectedReceipt.total ? `${selectedReceipt.currency || '$'}${selectedReceipt.total}` : '—'}
@@ -344,7 +349,7 @@ const ReceiptsPage = ({ user }) => {
                     <div className="flex-1 rounded-xl border border-border p-3 max-h-80 overflow-y-auto">
                       <div className="flex items-center gap-1.5 mb-1.5">
                         <ImageIcon className="size-4 text-muted-foreground" />
-                        <p className="text-sm font-semibold">OCR Text</p>
+                        <p className="text-sm font-medium">Scanned text</p>
                       </div>
                       <p className="text-sm font-mono whitespace-pre-wrap">
                         {selectedReceipt.rawText || 'No OCR output yet.'}
@@ -354,10 +359,10 @@ const ReceiptsPage = ({ user }) => {
                 </div>
               ) : (
                 <div className="text-center py-10">
-                  <ImageIcon className="size-12 text-muted-foreground/50 mx-auto mb-3" />
-                  <p className="font-display font-semibold mb-1">Select a receipt to view details</p>
+                  <ImageIcon className="size-8 text-muted-foreground/60 mx-auto mb-3" />
+                  <p className="font-medium mb-1">Select a receipt</p>
                   <p className="text-sm text-muted-foreground">
-                    Choose a receipt from the list to see OCR output, metadata, and line items.
+                    Its line items, totals and scanned text show up here.
                   </p>
                 </div>
               )}
