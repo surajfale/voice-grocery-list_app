@@ -245,7 +245,7 @@ const invokedDirectly = (() => {
   }
   try {
     return import.meta.url === pathToFileURL(process.argv[1]).href;
-  } catch (_error) {
+  } catch {
     return false;
   }
 })();
@@ -255,6 +255,7 @@ if (invokedDirectly) {
     .then(() => {
       logger.info('ingest.run.finished');
       console.log('\n✨ Embedding job completed successfully!');
+      // eslint-disable-next-line no-process-exit -- CLI entrypoint: exit explicitly so open HTTP keep-alive sockets can't hang a scheduled run
       process.exit(0);
     })
     .catch((error) => {
@@ -262,6 +263,7 @@ if (invokedDirectly) {
       console.error('\n❌ Embedding job failed:', error.message || error);
       console.error('Stack:', error.stack);
       mongoose.disconnect().finally(() => {
+        // eslint-disable-next-line no-process-exit -- CLI entrypoint: exit explicitly so open HTTP keep-alive sockets can't hang a scheduled run
         process.exit(1);
       });
     });

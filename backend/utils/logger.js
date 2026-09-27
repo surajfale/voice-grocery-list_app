@@ -23,10 +23,9 @@ const baseLog = (level, message, meta = {}) => {
     if (payload.apiKey) {
       payload.apiKey = redact(payload.apiKey);
     }
-    // eslint-disable-next-line no-console
     console.log(JSON.stringify(payload));
-  } catch (error) {
-    // eslint-disable-next-line no-console
+  } catch {
+    // Unserializable meta (e.g. circular): fall back to a plain line
     console.log(`[${level}] ${message}`, meta);
   }
 };
