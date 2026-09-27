@@ -64,6 +64,20 @@ describe('ReceiptChunker', () => {
     expect(chunk.text).not.toMatch(/\t|\s{3,}/);
     expect(chunk.metadata.itemCount).toBe(2);
   });
+
+  it('carries user-assigned item categories into chunk items and text', () => {
+    const [chunk] = chunkReceipt({
+      ...baseReceipt,
+      items: [
+        { name: 'Paper towels', quantity: 1, price: 24.99, category: 'Household' },
+        { name: 'Spinach', quantity: 1, price: 4.5 }
+      ]
+    });
+
+    expect(chunk.items[0]).toEqual({ name: 'Paper towels', quantity: 1, price: 24.99, currency: 'usd', category: 'Household' });
+    expect(chunk.items[1]).not.toHaveProperty('category');
+    expect(chunk.text).toContain('Household');
+  });
 });
 
 

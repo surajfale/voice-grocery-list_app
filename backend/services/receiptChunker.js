@@ -230,13 +230,18 @@ export class ReceiptChunker {
                     name: item.name.trim(),
                     quantity: item.quantity || 1,
                     price: typeof item.price === 'number' ? item.price : null,
-                    currency: item.currency || receipt.currency || 'USD'
+                    currency: item.currency || receipt.currency || 'USD',
+                    ...(item.category ? { category: item.category } : {})
                 }))
             : [];
         const itemNames = structuredItems.map((item) => item.name);
 
         // Detect grocery categories from item names for better semantic retrieval
-        const categories = detectCategories(itemNames);
+        // User-assigned categories win; keyword detection fills in the rest
+        const categories = [...new Set([
+            ...structuredItems.map((item) => item.category).filter(Boolean),
+            ...detectCategories(itemNames)
+        ])];
         const categoryLine = categories.length
             ? `Categories: ${categories.join(', ')}`
             : '';

@@ -317,6 +317,7 @@ export const getReceipt = async (req, res) => {
 
 const MERCHANT_MAX_LENGTH = 120;
 const ITEM_NAME_MAX_LENGTH = 120;
+const CATEGORY_MAX_LENGTH = 40;
 const MAX_ITEMS = 200;
 const MAX_AMOUNT = 100000;
 const MAX_QUANTITY = 1000;
@@ -327,7 +328,8 @@ const isFiniteNumber = (value) => typeof value === 'number' && Number.isFinite(v
 
 /**
  * Validates edited line items. Negative prices are allowed (coupons, savings
- * lines); currency is not accepted from the client and is set from the receipt.
+ * lines); category is optional (omitted = guess from the name); currency is
+ * not accepted from the client and is set from the receipt.
  * @returns {{ items?: Array, error?: string }}
  */
 const validateReceiptItems = (items) => {
@@ -362,7 +364,17 @@ const validateReceiptItems = (items) => {
       return { error: `${label} price must be a number up to ${MAX_AMOUNT}` };
     }
 
-    normalized.push({ name, quantity, price: price === null ? null : toCents(price) });
+    const category = item.category ?? null;
+    if (category !== null && (typeof category !== 'string' || !category.trim() || category.trim().length > CATEGORY_MAX_LENGTH)) {
+      return { error: `${label} category must be text up to ${CATEGORY_MAX_LENGTH} characters` };
+    }
+
+    normalized.push({
+      name,
+      quantity,
+      price: price === null ? null : toCents(price),
+      ...(category ? { category: category.trim() } : {})
+    });
   }
 
   return { items: normalized };

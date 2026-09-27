@@ -190,6 +190,23 @@ describe('Receipt update validation', () => {
     });
   });
 
+  it('keeps a trimmed item category and omits a null one', () => {
+    expect(validateReceiptUpdate({
+      items: [{ name: 'Paper towels', category: ' Household ' }, { name: 'Milk', category: null }]
+    }, now).updates.items).toEqual([
+      { name: 'Paper towels', quantity: 1, price: null, category: 'Household' },
+      { name: 'Milk', quantity: 1, price: null }
+    ]);
+  });
+
+  it.each([
+    [{ items: [{ name: 'Milk', category: 7 }] }],
+    [{ items: [{ name: 'Milk', category: '  ' }] }],
+    [{ items: [{ name: 'Milk', category: 'x'.repeat(41) }] }]
+  ])('rejects bad category %j', (body) => {
+    expect(validateReceiptUpdate(body, now).error).toMatch(/category/);
+  });
+
   it('accepts an empty item list', () => {
     expect(validateReceiptUpdate({ items: [] }, now)).toEqual({ updates: { items: [] } });
   });

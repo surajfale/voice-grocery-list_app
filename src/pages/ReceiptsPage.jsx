@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import dayjs from 'dayjs';
-import { CloudUpload, Trash2, Image as ImageIcon, RefreshCw, ChevronLeft, ChevronRight, Loader2, ReceiptText, Pencil, Share2, Download } from 'lucide-react';
+import { CloudUpload, Trash2, Image as ImageIcon, RefreshCw, ChevronLeft, ChevronRight, Loader2, ReceiptText, Pencil, Share2, Download, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import useReceipts from '../hooks/useReceipts.js';
 import ReceiptChatPanel from '../components/receipts/ReceiptChatPanel.jsx';
@@ -18,6 +18,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { hueFromString } from '../utils/categoryStyles';
 import { formatMoney } from '../utils/money';
+import { buildCategoryResolver, getTotalMismatch } from '../utils/receiptInsights';
 
 const ALLOWED_FILE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'];
 
@@ -208,6 +209,20 @@ const ReceiptsPage = ({ user }) => {
       setLocalError('Failed to download receipt image. Please try again.');
     }
   };
+
+  // Category guesses for the edit dialog, including picks remembered from
+  // other receipts
+  const categoryResolver = useMemo(() => buildCategoryResolver(receipts), [receipts]);
+
+  /** Select a receipt (if needed) and open the editor once it's loaded */
+  const openEditor = async (receiptId) => {
+    if (receiptId !== selectedReceiptId) {
+      await selectReceipt(receiptId);
+    }
+    setEditOpen(true);
+  };
+
+  const selectedMismatch = getTotalMismatch(selectedReceipt);
 
   const handleSaveReceipt = async (receiptId, updates) => {
     await updateReceipt(receiptId, updates);
@@ -411,6 +426,20 @@ const ReceiptsPage = ({ user }) => {
                                   {receipt.status}
                                 </Badge>
                               )}
+                              {getTotalMismatch(receipt) && (
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    openEditor(receipt._id);
+                                  }}
+                                  title="Line items don’t add up to the total"
+                                  className="inline-flex items-center gap-1 h-5 px-1.5 rounded-md text-[11px] font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/25 transition-colors"
+                                >
+                                  <TriangleAlert className="size-3" />
+                                  Check total
+                                </button>
+                              )}
                             </div>
                           </div>
                           <span className="text-sm font-semibold tabular-nums">{formatMoney(receipt.total, receipt.currency)}</span>
@@ -493,6 +522,19 @@ const ReceiptsPage = ({ user }) => {
                       Download image
                     </button>
                   </div>
+
+                  {selectedMismatch && (
+                    <div role="note" className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-3">
+                      <TriangleAlert className="size-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-300" />
+                      <p className="text-sm flex-1">
+                        Items add up to <span className="font-semibold tabular-nums">{formatMoney(selectedMismatch.itemsSum, selectedReceipt.currency)}</span>, but the total is{' '}
+                        <span className="font-semibold tabular-nums">{formatMoney(selectedMismatch.total, selectedReceipt.currency)}</span>. A price or line may have been misread.
+                      </p>
+                      <button type="button" onClick={() => setEditOpen(true)} className="text-sm font-semibold text-primary hover:underline shrink-0">
+                        Review
+                      </button>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-3 gap-2">
                     <ReceiptMetadata label="Items" value={selectedReceipt.items?.length || 0} />
@@ -584,6 +626,7 @@ const ReceiptsPage = ({ user }) => {
         receipt={selectedReceipt}
         onOpenChange={setEditOpen}
         onSave={handleSaveReceipt}
+        guessCategory={categoryResolver.guess}
       />
 
       {/* Hidden export card for Share / Download image */}

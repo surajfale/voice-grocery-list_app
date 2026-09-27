@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import groceryIntelligence from '../../services/groceryIntelligence.js';
+import { buildCategoryResolver } from '../../utils/receiptInsights';
 import { getCategoryStyle, hueFromString } from '../../utils/categoryStyles';
 import SpendingExportCard, { toCategoryRow, toStoreRow } from './SpendingExportCard.jsx';
 import { renderImage, saveBlob, shareImage } from '../../utils/downloadList';
@@ -68,6 +68,7 @@ const sumBy = (entries, keyOf, valueOf) => {
 
 const SpendingInsights = ({ receipts, loading = false }) => {
   const [selectedStore, setSelectedStore] = useState('all');
+  const [shareMonthChoice, setShareMonthChoice] = useState(null);
   const exportCardRef = useRef(null);
   const pendingExportRef = useRef(null);
 
@@ -127,6 +128,9 @@ const SpendingInsights = ({ receipts, loading = false }) => {
       .map(([store, total]) => ({ store, total: Math.round(total * 100) / 100 }));
   }, [readyReceipts]);
 
+  // Applies user-assigned categories, remembered picks, then keyword guesses
+  const categoryResolver = useMemo(() => buildCategoryResolver(receipts), [receipts]);
+
   const categoryTotals = useMemo(() => {
     const totals = new Map();
     filteredReceipts.forEach((receipt) => {
@@ -134,7 +138,7 @@ const SpendingInsights = ({ receipts, loading = false }) => {
         if (typeof item.price !== 'number' || !item.name) {
           return;
         }
-        const category = groceryIntelligence.categorizeItem(item.name) || 'Other';
+        const category = categoryResolver.resolve(item);
         totals.set(category, (totals.get(category) || 0) + item.price);
       });
     });
@@ -142,13 +146,17 @@ const SpendingInsights = ({ receipts, loading = false }) => {
       .sort((a, b) => b[1] - a[1])
       .slice(0, TOP_CATEGORY_LIMIT)
       .map(([category, total]) => ({ category, total: Math.round(total * 100) / 100 }));
-  }, [filteredReceipts]);
+  }, [filteredReceipts, categoryResolver]);
 
-  // Shareable summary of the most recent month with receipts (respects the
-  // store filter)
+  // Months that can be shared, newest first. The picked month falls back to
+  // the latest one when a store filter leaves it without receipts.
+  const shareMonths = useMemo(() => monthlyTrend.map((point) => point.month).reverse(), [monthlyTrend]);
+  const shareMonth = shareMonths.includes(shareMonthChoice) ? shareMonthChoice : shareMonths[0];
+
+  // Shareable summary of the chosen month (respects the store filter)
   const shareSummary = useMemo(() => {
-    if (!monthlyTrend.length) { return null; }
-    const month = monthlyTrend[monthlyTrend.length - 1].month;
+    if (!shareMonth) { return null; }
+    const month = shareMonth;
     const inMonth = filteredReceipts.filter((receipt) => getMonthKey(receipt) === month);
     const total = inMonth.reduce((sum, receipt) => sum + receipt.total, 0);
 
@@ -171,14 +179,14 @@ const SpendingInsights = ({ receipts, loading = false }) => {
       changePct,
       trend,
       stores: sumBy(inMonth, getStoreName, (receipt) => receipt.total).slice(0, SHARE_STORE_LIMIT).map(toStoreRow),
-      categories: sumBy(items, (item) => groceryIntelligence.categorizeItem(item.name) || 'Other', (item) => item.price)
+      categories: sumBy(items, categoryResolver.resolve, (item) => item.price)
         .filter(([, value]) => value > 0)
         // "Other" says nothing on a shared card; keep it, but after real categories
         .sort((a, b) => Number(a[0] === 'Other') - Number(b[0] === 'Other'))
         .slice(0, SHARE_CATEGORY_LIMIT)
         .map(toCategoryRow),
     };
-  }, [monthlyTrend, filteredReceipts]);
+  }, [shareMonth, monthlyTrend, filteredReceipts, categoryResolver]);
 
   const storeFilterLabel = selectedStore === 'all' ? null : selectedStore;
   const exportKey = shareSummary ? JSON.stringify([shareSummary, storeFilterLabel]) : null;
@@ -265,6 +273,16 @@ const SpendingInsights = ({ receipts, loading = false }) => {
         </Select>
         {shareSummary && (
           <div className="flex gap-2 ml-auto">
+            <Select value={shareMonth} onValueChange={setShareMonthChoice}>
+              <SelectTrigger className="rounded-xl h-9 w-[7.5rem]" aria-label="Month to share">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {shareMonths.map((month) => (
+                  <SelectItem key={month} value={month}>{dayjs(`${month}-01`).format('MMM YYYY')}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <button
               type="button"
               onClick={handleShareSummary}
