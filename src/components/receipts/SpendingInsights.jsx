@@ -335,12 +335,13 @@ const SpendingInsights = ({ receipts, loading = false }) => {
         </div>
       )}
 
-      <div className="grid sm:grid-cols-3 gap-3">
+      {/* Top store is meaningless while one store is selected, so it's hidden */}
+      <div className={`grid gap-3 ${selectedStore === 'all' ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
         {[
           { label: periodLabel ? `Spent in ${periodLabel}` : 'Total spent', value: formatCurrency(totalSpent), Icon: Wallet, hue: 150 },
           { label: `Avg per receipt${periodLabel ? ` · ${receiptCount}` : ''}`, value: formatCurrency(avgPerReceipt), Icon: ReceiptText, hue: 250 },
-          { label: periodLabel ? `Top store in ${periodLabel}` : 'Top store', value: topStore, Icon: Store, hue: 40 },
-        ].map(({ label, value, Icon, hue }, index) => (
+          selectedStore === 'all' && { label: periodLabel ? `Top store in ${periodLabel}` : 'Top store', value: topStore, Icon: Store, hue: 40 },
+        ].filter(Boolean).map(({ label, value, Icon, hue }, index) => (
           <Card
             key={label}
             className="p-4 rounded-2xl flex-row items-center gap-3 rise-in"
