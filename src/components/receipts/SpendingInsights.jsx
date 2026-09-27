@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import PropTypes from 'prop-types';
 import dayjs from 'dayjs';
@@ -69,7 +69,8 @@ const sumBy = (entries, keyOf, valueOf) => {
 
 const SpendingInsights = ({ receipts, loading = false }) => {
   const [selectedStore, setSelectedStore] = useState('all');
-  const [shareMonthChoice, setShareMonthChoice] = useState(null);
+  // 'all' or a 'YYYY-MM' month; filters the tiles and the store/category charts
+  const [periodChoice, setPeriodChoice] = useState('all');
   const [showAllPriceChanges, setShowAllPriceChanges] = useState(false);
   const [showAllCheapest, setShowAllCheapest] = useState(false);
   const exportCardRef = useRef(null);
@@ -98,16 +99,6 @@ const SpendingInsights = ({ receipts, loading = false }) => {
     return readyReceipts.filter((receipt) => getStoreName(receipt) === selectedStore);
   }, [readyReceipts, selectedStore]);
 
-  const totalSpent = useMemo(
-    () => filteredReceipts.reduce((sum, receipt) => sum + receipt.total, 0),
-    [filteredReceipts]
-  );
-
-  const receiptCount = filteredReceipts.length;
-  const avgPerReceipt = receiptCount > 0 ? totalSpent / receiptCount : 0;
-  // Most-visited store across all receipts, matching the Receipts header
-  const topStore = useMemo(() => getTopStore(receipts)?.name || '—', [receipts]);
-
   const monthlyTrend = useMemo(() => {
     const totals = new Map();
     filteredReceipts.forEach((receipt) => {
@@ -120,9 +111,28 @@ const SpendingInsights = ({ receipts, loading = false }) => {
       .map(([month, total]) => ({ month, total: Math.round(total * 100) / 100 }));
   }, [filteredReceipts]);
 
+  // Months with receipts (newest first). A chosen month that the store filter
+  // leaves empty falls back to "All time".
+  const periodMonths = useMemo(() => monthlyTrend.map((point) => point.month).reverse(), [monthlyTrend]);
+  const period = periodMonths.includes(periodChoice) ? periodChoice : 'all';
+  const periodLabel = period === 'all' ? null : dayjs(`${period}-01`).format('MMM YYYY');
+  const inPeriod = useCallback((receipt) => period === 'all' || getMonthKey(receipt) === period, [period]);
+
+  const periodReceipts = useMemo(() => filteredReceipts.filter(inPeriod), [filteredReceipts, inPeriod]);
+
+  const totalSpent = useMemo(
+    () => periodReceipts.reduce((sum, receipt) => sum + receipt.total, 0),
+    [periodReceipts]
+  );
+
+  const receiptCount = periodReceipts.length;
+  const avgPerReceipt = receiptCount > 0 ? totalSpent / receiptCount : 0;
+  // Most-visited store in the period (all stores), matching the Receipts header
+  const topStore = useMemo(() => getTopStore(receipts.filter(inPeriod))?.name || '—', [receipts, inPeriod]);
+
   const storeTotals = useMemo(() => {
     const totals = new Map();
-    readyReceipts.forEach((receipt) => {
+    readyReceipts.filter(inPeriod).forEach((receipt) => {
       const store = getStoreName(receipt);
       totals.set(store, (totals.get(store) || 0) + receipt.total);
     });
@@ -130,14 +140,14 @@ const SpendingInsights = ({ receipts, loading = false }) => {
       .sort((a, b) => b[1] - a[1])
       .slice(0, TOP_STORE_LIMIT)
       .map(([store, total]) => ({ store, total: Math.round(total * 100) / 100 }));
-  }, [readyReceipts]);
+  }, [readyReceipts, inPeriod]);
 
   // Applies user-assigned categories, remembered picks, then keyword guesses
   const categoryResolver = useMemo(() => buildCategoryResolver(receipts), [receipts]);
 
   const categoryTotals = useMemo(() => {
     const totals = new Map();
-    filteredReceipts.forEach((receipt) => {
+    periodReceipts.forEach((receipt) => {
       (receipt.items || []).forEach((item) => {
         if (typeof item.price !== 'number' || !item.name) {
           return;
@@ -150,12 +160,10 @@ const SpendingInsights = ({ receipts, loading = false }) => {
       .sort((a, b) => b[1] - a[1])
       .slice(0, TOP_CATEGORY_LIMIT)
       .map(([category, total]) => ({ category, total: Math.round(total * 100) / 100 }));
-  }, [filteredReceipts, categoryResolver]);
+  }, [periodReceipts, categoryResolver]);
 
-  // Months that can be shared, newest first. The picked month falls back to
-  // the latest one when a store filter leaves it without receipts.
-  const shareMonths = useMemo(() => monthlyTrend.map((point) => point.month).reverse(), [monthlyTrend]);
-  const shareMonth = shareMonths.includes(shareMonthChoice) ? shareMonthChoice : shareMonths[0];
+  // The share card always summarises one month: the chosen one, or the latest
+  const shareMonth = period === 'all' ? periodMonths[0] : period;
 
   // Unit-price changes between the last two visits to the same store
   const priceChanges = useMemo(() => findPriceChanges(filteredReceipts), [filteredReceipts]);
@@ -285,18 +293,19 @@ const SpendingInsights = ({ receipts, loading = false }) => {
             ))}
           </SelectContent>
         </Select>
+        <Select value={period} onValueChange={setPeriodChoice}>
+          <SelectTrigger className="min-w-[150px] rounded-xl" aria-label="Filter by month">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All time</SelectItem>
+            {periodMonths.map((month) => (
+              <SelectItem key={month} value={month}>{dayjs(`${month}-01`).format('MMMM YYYY')}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {shareSummary && (
           <div className="flex gap-2 ml-auto">
-            <Select value={shareMonth} onValueChange={setShareMonthChoice}>
-              <SelectTrigger className="rounded-xl h-9 w-[7.5rem]" aria-label="Month to share">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {shareMonths.map((month) => (
-                  <SelectItem key={month} value={month}>{dayjs(`${month}-01`).format('MMM YYYY')}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <button
               type="button"
               onClick={handleShareSummary}
@@ -304,7 +313,7 @@ const SpendingInsights = ({ receipts, loading = false }) => {
               style={{ boxShadow: 'none' }}
             >
               <Share2 className="size-4" />
-              Share summary
+              {period === 'all' ? 'Share summary' : `Share ${dayjs(`${period}-01`).format('MMM')}`}
             </button>
             <button
               type="button"
@@ -328,9 +337,9 @@ const SpendingInsights = ({ receipts, loading = false }) => {
 
       <div className="grid sm:grid-cols-3 gap-3">
         {[
-          { label: 'Total spent', value: formatCurrency(totalSpent), Icon: Wallet, hue: 150 },
-          { label: 'Avg per receipt', value: formatCurrency(avgPerReceipt), Icon: ReceiptText, hue: 250 },
-          { label: 'Top store', value: topStore, Icon: Store, hue: 40 },
+          { label: periodLabel ? `Spent in ${periodLabel}` : 'Total spent', value: formatCurrency(totalSpent), Icon: Wallet, hue: 150 },
+          { label: `Avg per receipt${periodLabel ? ` · ${receiptCount}` : ''}`, value: formatCurrency(avgPerReceipt), Icon: ReceiptText, hue: 250 },
+          { label: periodLabel ? `Top store in ${periodLabel}` : 'Top store', value: topStore, Icon: Store, hue: 40 },
         ].map(({ label, value, Icon, hue }, index) => (
           <Card
             key={label}
@@ -498,7 +507,7 @@ const SpendingInsights = ({ receipts, loading = false }) => {
 
       <div className="grid md:grid-cols-2 gap-4">
         <Card className="p-5 rounded-2xl gap-0">
-          <h6 className="font-medium mb-3">Spend by store</h6>
+          <h6 className="font-medium mb-3">Spend by store{periodLabel ? ` — ${periodLabel}` : ''}</h6>
           {storeTotals.length > 0 ? (
             <ResponsiveContainer width="100%" height={320}>
               <BarChart data={storeTotals} layout="vertical" margin={{ left: 16, right: 16 }}>
@@ -519,7 +528,7 @@ const SpendingInsights = ({ receipts, loading = false }) => {
         </Card>
         <Card className="p-5 rounded-2xl gap-0">
           <h6 className="font-medium mb-3">
-            Spend by category{selectedStore !== 'all' ? ` — ${selectedStore}` : ''}
+            Spend by category{[selectedStore !== 'all' && selectedStore, periodLabel].filter(Boolean).map((part) => ` — ${part}`).join('')}
           </h6>
           {categoryTotals.length > 0 ? (
             <ResponsiveContainer width="100%" height={320}>
