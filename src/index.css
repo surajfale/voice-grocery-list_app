@@ -330,6 +330,28 @@ time {
   pointer-events: none;
 }
 
+/* Assistant "thinking" indicator */
+@keyframes typing-dot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+
+.typing-dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.typing-dots > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--primary);
+  animation: typing-dot 1.1s ease-in-out infinite;
+}
+
+.typing-dots > span:nth-child(2) { animation-delay: 0.15s; }
+.typing-dots > span:nth-child(3) { animation-delay: 0.3s; }
+
 /* Staggered entry for list sections (delay set inline per index) */
 @keyframes rise-in {
   from { opacity: 0; transform: translateY(10px); }
