@@ -72,6 +72,30 @@ export const downloadListAsText = (content, dateString) => {
 };
 
 /**
+ * Rasterizes an element with html2canvas.
+ *
+ * html2canvas 1.x cannot parse modern color functions (oklch(), color-mix()),
+ * and Tailwind v4's base layer cascades them onto every element (e.g.
+ * `* { border-color: var(--border) }`), which made every export throw.
+ * PrintableList is styled entirely inline with hex values, so the app's
+ * stylesheets are dropped from html2canvas's cloned document before capture.
+ * @param {HTMLElement} element - DOM element to capture
+ * @returns {Promise<HTMLCanvasElement>}
+ */
+const renderToCanvas = (element) =>
+  html2canvas(element, {
+    backgroundColor: '#ffffff',
+    scale: 2, // Higher quality
+    logging: false,
+    useCORS: true,
+    onclone: (clonedDocument) => {
+      clonedDocument
+        .querySelectorAll('style, link[rel="stylesheet"]')
+        .forEach((node) => node.remove());
+    },
+  });
+
+/**
  * Captures an HTML element as an image and downloads it
  * @param {HTMLElement} element - DOM element to capture
  * @param {string} dateString - Date string for filename
@@ -79,12 +103,7 @@ export const downloadListAsText = (content, dateString) => {
  */
 export const captureAsImage = async (element, _dateString) => {
   try {
-    const canvas = await html2canvas(element, {
-      backgroundColor: '#ffffff',
-      scale: 2, // Higher quality
-      logging: false,
-      useCORS: true,
-    });
+    const canvas = await renderToCanvas(element);
 
     return new Promise((resolve) => {
       canvas.toBlob((blob) => {
@@ -126,12 +145,7 @@ export const downloadListAsImage = async (element, dateString) => {
  */
 export const downloadListAsPDF = async (element, dateString) => {
   try {
-    const canvas = await html2canvas(element, {
-      backgroundColor: '#ffffff',
-      scale: 2,
-      logging: false,
-      useCORS: true,
-    });
+    const canvas = await renderToCanvas(element);
 
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({
