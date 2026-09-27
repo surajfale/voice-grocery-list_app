@@ -316,18 +316,68 @@ export const getReceipt = async (req, res) => {
 };
 
 const MERCHANT_MAX_LENGTH = 120;
+const ITEM_NAME_MAX_LENGTH = 120;
+const MAX_ITEMS = 200;
+const MAX_AMOUNT = 100000;
+const MAX_QUANTITY = 1000;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
+const toCents = (value) => Math.round(value * 100) / 100;
+const isFiniteNumber = (value) => typeof value === 'number' && Number.isFinite(value);
+
 /**
- * Validates a user edit to a receipt. Only merchant and purchaseDate are
- * editable; everything else comes from OCR and is ignored.
+ * Validates edited line items. Negative prices are allowed (coupons, savings
+ * lines); currency is not accepted from the client and is set from the receipt.
+ * @returns {{ items?: Array, error?: string }}
+ */
+const validateReceiptItems = (items) => {
+  if (!Array.isArray(items)) {
+    return { error: 'Items must be an array' };
+  }
+  if (items.length > MAX_ITEMS) {
+    return { error: `A receipt can have at most ${MAX_ITEMS} items` };
+  }
+
+  const normalized = [];
+  for (const [index, item] of items.entries()) {
+    const label = `Item ${index + 1}`;
+    if (!item || typeof item !== 'object') {
+      return { error: `${label} is invalid` };
+    }
+    const name = typeof item.name === 'string' ? item.name.trim().replace(/\s+/g, ' ') : '';
+    if (!name) {
+      return { error: `${label} needs a name` };
+    }
+    if (name.length > ITEM_NAME_MAX_LENGTH) {
+      return { error: `${label} name must be ${ITEM_NAME_MAX_LENGTH} characters or fewer` };
+    }
+
+    const quantity = item.quantity ?? 1;
+    if (!isFiniteNumber(quantity) || quantity <= 0 || quantity > MAX_QUANTITY) {
+      return { error: `${label} quantity must be between 0 and ${MAX_QUANTITY}` };
+    }
+
+    const price = item.price ?? null;
+    if (price !== null && (!isFiniteNumber(price) || Math.abs(price) > MAX_AMOUNT)) {
+      return { error: `${label} price must be a number up to ${MAX_AMOUNT}` };
+    }
+
+    normalized.push({ name, quantity, price: price === null ? null : toCents(price) });
+  }
+
+  return { items: normalized };
+};
+
+/**
+ * Validates a user edit to a receipt. Only merchant, purchaseDate, items and
+ * total are editable; everything else comes from OCR and is ignored.
  * @param {object} body - Request body
  * @param {Date} [now] - Injectable clock for tests
  * @returns {{ updates?: object, error?: string }}
  */
 export const validateReceiptUpdate = (body, now = new Date()) => {
   const updates = {};
-  const { merchant, purchaseDate } = body || {};
+  const { merchant, purchaseDate, items, total } = body || {};
 
   if (merchant !== undefined) {
     if (typeof merchant !== 'string' || !merchant.trim()) {
@@ -356,8 +406,23 @@ export const validateReceiptUpdate = (body, now = new Date()) => {
     updates.purchaseDate = purchaseDate;
   }
 
+  if (items !== undefined) {
+    const result = validateReceiptItems(items);
+    if (result.error) {
+      return { error: result.error };
+    }
+    updates.items = result.items;
+  }
+
+  if (total !== undefined) {
+    if (!isFiniteNumber(total) || total < 0 || total > MAX_AMOUNT) {
+      return { error: `Total must be a number between 0 and ${MAX_AMOUNT}` };
+    }
+    updates.total = toCents(total);
+  }
+
   if (!Object.keys(updates).length) {
-    return { error: 'Provide merchant and/or purchaseDate to update' };
+    return { error: 'Provide merchant, purchaseDate, items or total to update' };
   }
 
   return { updates };
@@ -391,18 +456,30 @@ export const updateReceipt = async (req, res) => {
       });
     }
 
-    const changed = Object.entries(updates).some(([key, value]) => receipt[key] !== value);
+    if (updates.items) {
+      updates.items = updates.items.map((item) => ({ ...item, currency: receipt.currency }));
+    }
+
+    const current = asObject(receipt);
+    const changed = Object.entries(updates).some(([key, value]) => JSON.stringify(current[key] ?? null) !== JSON.stringify(value));
     if (!changed) {
-      return res.json({ success: true, receipt: asObject(receipt) });
+      return res.json({ success: true, receipt: current });
     }
 
     receipt.set(updates);
     await receipt.save();
 
     // Keep chunk metadata in sync right away so chat date/merchant filters are
-    // correct even before (or without) re-embedding
-    const ReceiptChunk = (await import('../models/ReceiptChunk.js')).default;
-    await ReceiptChunk.updateMany({ receiptId: receipt._id }, { $set: updates });
+    // correct even before (or without) re-embedding. Chunk items/total are
+    // rebuilt by the re-embed below.
+    const chunkMetadata = {};
+    if (updates.merchant) { chunkMetadata.merchant = updates.merchant; }
+    if (updates.purchaseDate) { chunkMetadata.purchaseDate = updates.purchaseDate; }
+    if (updates.total !== undefined) { chunkMetadata.total = updates.total; }
+    if (Object.keys(chunkMetadata).length) {
+      const ReceiptChunk = (await import('../models/ReceiptChunk.js')).default;
+      await ReceiptChunk.updateMany({ receiptId: receipt._id }, { $set: chunkMetadata });
+    }
 
     // Chunk text embeds "Merchant: … | Date: …", so re-embed to keep semantic
     // search accurate (the latest write wins over any in-flight upload embed)
@@ -461,6 +538,22 @@ export const deleteReceipt = async (req, res) => {
     }
 
     await Receipt.deleteOne({ _id: receiptId });
+
+    // Otherwise the RAG chat keeps retrieving (and citing) the deleted receipt.
+    // A failure here is non-fatal: the ingestion job prunes orphaned chunks.
+    try {
+      const deletedChunks = await vectorStore.deleteChunksForReceipt(receipt._id);
+      logger.info('receipt.deleted', {
+        receiptId: receipt._id.toString(),
+        userId: userId?.toString(),
+        deletedChunks
+      });
+    } catch (chunkError) {
+      logger.error('receipt.delete_chunks_failed', {
+        receiptId: receipt._id.toString(),
+        error: chunkError.message || chunkError
+      });
+    }
 
     try {
       await deleteFileFromGridFs(receipt.fileId);

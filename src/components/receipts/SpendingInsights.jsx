@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import PropTypes from 'prop-types';
 import dayjs from 'dayjs';
 import {
@@ -13,7 +14,7 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts';
-import { Wallet, ReceiptText, Store } from 'lucide-react';
+import { Wallet, ReceiptText, Store, Share2, Download } from 'lucide-react';
 import { Card } from '../ui/card';
 import {
   Select,
@@ -24,6 +25,9 @@ import {
 } from '../ui/select';
 import groceryIntelligence from '../../services/groceryIntelligence.js';
 import { getCategoryStyle, hueFromString } from '../../utils/categoryStyles';
+import SpendingExportCard, { toCategoryRow, toStoreRow } from './SpendingExportCard.jsx';
+import { renderImage, saveBlob, shareImage } from '../../utils/downloadList';
+import { formatMoney } from '../../utils/money';
 
 // Mid lightness/chroma reads well on both light and dark chart backgrounds
 const barColor = (hue) => `oklch(0.68 0.14 ${hue})`;
@@ -31,6 +35,9 @@ const barColor = (hue) => `oklch(0.68 0.14 ${hue})`;
 const UNKNOWN_STORE = 'Unknown store';
 const TOP_STORE_LIMIT = 8;
 const TOP_CATEGORY_LIMIT = 8;
+const SHARE_STORE_LIMIT = 4;
+const SHARE_CATEGORY_LIMIT = 5;
+const SHARE_TREND_MONTHS = 6;
 
 const formatCurrency = (value, currency = '$') => `${currency}${value.toFixed(2)}`;
 
@@ -50,8 +57,19 @@ const chartTooltipStyle = {
   fontSize: '0.8rem',
 };
 
+const sumBy = (entries, keyOf, valueOf) => {
+  const totals = new Map();
+  entries.forEach((entry) => {
+    const key = keyOf(entry);
+    if (key) { totals.set(key, (totals.get(key) || 0) + valueOf(entry)); }
+  });
+  return [...totals.entries()].sort((a, b) => b[1] - a[1]);
+};
+
 const SpendingInsights = ({ receipts, loading = false }) => {
   const [selectedStore, setSelectedStore] = useState('all');
+  const exportCardRef = useRef(null);
+  const pendingExportRef = useRef(null);
 
   const readyReceipts = useMemo(
     () => receipts.filter((receipt) => typeof receipt.total === 'number'),
@@ -126,6 +144,97 @@ const SpendingInsights = ({ receipts, loading = false }) => {
       .map(([category, total]) => ({ category, total: Math.round(total * 100) / 100 }));
   }, [filteredReceipts]);
 
+  // Shareable summary of the most recent month with receipts (respects the
+  // store filter)
+  const shareSummary = useMemo(() => {
+    if (!monthlyTrend.length) { return null; }
+    const month = monthlyTrend[monthlyTrend.length - 1].month;
+    const inMonth = filteredReceipts.filter((receipt) => getMonthKey(receipt) === month);
+    const total = inMonth.reduce((sum, receipt) => sum + receipt.total, 0);
+
+    const previousMonth = dayjs(`${month}-01`).subtract(1, 'month').format('YYYY-MM');
+    const previousTotal = monthlyTrend.find((point) => point.month === previousMonth)?.total;
+    const changePct = previousTotal ? Math.round(((total - previousTotal) / previousTotal) * 100) : null;
+
+    const byMonth = new Map(monthlyTrend.map((point) => [point.month, point.total]));
+    const trend = Array.from({ length: SHARE_TREND_MONTHS }, (_, index) => {
+      const key = dayjs(`${month}-01`).subtract(SHARE_TREND_MONTHS - 1 - index, 'month').format('YYYY-MM');
+      return { month: key, total: byMonth.get(key) || 0 };
+    });
+
+    const items = inMonth.flatMap((receipt) => receipt.items || []).filter((item) => item?.name && typeof item.price === 'number');
+    return {
+      month,
+      total,
+      currency: inMonth.find((receipt) => receipt.currency)?.currency,
+      count: inMonth.length,
+      changePct,
+      trend,
+      stores: sumBy(inMonth, getStoreName, (receipt) => receipt.total).slice(0, SHARE_STORE_LIMIT).map(toStoreRow),
+      categories: sumBy(items, (item) => groceryIntelligence.categorizeItem(item.name) || 'Other', (item) => item.price)
+        .filter(([, value]) => value > 0)
+        // "Other" says nothing on a shared card; keep it, but after real categories
+        .sort((a, b) => Number(a[0] === 'Other') - Number(b[0] === 'Other'))
+        .slice(0, SHARE_CATEGORY_LIMIT)
+        .map(toCategoryRow),
+    };
+  }, [monthlyTrend, filteredReceipts]);
+
+  const storeFilterLabel = selectedStore === 'all' ? null : selectedStore;
+  const exportKey = shareSummary ? JSON.stringify([shareSummary, storeFilterLabel]) : null;
+
+  // Pre-render so Share runs within the tap's user activation (iOS Safari)
+  useEffect(() => {
+    pendingExportRef.current = null;
+    if (!exportKey) { return undefined; }
+    const timer = setTimeout(() => {
+      if (exportCardRef.current) {
+        pendingExportRef.current = renderImage(exportCardRef.current);
+        pendingExportRef.current.catch(() => {});
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [exportKey]);
+
+  const getSummaryImage = () => {
+    if (!pendingExportRef.current && exportCardRef.current) {
+      pendingExportRef.current = renderImage(exportCardRef.current);
+    }
+    return pendingExportRef.current;
+  };
+
+  const summaryFileName = () => `spending-${shareSummary.month}${storeFilterLabel ? `-${storeFilterLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}` : ''}.png`;
+
+  const handleShareSummary = async () => {
+    const image = getSummaryImage();
+    if (!image || !shareSummary) { return; }
+    const monthLabel = dayjs(`${shareSummary.month}-01`).format('MMMM YYYY');
+    try {
+      const result = await shareImage(image, {
+        fileName: summaryFileName(),
+        title: `Spending · ${monthLabel}`,
+        text: [
+          `Spending · ${monthLabel}${storeFilterLabel ? ` · ${storeFilterLabel}` : ''}: ${formatMoney(shareSummary.total, shareSummary.currency)} across ${shareSummary.count} receipt${shareSummary.count === 1 ? '' : 's'}`,
+          ...shareSummary.stores.map((row) => `• ${row.label}: ${formatMoney(row.total, shareSummary.currency)}`),
+        ].join('\n'),
+      });
+      if (result === 'downloaded') { toast.success('Sharing isn’t available here, so the image was downloaded'); }
+    } catch {
+      toast.error('Couldn’t share the summary. Try downloading it instead.');
+    }
+  };
+
+  const handleDownloadSummary = async () => {
+    const image = getSummaryImage();
+    if (!image || !shareSummary) { return; }
+    try {
+      saveBlob(await image, summaryFileName());
+      toast.success('Summary image downloaded');
+    } catch {
+      toast.error('Couldn’t create the summary image. Please try again.');
+    }
+  };
+
   if (!loading && readyReceipts.length === 0) {
     return (
       <Card className="p-8 text-center rounded-2xl">
@@ -142,7 +251,7 @@ const SpendingInsights = ({ receipts, loading = false }) => {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2">
         <Select value={selectedStore} onValueChange={setSelectedStore}>
           <SelectTrigger className="min-w-[220px] rounded-xl" aria-label="Filter by store">
             <SelectValue placeholder="Store" />
@@ -154,7 +263,36 @@ const SpendingInsights = ({ receipts, loading = false }) => {
             ))}
           </SelectContent>
         </Select>
+        {shareSummary && (
+          <div className="flex gap-2 ml-auto">
+            <button
+              type="button"
+              onClick={handleShareSummary}
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl btn-gradient text-sm font-medium transition-transform active:scale-[0.97]"
+              style={{ boxShadow: 'none' }}
+            >
+              <Share2 className="size-4" />
+              Share summary
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadSummary}
+              aria-label="Download summary image"
+              title="Download summary image"
+              className="size-9 rounded-xl border border-border bg-card flex items-center justify-center hover:bg-accent transition-[background-color,transform] active:scale-[0.97]"
+            >
+              <Download className="size-4" />
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Hidden export card for Share / Download */}
+      {shareSummary && (
+        <div className="absolute -left-[9999px] top-0" aria-hidden="true">
+          <SpendingExportCard ref={exportCardRef} summary={shareSummary} storeFilter={storeFilterLabel} />
+        </div>
+      )}
 
       <div className="grid sm:grid-cols-3 gap-3">
         {[

@@ -101,6 +101,7 @@ pnpm dev
 - **downloadListAsPDF** - Paginated A4 PDF via jsPDF; pages only break at elements marked `data-pdf-break` (`planPageSlices`), so rows are never split
 - **PrintableList.jsx** - A component wired to a `printableListRef` that provides the formatted list layout used by the export utilities (always light palette, user's accent)
 - **receipts/ReceiptExportCard.jsx** - Same treatment for a single receipt (Share / Download image on the receipt details)
+- **receipts/SpendingExportCard.jsx** - Shareable monthly spending summary (latest month with receipts, respects the store filter) from the Spending tab
 
 ### Custom Hooks (src/hooks/)
 - **useGroceryList.js** - Grocery list state management and operations
@@ -151,7 +152,8 @@ pnpm dev
 - `/api/receipts` - Upload a receipt (POST, multipart)
 - `/api/receipts/user/:userId` - List a user's receipts
 - `/api/receipts/:receiptId` / `/api/receipts/:receiptId/image` - Fetch a receipt / stream its image
-- `PATCH /api/receipts/:receiptId` - Correct a receipt's `merchant` and/or `purchaseDate` (only these fields; validated by `validateReceiptUpdate`). Syncs `ReceiptChunk` metadata immediately and re-embeds in the background, since chunk text includes merchant/date
+- `PATCH /api/receipts/:receiptId` - Correct a receipt's `merchant`, `purchaseDate`, `items` (name/quantity/price; negative prices allowed for coupons, currency set server-side) and/or `total` — only these fields, validated by `validateReceiptUpdate`. Syncs `ReceiptChunk` metadata immediately and re-embeds in the background, since chunk text includes them
+- `DELETE /api/receipts/:receiptId` also deletes the receipt's `ReceiptChunk`s; `vectorStore.upsertChunks` trims chunks beyond a receipt's new chunk count, and the ingestion job prunes chunks whose receipt no longer exists (`vectorStore.pruneOrphanChunks`)
 - `/api/receipts/chat` - RAG chat over a user's receipts (see `docs/API.md`)
 - `/api/health` - Health check endpoint
 
