@@ -13,6 +13,7 @@ import { Separator } from '../components/ui/separator';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { hueFromString } from '../utils/categoryStyles';
+import { formatMoney } from '../utils/money';
 
 const ALLOWED_FILE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'];
 
@@ -28,22 +29,6 @@ const ReceiptMetadata = ({ label, value }) => (
     <p className="font-semibold tabular-nums mt-0.5">{value ?? '—'}</p>
   </div>
 );
-
-/**
- * Format an amount with the receipt's currency. Receipts store either an ISO
- * code ("USD") or a symbol ("$"); prefixing a code produced "USD64.37".
- */
-export const formatMoney = (amount, currency) => {
-  if (typeof amount !== 'number' || Number.isNaN(amount)) {return '—';}
-  if (typeof currency === 'string' && /^[A-Z]{3}$/.test(currency)) {
-    try {
-      return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(amount);
-    } catch {
-      // Unknown code: fall through to the plain format
-    }
-  }
-  return `${currency || '$'}${amount.toFixed(2)}`;
-};
 
 /** Colored initial tile for a store; the hue is derived from the name. */
 const StoreTile = ({ name, className = '' }) => {
