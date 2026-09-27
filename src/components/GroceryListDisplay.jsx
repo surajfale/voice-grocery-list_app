@@ -15,26 +15,10 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from './ui/dropdown-menu';
+import { getCategoryStyle } from '../utils/categoryStyles';
 
 const COUNT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-// Emoji + hue per category; the hue drives the tile, label, card and checkbox tints
-const CATEGORY_STYLES = {
-  'Produce': { emoji: '🥬', hue: 145 },
-  'Dairy': { emoji: '🥛', hue: 240 },
-  'Meat & Seafood': { emoji: '🍗', hue: 25 },
-  'Bakery': { emoji: '🥖', hue: 75 },
-  'Frozen': { emoji: '🧊', hue: 215 },
-  'Snacks': { emoji: '🍿', hue: 95 },
-  'Beverages': { emoji: '🧃', hue: 305 },
-  'Asian Pantry': { emoji: '🍜', hue: 330 },
-  'Indian Pantry': { emoji: '🫘', hue: 55 },
-  'Canned Goods': { emoji: '🥫', hue: 10 },
-  'Condiments & Sauces': { emoji: '🧂', hue: 120 },
-  'Household': { emoji: '🧽', hue: 190 },
-  'Personal Care': { emoji: '🧴', hue: 280 },
-};
-const DEFAULT_CATEGORY_STYLE = { emoji: '🛒', hue: 265 };
 const STAGGER_MS = 60;
 
 const GroceryListDisplay = memo(({
@@ -108,7 +92,7 @@ const GroceryListDisplay = memo(({
     <div className="space-y-6">
       {processedGroupedItems.map(({ category, categoryItems, isExpanded, completedCount }, index) => {
         const isComplete = completedCount === categoryItems.length;
-        const { emoji, hue } = CATEGORY_STYLES[category] || DEFAULT_CATEGORY_STYLE;
+        const { emoji, hue } = getCategoryStyle(category);
         const sectionId = `category-${category.replace(/\W+/g, '-').toLowerCase()}`;
 
         return (

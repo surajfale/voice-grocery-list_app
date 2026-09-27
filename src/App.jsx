@@ -906,7 +906,7 @@ const VoiceGroceryList = ({ user, logout }) => {
                             {currentItems.length > 0 && (
                               <span className="tabular-nums">
                                 ·{' '}
-                                <span key={completedCount} className="count-bump">
+                                <span key={completedCount} className="count-bump inline-block">
                                   {remainingCount === 0 ? 'all done' : `${remainingCount} of ${currentItems.length} left`}
                                 </span>
                               </span>
