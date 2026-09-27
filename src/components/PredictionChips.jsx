@@ -19,7 +19,7 @@ const PredictionChips = memo(({ predictions, onAddItems, disabled = false }) => 
         <Sparkles className="size-3.5 text-primary" />
         {isFrequentFallback(chips) ? 'Buy again?' : 'Running low?'}
       </p>
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-1 sm:flex-wrap [scrollbar-width:none]">
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-1 sm:flex-wrap no-scrollbar">
         {chips.map((prediction) => (
           <button
             key={prediction.key}

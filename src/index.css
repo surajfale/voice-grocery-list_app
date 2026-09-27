@@ -201,6 +201,17 @@ time {
   outline-offset: 2px;
 }
 
+/* Horizontal chip rows: scrollable but without a visible bar (the global
+   ::-webkit-scrollbar sizing above would otherwise force one in WebKit) */
+.no-scrollbar {
+  scrollbar-width: none;
+  scrollbar-color: auto; /* let WebKit-only engines fall through to the pseudo-element below */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Small caps-style section labels (used for list category headers) */
 .section-label {
   font-size: 0.75rem;
