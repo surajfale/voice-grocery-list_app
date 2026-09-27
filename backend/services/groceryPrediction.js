@@ -120,13 +120,43 @@ export const scoreItem = (days, nowTs) => {
 };
 
 /**
+ * Fallback when nothing is "due": the user's most-bought items, so new users
+ * (or irregular shoppers) still get useful suggestions. Includes single purchases.
+ */
+export const rankFrequentItems = (entries, { nowTs, limit = 10 } = {}) => {
+  const windowStart = nowTs - RATE_WINDOW_DAYS * DAY_MS;
+
+  return entries
+    .map((entry) => {
+      const ts = entry.days.map(toDayTs);
+      const recentPurchases = ts.filter((t) => t >= windowStart).length;
+      return {
+        key: entry.key,
+        text: entry.text,
+        category: entry.category,
+        suggestedCount: Math.max(1, Math.round(entry.avgQty)),
+        reason: 'frequent',
+        purchases: entry.days.length,
+        lastPurchased: entry.days.at(-1),
+        daysSinceLast: Math.max(0, Math.floor((nowTs - ts.at(-1)) / DAY_MS)),
+        perWeek: Number((recentPurchases / (RATE_WINDOW_DAYS / 7)).toFixed(2)),
+        perMonth: Number((recentPurchases / (RATE_WINDOW_DAYS / 30)).toFixed(2))
+      };
+    })
+    // Most purchases first; ties go to whatever was bought most recently
+    .sort((a, b) => b.purchases - a.purchases || b.lastPurchased.localeCompare(a.lastPurchased))
+    .slice(0, limit);
+};
+
+/**
  * Rank history entries into predictions (pure; no DB access).
+ * Due items (reason "due") win; if none qualify, fall back to frequent items.
  */
 export const rankPredictions = (history, { nowTs, excludeKeys = [], limit = 10 } = {}) => {
   const exclude = new Set(excludeKeys.map(normalizeItemKey));
+  const candidates = history.filter((entry) => !exclude.has(entry.key));
 
-  return history
-    .filter((entry) => !exclude.has(entry.key))
+  const due = candidates
     .map((entry) => {
       const stats = scoreItem(entry.days, nowTs);
       return stats && {
@@ -134,12 +164,15 @@ export const rankPredictions = (history, { nowTs, excludeKeys = [], limit = 10 }
         text: entry.text,
         category: entry.category,
         suggestedCount: Math.max(1, Math.round(entry.avgQty)),
+        reason: 'due',
         ...stats
       };
     })
     .filter((prediction) => prediction && prediction.score >= MIN_SCORE)
     .sort((a, b) => b.score - a.score || b.purchases - a.purchases)
     .slice(0, limit);
+
+  return due.length > 0 ? due : rankFrequentItems(candidates, { nowTs, limit });
 };
 
 /**

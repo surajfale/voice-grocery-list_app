@@ -1,16 +1,24 @@
 import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import PropTypes from 'prop-types';
-import { Mic, MicOff } from 'lucide-react';
+import { Mic, Square } from 'lucide-react';
 import logger from '../utils/logger.js';
 import groceryIntelligence from '../services/groceryIntelligence.js';
 
-const VoiceRecognition = memo(({ onItemsDetected, disabled = false }) => {
+const VoiceRecognition = memo(({ onItemsDetected, disabled = false, onListeningChange }) => {
   const [isListening, setIsListening] = useState(false);
   const [_transcript, setTranscript] = useState('');
   const [fullTranscript, setFullTranscript] = useState('');
   const recognitionRef = useRef(null);
   const isManualStopRef = useRef(false);
   const processAccumulatedItemsRef = useRef(null);
+  const [isSupported] = useState(
+    () => typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)
+  );
+
+  // Let the parent show a listening state (e.g. in the input placeholder)
+  useEffect(() => {
+    onListeningChange?.(isListening);
+  }, [isListening, onListeningChange]);
 
 
 
@@ -233,41 +241,32 @@ const VoiceRecognition = memo(({ onItemsDetected, disabled = false }) => {
     }
   };
 
-  // Compute currentDisplay for use in JSX (if needed)
-  // Example: const currentDisplay = (fullTranscriptRef.current || '') + ' ' + finalTranscript + ' ' + interimTranscript;
+  if (!isSupported) {return null;}
 
   return (
-    <div className="fixed bottom-6 right-6 z-[1000]">
-      {/* Listening Animation Rings */}
+    <div className="relative shrink-0">
       {isListening && (
-        <>
-          <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-20 rounded-full border-2 border-destructive/30 animate-ping [animation-duration:2s]" />
-          <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-24 rounded-full border-2 border-destructive/20 animate-ping [animation-duration:2s] [animation-delay:0.5s]" />
-        </>
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 rounded-full bg-destructive/35 animate-ping [animation-duration:1.6s]"
+        />
       )}
 
       <button
         type="button"
         onClick={isListening ? stopListening : startListening}
         disabled={disabled}
-        aria-label={isListening ? 'Stop listening' : 'Start voice input'}
-        className={`relative size-16 rounded-full flex items-center justify-center text-white transition-all duration-300 ease-out hover:scale-110 active:scale-95 disabled:opacity-50 disabled:pointer-events-none ${
+        aria-label={isListening ? 'Stop listening' : 'Add items by voice'}
+        aria-pressed={isListening}
+        title={isListening ? 'Stop listening' : 'Add items by voice'}
+        className={`relative size-11 rounded-full flex items-center justify-center transition-[background-color,color,transform] duration-150 active:scale-95 disabled:opacity-40 disabled:pointer-events-none ${
           isListening
-            ? 'bg-destructive shadow-[0_8px_32px_-4px_var(--destructive)] hover:shadow-[0_12px_40px_-4px_var(--destructive)] animate-breathe'
-            : 'bg-primary shadow-[0_8px_32px_-4px_var(--primary)] hover:shadow-[0_12px_40px_-4px_var(--primary)]'
+            ? 'bg-destructive text-destructive-foreground'
+            : 'bg-primary text-primary-foreground hover:bg-primary/90'
         }`}
       >
-        <span className={`flex items-center justify-center transition-transform duration-200 ${isListening ? 'scale-110' : 'scale-100'}`}>
-          {isListening ? <MicOff className="size-7" /> : <Mic className="size-7" />}
-        </span>
+        {isListening ? <Square className="size-4 fill-current" /> : <Mic className="size-5" />}
       </button>
-
-      {/* Voice Status Tooltip */}
-      {isListening && (
-        <div className="absolute bottom-20 right-0 bg-destructive/95 text-white px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap backdrop-blur border border-white/20 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          🎤 Listening...
-        </div>
-      )}
     </div>
   );
 });
@@ -277,7 +276,8 @@ VoiceRecognition.displayName = 'VoiceRecognition';
 // PropTypes validation
 VoiceRecognition.propTypes = {
   onItemsDetected: PropTypes.func.isRequired,
-  disabled: PropTypes.bool
+  disabled: PropTypes.bool,
+  onListeningChange: PropTypes.func
 };
 
 export default VoiceRecognition;

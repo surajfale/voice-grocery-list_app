@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { ShoppingCart, Lock, Eye, EyeOff, ArrowLeft, CircleCheck } from 'lucide-react';
+import { Lock, Eye, EyeOff, ArrowLeft, CircleCheck } from 'lucide-react';
 import PasswordRequirements from './components/PasswordRequirements';
 import { validatePassword } from './utils/passwordValidator';
-import { Card } from './components/ui/card';
+import AuthLayout from './components/AuthLayout';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Button } from './components/ui/button';
@@ -121,22 +121,10 @@ const ResetPasswordPage = ({ token, onBackToLogin }) => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <Card className="p-8 shadow-lg">
-          {/* Header */}
-          <div className="text-center mb-6">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <ShoppingCart className="size-10 text-primary" strokeWidth={2.25} />
-              <h1 className="font-display text-3xl font-bold text-primary">
-                Grocery List
-              </h1>
-            </div>
-            <h2 className="font-display text-xl font-semibold mb-1">Reset Password</h2>
-            <p className="text-sm text-muted-foreground">
-              {success ? 'Password reset successful!' : 'Enter your new password below'}
-            </p>
-          </div>
+    <AuthLayout
+      title="Choose a new password"
+      subtitle={success ? 'Your password has been reset.' : 'Enter your new password below.'}
+    >
 
           {/* Error Alert */}
           {error && (
@@ -159,7 +147,7 @@ const ResetPasswordPage = ({ token, onBackToLogin }) => {
           {!success && tokenValid && (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="new-password">New Password</Label>
+                <Label htmlFor="new-password">New password</Label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                   <Input
@@ -185,7 +173,7 @@ const ResetPasswordPage = ({ token, onBackToLogin }) => {
               <PasswordRequirements password={password} />
 
               <div className="space-y-1.5">
-                <Label htmlFor="confirm-new-password">Confirm New Password</Label>
+                <Label htmlFor="confirm-new-password">Confirm new password</Label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                   <Input
@@ -209,7 +197,7 @@ const ResetPasswordPage = ({ token, onBackToLogin }) => {
 
               <Button type="submit" size="lg" disabled={loading} className="w-full">
                 <CircleCheck />
-                {loading ? 'Resetting Password...' : 'Reset Password'}
+                {loading ? 'Resetting…' : 'Reset password'}
               </Button>
             </form>
           )}
@@ -222,17 +210,11 @@ const ResetPasswordPage = ({ token, onBackToLogin }) => {
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
             >
               <ArrowLeft className="size-4" />
-              {success ? 'Go to Login' : 'Back to Login'}
+              {success ? 'Go to sign in' : 'Back to sign in'}
             </button>
           </div>
 
-          {/* Privacy Note */}
-          <p className="text-center text-xs text-muted-foreground mt-4">
-            Your data is securely encrypted and stored in the cloud.
-          </p>
-        </Card>
-      </div>
-    </div>
+    </AuthLayout>
   );
 };
 

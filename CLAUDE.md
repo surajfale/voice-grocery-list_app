@@ -145,7 +145,7 @@ pnpm dev
 - `/api/auth/login` - User login
 - `/api/auth/forgot-password` / `/api/auth/reset-password/:token` - Password reset flow
 - `/api/grocery-lists/` - CRUD operations for grocery lists
-- `/api/grocery-lists/user/:userId/predictions?date=YYYY-MM-DD&limit=10` - Stats-based purchase predictions (no AI calls): completed items = purchases; scores each item bought 2+ times by median gap between purchases vs. days since last purchase (`backend/services/groceryPrediction.js`)
+- `/api/grocery-lists/user/:userId/predictions?date=YYYY-MM-DD&limit=10` - Stats-based purchase predictions (no AI calls): completed items = purchases; scores each item bought 2+ times by median gap between purchases vs. days since last purchase (`backend/services/groceryPrediction.js`; when nothing is due it falls back to the user's most-bought items, tagged `reason: 'frequent'`)
 - `/api/receipts` - Upload a receipt (POST, multipart)
 - `/api/receipts/user/:userId` - List a user's receipts
 - `/api/receipts/:receiptId` / `/api/receipts/:receiptId/image` - Fetch a receipt / stream its image

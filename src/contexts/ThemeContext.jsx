@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
 import PropTypes from 'prop-types';
 
 const ThemeContext = createContext();
@@ -11,129 +11,143 @@ export const useThemeContext = () => {
   return context;
 };
 
-// Color theme configurations
+const MODE_KEY = 'themeMode';
+const COLOR_KEY = 'colorTheme';
+const DARK_QUERY = '(prefers-color-scheme: dark)';
+
+export const THEME_MODES = ['light', 'dark', 'system'];
+
+// Accent presets. Each mode gets its own tuned shade: the light shade keeps
+// white text >= 4.5:1 on buttons, the dark shade keeps accent-colored text
+// readable on the near-black background (with dark text on filled buttons).
 export const colorThemes = {
   indigo: {
     name: 'Indigo',
-    primary: '#6366F1',
-    primaryLight: '#818CF8',
-    primaryDark: '#4F46E5',
-    secondary: '#10B981',
-    secondaryLight: '#34D399',
-    secondaryDark: '#059669',
+    light: { primary: '#4F46E5', foreground: '#FFFFFF' },
+    dark: { primary: '#8B93F8', foreground: '#0B0B12' },
   },
   purple: {
-    name: 'Purple',
-    primary: '#8B5CF6',
-    primaryLight: '#A78BFA',
-    primaryDark: '#7C3AED',
-    secondary: '#EC4899',
-    secondaryLight: '#F472B6',
-    secondaryDark: '#DB2777',
+    name: 'Violet',
+    light: { primary: '#7C3AED', foreground: '#FFFFFF' },
+    dark: { primary: '#B196FA', foreground: '#0D0A14' },
   },
   emerald: {
     name: 'Emerald',
-    primary: '#10B981',
-    primaryLight: '#34D399',
-    primaryDark: '#059669',
-    secondary: '#3B82F6',
-    secondaryLight: '#60A5FA',
-    secondaryDark: '#2563EB',
+    light: { primary: '#047857', foreground: '#FFFFFF' },
+    dark: { primary: '#3DD6A0', foreground: '#04130D' },
   },
   rose: {
     name: 'Rose',
-    primary: '#F43F5E',
-    primaryLight: '#FB7185',
-    primaryDark: '#E11D48',
-    secondary: '#8B5CF6',
-    secondaryLight: '#A78BFA',
-    secondaryDark: '#7C3AED',
+    light: { primary: '#E11D48', foreground: '#FFFFFF' },
+    dark: { primary: '#FB7F95', foreground: '#1A0509' },
   },
   amber: {
     name: 'Amber',
-    primary: '#F59E0B',
-    primaryLight: '#FBBF24',
-    primaryDark: '#D97706',
-    secondary: '#06B6D4',
-    secondaryLight: '#22D3EE',
-    secondaryDark: '#0891B2',
+    light: { primary: '#B45309', foreground: '#FFFFFF' },
+    dark: { primary: '#FBBF3C', foreground: '#1A1004' },
   },
   teal: {
     name: 'Teal',
-    primary: '#14B8A6',
-    primaryLight: '#2DD4BF',
-    primaryDark: '#0F766E',
-    secondary: '#F59E0B',
-    secondaryLight: '#FBBF24',
-    secondaryDark: '#D97706',
+    light: { primary: '#0F766E', foreground: '#FFFFFF' },
+    dark: { primary: '#3CD4C4', foreground: '#031312' },
   },
 };
 
-// Pushes the selected accent preset onto the document as CSS custom properties
-// so every shadcn/Tailwind surface (bg-primary, ring-ring, text-secondary, ...)
-// picks it up without re-rendering a component tree.
-const applyAccentVariables = (colors) => {
+const readStorage = (key) => {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null; // private mode / blocked storage
+  }
+};
+
+const writeStorage = (key, value) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Preference just won't persist; the app still works
+  }
+};
+
+// Read synchronously so the very first render already has the right theme
+// (no flash, and no effect-ordering race that overwrites the saved value).
+const getInitialMode = () => {
+  const saved = readStorage(MODE_KEY);
+  return THEME_MODES.includes(saved) ? saved : 'system';
+};
+
+const getInitialColorTheme = () => {
+  const saved = readStorage(COLOR_KEY);
+  return saved && colorThemes[saved] ? saved : 'indigo';
+};
+
+const getSystemPrefersDark = () =>
+  typeof window !== 'undefined' && window.matchMedia?.(DARK_QUERY).matches;
+
+// Pushes the accent onto the document as CSS custom properties so every
+// shadcn/Tailwind surface (bg-primary, ring-ring, ...) picks it up.
+const applyAccentVariables = ({ primary, foreground }) => {
   const root = document.documentElement.style;
-  root.setProperty('--primary', colors.primary);
-  root.setProperty('--primary-foreground', '#ffffff');
-  root.setProperty('--secondary', colors.secondary);
-  root.setProperty('--secondary-foreground', '#ffffff');
-  root.setProperty('--ring', colors.primary);
-  root.setProperty('--glow', colors.primary);
-  root.setProperty('--chart-1', colors.primary);
-  root.setProperty('--chart-2', colors.secondary);
-  root.setProperty('--chart-3', colors.primaryLight);
-  root.setProperty('--chart-4', colors.secondaryLight);
-  root.setProperty('--chart-5', colors.primaryDark);
+  root.setProperty('--primary', primary);
+  root.setProperty('--primary-foreground', foreground);
+  root.setProperty('--ring', primary);
+  root.setProperty('--chart-1', primary);
 };
 
 export const CustomThemeProvider = ({ children }) => {
-  const [mode, setMode] = useState('light');
-  const [colorTheme, setColorTheme] = useState('indigo');
+  const [mode, setModeState] = useState(getInitialMode);
+  const [colorTheme, setColorTheme] = useState(getInitialColorTheme);
+  const [systemDark, setSystemDark] = useState(getSystemPrefersDark);
 
-  // Load theme preferences from localStorage on mount
+  // Follow OS changes while in "system" mode
   useEffect(() => {
-    const savedMode = localStorage.getItem('themeMode');
-    const savedColorTheme = localStorage.getItem('colorTheme');
+    const media = window.matchMedia?.(DARK_QUERY);
+    if (!media) {return undefined;}
+    const onChange = (event) => setSystemDark(event.matches);
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, []);
 
-    if (savedMode && (savedMode === 'light' || savedMode === 'dark')) {
-      setMode(savedMode);
-    }
+  const resolvedMode = mode === 'system' ? (systemDark ? 'dark' : 'light') : mode;
 
-    if (savedColorTheme && colorThemes[savedColorTheme]) {
-      setColorTheme(savedColorTheme);
+  // Layout effect: apply before paint so switching never flashes
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('dark', resolvedMode === 'dark');
+    root.style.colorScheme = resolvedMode;
+    applyAccentVariables(colorThemes[colorTheme][resolvedMode]);
+
+    const themeColor = window.getComputedStyle(root).getPropertyValue('--background').trim();
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', themeColor || '#ffffff');
+  }, [resolvedMode, colorTheme]);
+
+  const setMode = useCallback((nextMode) => {
+    if (!THEME_MODES.includes(nextMode)) {return;}
+    setModeState(nextMode);
+    writeStorage(MODE_KEY, nextMode);
+  }, []);
+
+  // Flip whatever is currently showing; an explicit choice leaves "system"
+  const toggleMode = useCallback(() => {
+    setMode(resolvedMode === 'dark' ? 'light' : 'dark');
+  }, [resolvedMode, setMode]);
+
+  const changeColorTheme = useCallback((newColorTheme) => {
+    if (colorThemes[newColorTheme]) {
+      setColorTheme(newColorTheme);
+      writeStorage(COLOR_KEY, newColorTheme);
     }
   }, []);
 
-  // Save mode, sync the `.dark` class Tailwind's dark: variant looks for
-  useEffect(() => {
-    localStorage.setItem('themeMode', mode);
-    document.documentElement.classList.toggle('dark', mode === 'dark');
-  }, [mode]);
-
-  // Save + apply the accent color preset as CSS variables
-  useEffect(() => {
-    localStorage.setItem('colorTheme', colorTheme);
-    applyAccentVariables(colorThemes[colorTheme]);
-  }, [colorTheme]);
-
-  const toggleMode = () => {
-    setMode(prevMode => prevMode === 'light' ? 'dark' : 'light');
-  };
-
-  const changeColorTheme = (newColorTheme) => {
-    if (colorThemes[newColorTheme]) {
-      setColorTheme(newColorTheme);
-    }
-  };
-
   const value = useMemo(() => ({
     mode,
+    resolvedMode,
     colorTheme,
     colorThemes,
+    setMode,
     toggleMode,
     changeColorTheme,
-  }), [mode, colorTheme]);
+  }), [mode, resolvedMode, colorTheme, setMode, toggleMode, changeColorTheme]);
 
   return (
     <ThemeContext.Provider value={value}>

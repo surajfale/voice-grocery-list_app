@@ -1,22 +1,20 @@
 import React, { useState, useMemo, memo, useRef } from 'react';
 import PropTypes from 'prop-types';
-import { Plus, Loader2, X, Sparkles } from 'lucide-react';
+import { Loader2, X, Sparkles, ArrowUp } from 'lucide-react';
 import Fuse from 'fuse.js';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { describePrediction } from '../hooks/usePurchasePredictions';
 
 const MAX_EMPTY_SUGGESTIONS = 5;
-const MAX_PREDICTION_CHIPS = 6;
 
 const ManualInput = memo(({
   onAddItems,
   historicalItems = [],
   predictions = [],
-  showPredictionChips = false,
   loading = false,
-  disabled = false
+  disabled = false,
+  trailing = null,
+  dropUp = false,
+  listening = false
 }) => {
   const [selectedItems, setSelectedItems] = useState([]);
   const [inputValue, setInputValue] = useState('');
@@ -33,6 +31,7 @@ const ManualInput = memo(({
   const predictionRank = useMemo(() => new Map(
     predictions.map((prediction, index) => [prediction.text.toLowerCase(), index])
   ), [predictions]);
+  const predictionLabel = predictions.some((prediction) => prediction.reason === 'due') ? 'Due' : 'Usual';
 
   const suggestions = useMemo(() => {
     if (inputValue === '') {
@@ -63,12 +62,6 @@ const ManualInput = memo(({
     return results;
   }, [fuse, historicalItems, inputValue, predictions, predictionRank]);
 
-  const predictionChips = useMemo(() => {
-    const selected = new Set(selectedItems.map((item) => item.toLowerCase()));
-    return predictions
-      .filter((prediction) => !selected.has(prediction.text.toLowerCase()))
-      .slice(0, MAX_PREDICTION_CHIPS);
-  }, [predictions, selectedItems]);
 
   const addTag = (value) => {
     if (!value.trim()) { return; }
@@ -81,9 +74,12 @@ const ManualInput = memo(({
     setSelectedItems((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Submit selected tags plus whatever is still typed in the box
   const handleAddItems = () => {
-    if (selectedItems.length > 0 && !disabled) {
-      onAddItems(selectedItems);
+    const pending = inputValue.trim();
+    const items = pending ? [...selectedItems, pending] : selectedItems;
+    if (items.length > 0 && !disabled) {
+      onAddItems(items);
       setSelectedItems([]);
       setInputValue('');
     }
@@ -105,114 +101,90 @@ const ManualInput = memo(({
   };
 
   const isDisabled = loading || disabled;
+  const canSubmit = (selectedItems.length > 0 || inputValue.trim().length > 0) && !isDisabled;
+
+  let placeholder = selectedItems.length > 0 ? 'Add another…' : 'Add items, e.g. milk, apples, basmati rice';
+  if (disabled) {placeholder = 'Past lists are read-only';}
+  if (listening) {placeholder = 'Listening… say your items';}
 
   return (
-    <Card className="p-5 sm:p-6 mb-5">
-      <div className="mb-4">
-        <h5 className="font-display text-xl font-bold text-primary mb-1">Add to Your List</h5>
-        <p className="text-sm text-muted-foreground">
-          Type items manually or use voice recognition to add multiple items at once
-        </p>
-      </div>
-
-      <div className="flex gap-2 items-start">
-        <div className="relative flex-1">
-          <div
-            className={`flex flex-wrap gap-1.5 items-center min-h-[52px] w-full rounded-2xl border border-input bg-card px-3 py-2 transition-shadow focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 ${isDisabled ? 'opacity-60' : ''}`}
-          >
-            {selectedItems.map((item, index) => (
-              <Badge key={`${item}-${index}`} variant="outline" className="gap-1 pr-1 font-normal">
-                {item}
-                <button
-                  type="button"
-                  onClick={() => removeTag(index)}
-                  disabled={isDisabled}
-                  aria-label={`Remove ${item}`}
-                  className="rounded-full hover:bg-accent p-0.5"
-                >
-                  <X className="size-3" />
-                </button>
-              </Badge>
-            ))}
-            <input
-              ref={inputRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onFocus={() => setOpen(true)}
-              onBlur={() => setTimeout(() => setOpen(false), 120)}
-              onKeyDown={handleKeyDown}
-              disabled={isDisabled}
-              placeholder={disabled ? 'Cannot add items to past dates' : 'e.g., milk, apples, basmati rice...'}
-              className="flex-1 min-w-[140px] bg-transparent outline-none text-sm py-1 disabled:cursor-not-allowed placeholder:text-muted-foreground"
-            />
-          </div>
-
-          {open && suggestions.length > 0 && !isDisabled && (
-            <div className="absolute z-20 mt-1.5 w-full rounded-xl border border-border bg-popover shadow-lg max-h-56 overflow-y-auto py-1.5">
-              {suggestions.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => addTag(suggestion)}
-                  className="w-full text-left px-3.5 py-2 text-sm hover:bg-accent flex items-center justify-between gap-2"
-                >
-                  <span>{suggestion}</span>
-                  {predictionRank.has(suggestion.toLowerCase()) && (
-                    <span className="flex items-center gap-1 text-xs text-primary">
-                      <Sparkles className="size-3" />
-                      Due
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <Button
-          onClick={handleAddItems}
-          disabled={selectedItems.length === 0 || isDisabled}
-          className="min-h-[52px] px-5 shadow-[0_4px_16px_-4px_var(--primary)]"
+    <div className="flex items-end gap-2">
+      <div className="relative flex-1 min-w-0">
+        <div
+          className={`flex flex-wrap gap-1.5 items-center min-h-11 w-full rounded-[22px] border border-input bg-card pl-4 pr-1 py-1 shadow-xs transition-[border-color,box-shadow] focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/20 ${isDisabled && !loading ? 'opacity-60' : ''}`}
         >
-          {loading ? (
-            <>
-              <Loader2 className="animate-spin" />
-              Adding...
-            </>
-          ) : (
-            <>
-              <Plus />
-              Add Items
-            </>
+          {selectedItems.map((item, index) => (
+            <Badge key={`${item}-${index}`} variant="secondary" className="gap-1 pl-2 pr-1 h-7 text-[13px] font-medium">
+              {item}
+              <button
+                type="button"
+                onClick={() => removeTag(index)}
+                disabled={isDisabled}
+                aria-label={`Remove ${item}`}
+                className="rounded-full hover:bg-background p-0.5"
+              >
+                <X className="size-3" />
+              </button>
+            </Badge>
+          ))}
+          <input
+            ref={inputRef}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onFocus={() => setOpen(true)}
+            onBlur={() => setTimeout(() => setOpen(false), 120)}
+            onKeyDown={handleKeyDown}
+            disabled={isDisabled}
+            placeholder={placeholder}
+            aria-label="Add grocery items"
+            enterKeyHint="done"
+            className="flex-1 min-w-[120px] h-9 bg-transparent outline-none text-[15px] disabled:cursor-not-allowed placeholder:text-muted-foreground"
+          />
+          {(canSubmit || loading) && (
+            <button
+              type="button"
+              onClick={handleAddItems}
+              disabled={!canSubmit}
+              aria-label="Add items"
+              className="size-9 shrink-0 rounded-full bg-foreground text-background flex items-center justify-center transition-transform active:scale-95 disabled:opacity-50 animate-in fade-in zoom-in-90 duration-150"
+            >
+              {loading ? <Loader2 className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
+            </button>
           )}
-        </Button>
-      </div>
+        </div>
 
-      {showPredictionChips && predictionChips.length > 0 && !isDisabled && (
-        <div className="mt-4">
-          <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground mb-2">
-            <Sparkles className="size-3.5 text-primary" />
-            Running low? Based on how often you buy these
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {predictionChips.map((prediction) => (
-              <Badge key={prediction.key} variant="soft" asChild>
-                <button
-                  type="button"
-                  onClick={() => onAddItems([prediction.text])}
-                  title={describePrediction(prediction)}
-                  className="cursor-pointer font-medium hover:bg-primary/20"
-                >
-                  <Plus />
-                  {prediction.text}
-                </button>
-              </Badge>
+        {open && suggestions.length > 0 && !isDisabled && (
+          <div
+            role="listbox"
+            className={`absolute z-30 w-full rounded-xl border border-border bg-popover text-popover-foreground shadow-lg max-h-60 overflow-y-auto p-1 ${
+              dropUp ? 'bottom-full mb-2' : 'top-full mt-2'
+            }`}
+          >
+            {suggestions.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                role="option"
+                aria-selected="false"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => addTag(suggestion)}
+                className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-accent flex items-center justify-between gap-2"
+              >
+                <span className="truncate">{suggestion}</span>
+                {predictionRank.has(suggestion.toLowerCase()) && (
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+                    <Sparkles className="size-3 text-primary" />
+                    {predictionLabel}
+                  </span>
+                )}
+              </button>
             ))}
           </div>
-        </div>
-      )}
-    </Card>
+        )}
+      </div>
+
+      {trailing}
+    </div>
   );
 });
 
@@ -226,9 +198,11 @@ ManualInput.propTypes = {
     key: PropTypes.string.isRequired,
     text: PropTypes.string.isRequired
   })),
-  showPredictionChips: PropTypes.bool,
   loading: PropTypes.bool,
-  disabled: PropTypes.bool
+  disabled: PropTypes.bool,
+  trailing: PropTypes.node,
+  dropUp: PropTypes.bool,
+  listening: PropTypes.bool
 };
 
 export default ManualInput;

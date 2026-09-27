@@ -54,18 +54,29 @@ export const usePurchasePredictions = (user, dateString, currentItems, enabled =
 /**
  * Human-readable frequency, e.g. "~2×/week" or "~1×/month".
  */
-export const formatPredictionFrequency = ({ perWeek = 0, perMonth = 0, typicalGapDays }) => {
+export const formatPredictionFrequency = ({ perWeek = 0, perMonth = 0, typicalGapDays, purchases = 0 }) => {
   if (perWeek >= 1) {return `~${Math.round(perWeek)}×/week`;}
   if (perMonth >= 1) {return `~${Math.round(perMonth)}×/month`;}
-  return `every ~${typicalGapDays} days`;
+  if (typicalGapDays) {return `every ~${typicalGapDays} days`;}
+  return `bought ${purchases}×`;
 };
+
+/**
+ * True when the backend had nothing "due" and fell back to most-bought items,
+ * so the UI should say "usual items" rather than "running low".
+ */
+export const isFrequentFallback = (predictions) =>
+  predictions.length > 0 && predictions.every((prediction) => prediction.reason === 'frequent');
 
 /**
  * Tooltip text explaining why an item was suggested.
  */
 export const describePrediction = (prediction) => {
-  const { typicalGapDays, daysSinceLast } = prediction;
+  const { typicalGapDays, daysSinceLast, purchases, reason } = prediction;
   const last = daysSinceLast === 0 ? 'today' : `${daysSinceLast} day${daysSinceLast === 1 ? '' : 's'} ago`;
+  if (reason === 'frequent') {
+    return `Bought ${purchases} time${purchases === 1 ? '' : 's'} · last ${last}`;
+  }
   return `Usually every ~${typicalGapDays} days (${formatPredictionFrequency(prediction)}) · last bought ${last}`;
 };
 
