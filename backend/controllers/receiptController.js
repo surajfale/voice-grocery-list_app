@@ -315,6 +315,120 @@ export const getReceipt = async (req, res) => {
   }
 };
 
+const MERCHANT_MAX_LENGTH = 120;
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Validates a user edit to a receipt. Only merchant and purchaseDate are
+ * editable; everything else comes from OCR and is ignored.
+ * @param {object} body - Request body
+ * @param {Date} [now] - Injectable clock for tests
+ * @returns {{ updates?: object, error?: string }}
+ */
+export const validateReceiptUpdate = (body, now = new Date()) => {
+  const updates = {};
+  const { merchant, purchaseDate } = body || {};
+
+  if (merchant !== undefined) {
+    if (typeof merchant !== 'string' || !merchant.trim()) {
+      return { error: 'Store name must be a non-empty string' };
+    }
+    if (merchant.trim().length > MERCHANT_MAX_LENGTH) {
+      return { error: `Store name must be ${MERCHANT_MAX_LENGTH} characters or fewer` };
+    }
+    updates.merchant = merchant.trim().replace(/\s+/g, ' ');
+  }
+
+  if (purchaseDate !== undefined) {
+    if (typeof purchaseDate !== 'string' || !ISO_DATE_PATTERN.test(purchaseDate)) {
+      return { error: 'Purchase date must be in YYYY-MM-DD format' };
+    }
+    const parsed = new Date(`${purchaseDate}T00:00:00Z`);
+    // Round-trip check rejects impossible dates like 2025-02-30
+    if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== purchaseDate) {
+      return { error: 'Purchase date is not a valid calendar date' };
+    }
+    // Allow one day of slack for users ahead of UTC
+    const latest = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    if (parsed > latest) {
+      return { error: 'Purchase date cannot be in the future' };
+    }
+    updates.purchaseDate = purchaseDate;
+  }
+
+  if (!Object.keys(updates).length) {
+    return { error: 'Provide merchant and/or purchaseDate to update' };
+  }
+
+  return { updates };
+};
+
+export const updateReceipt = async (req, res) => {
+  try {
+    const { receiptId } = req.params;
+    const userId = normalizeUserId(req);
+
+    if (!receiptId || !ensureValidObjectId(receiptId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid receiptId is required'
+      });
+    }
+
+    const { updates, error } = validateReceiptUpdate(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        error
+      });
+    }
+
+    const receipt = await Receipt.findOne({ _id: receiptId, userId });
+    if (!receipt) {
+      return res.status(404).json({
+        success: false,
+        error: 'Receipt not found'
+      });
+    }
+
+    const changed = Object.entries(updates).some(([key, value]) => receipt[key] !== value);
+    if (!changed) {
+      return res.json({ success: true, receipt: asObject(receipt) });
+    }
+
+    receipt.set(updates);
+    await receipt.save();
+
+    // Keep chunk metadata in sync right away so chat date/merchant filters are
+    // correct even before (or without) re-embedding
+    const ReceiptChunk = (await import('../models/ReceiptChunk.js')).default;
+    await ReceiptChunk.updateMany({ receiptId: receipt._id }, { $set: updates });
+
+    // Chunk text embeds "Merchant: … | Date: …", so re-embed to keep semantic
+    // search accurate (the latest write wins over any in-flight upload embed)
+    if (receipt.status === 'ready') {
+      embedReceiptInBackground(receipt);
+    }
+
+    logger.info('receipt.updated', {
+      receiptId: receipt._id.toString(),
+      userId: userId?.toString(),
+      fields: Object.keys(updates)
+    });
+
+    return res.json({
+      success: true,
+      receipt: asObject(receipt)
+    });
+  } catch (error) {
+    console.error('Failed to update receipt:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to update receipt'
+    });
+  }
+};
+
 export const deleteReceipt = async (req, res) => {
   try {
     const { receiptId } = req.params;

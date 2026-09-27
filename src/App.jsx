@@ -53,7 +53,7 @@ import ReceiptsPage from './pages/ReceiptsPage';
 import { useGroceryList } from './hooks/useGroceryList';
 import { usePurchasePredictions } from './hooks/usePurchasePredictions';
 import groceryIntelligence from './services/groceryIntelligence';
-import { downloadListAsImage, downloadListAsPDF, generateListText, renderListImage, shareList } from './utils/downloadList';
+import { downloadListAsImage, downloadListAsPDF, generateListText, listFileName, renderImage, shareImage } from './utils/downloadList';
 import { Button } from './components/ui/button';
 import { Avatar, AvatarFallback } from './components/ui/avatar';
 import { Skeleton } from './components/ui/skeleton';
@@ -282,7 +282,7 @@ const VoiceGroceryList = ({ user, logout }) => {
    */
   const getExportImage = () => {
     if (!pendingExportRef.current && printableListRef.current) {
-      pendingExportRef.current = renderListImage(printableListRef.current);
+      pendingExportRef.current = renderImage(printableListRef.current);
     }
     return pendingExportRef.current;
   };
@@ -302,8 +302,8 @@ const VoiceGroceryList = ({ user, logout }) => {
     if (!image) { return; }
     try {
       const title = `Grocery list · ${formatDateDisplay(currentDateString)}`;
-      const result = await shareList(image, {
-        dateString: currentDateString,
+      const result = await shareImage(image, {
+        fileName: listFileName(currentDateString, 'png'),
         title,
         text: generateListText(currentItems, title),
       });

@@ -5,6 +5,7 @@ import {
   listReceipts,
   getReceipt,
   deleteReceipt,
+  updateReceipt,
   streamReceiptImage,
   chatAboutReceipts,
   checkEmbeddingStatus,
@@ -56,6 +57,7 @@ router.post('/embedding/trigger', authenticate, triggerEmbedding);
 router.get('/embedding/chunks', authenticate, checkChunks);
 router.get('/:receiptId', authenticate, getReceipt);
 router.get('/:receiptId/image', authenticateFlexible, streamReceiptImage);
+router.patch('/:receiptId', authenticate, updateReceipt);
 router.delete('/:receiptId', authenticate, deleteReceipt);
 
 router.use((error, _req, res, _next) => {

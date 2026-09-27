@@ -87,6 +87,26 @@ export const useReceipts = (user) => {
     }
   }, [userId, refreshSelectedReceipt, setError]);
 
+  /**
+   * Saves a user correction (store name / purchase date).
+   * Throws so the edit dialog can show the error inline and stay open.
+   */
+  const updateReceipt = useCallback(async (receiptId, updates) => {
+    if (!userId) {
+      throw new Error('Please sign in to edit receipts');
+    }
+
+    const result = await receiptService.updateReceipt(userId, receiptId, updates);
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to update receipt');
+    }
+
+    const patch = { merchant: result.data.merchant, purchaseDate: result.data.purchaseDate };
+    setReceipts((prev) => prev.map((receipt) => (receipt._id === receiptId ? { ...receipt, ...patch } : receipt)));
+    setSelectedReceipt((prev) => (prev?._id === receiptId ? { ...prev, ...patch } : prev));
+    return result.data;
+  }, [userId]);
+
   const deleteReceipt = useCallback(async (receiptId) => {
     if (!userId) {
       setError('Please sign in to delete receipts');
@@ -150,6 +170,7 @@ export const useReceipts = (user) => {
     error,
     clearError,
     uploadReceipt,
+    updateReceipt,
     deleteReceipt,
     selectReceipt,
     receiptImageUrl,

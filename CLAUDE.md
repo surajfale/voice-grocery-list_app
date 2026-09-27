@@ -95,10 +95,12 @@ pnpm dev
 - **ReceiptRagClient.js** - Client for the `/api/receipts/chat` RAG endpoint (question, filters, sources, usage); used directly by `useReceiptChat`, not registered in ServiceManager
 
 ### Share / Export Utilities (src/utils/downloadList.js)
-- **shareList** - Uses the Web Share API when available to share a rendered list (image/pdf) from the client on supported devices/browsers
-- **downloadListAsImage** - Renders the printable list area and downloads it as a PNG/JPEG image using html2canvas
-- **downloadListAsPDF** - Renders the printable list area and downloads it as a PDF file using jsPDF
-- **PrintableList.jsx** - A component wired to a `printableListRef` that provides the formatted list layout used by the export utilities
+- **renderImage** - Renders an off-screen export element to a PNG blob with `modern-screenshot` (browser-native rendering, so oklch()/color-mix() work; html2canvas could not parse them)
+- **shareImage** - Web Share API with fallbacks: image file → plain text → download. Callers pre-render the image (when the menu opens / the receipt is shown) so `navigator.share()` runs within the tap's user activation on iOS Safari
+- **downloadListAsImage** / **saveBlob** - Download a rendered PNG
+- **downloadListAsPDF** - Paginated A4 PDF via jsPDF; pages only break at elements marked `data-pdf-break` (`planPageSlices`), so rows are never split
+- **PrintableList.jsx** - A component wired to a `printableListRef` that provides the formatted list layout used by the export utilities (always light palette, user's accent)
+- **receipts/ReceiptExportCard.jsx** - Same treatment for a single receipt (Share / Download image on the receipt details)
 
 ### Custom Hooks (src/hooks/)
 - **useGroceryList.js** - Grocery list state management and operations
@@ -149,6 +151,7 @@ pnpm dev
 - `/api/receipts` - Upload a receipt (POST, multipart)
 - `/api/receipts/user/:userId` - List a user's receipts
 - `/api/receipts/:receiptId` / `/api/receipts/:receiptId/image` - Fetch a receipt / stream its image
+- `PATCH /api/receipts/:receiptId` - Correct a receipt's `merchant` and/or `purchaseDate` (only these fields; validated by `validateReceiptUpdate`). Syncs `ReceiptChunk` metadata immediately and re-embeds in the background, since chunk text includes merchant/date
 - `/api/receipts/chat` - RAG chat over a user's receipts (see `docs/API.md`)
 - `/api/health` - Health check endpoint
 
@@ -175,6 +178,7 @@ This app was migrated from JSONBin to MongoDB backend. See `MIGRATION_NOTES.md` 
 - This is a pnpm workspace with frontend (root) and backend packages
 - ESLint configured: frontend (max 10 warnings), backend (max 5 warnings)
 - No testing setup currently configured
+- Fonts (Geist / Geist Mono) are self-hosted via `@fontsource-variable/*`, imported in `src/main.jsx` (works offline and inside exported images)
 - Uses Tailwind CSS v4 (via `@tailwindcss/vite`) with CSS custom properties for theming; shadcn/ui primitives live in `src/components/ui/` (hand-authored, not CLI-generated) and wrap `radix-ui` for accessible behavior. Path alias `@` resolves to `src/`
 - Voice recognition requires HTTPS in production (uses Web Speech API)
 - Frontend runs on port 5173, backend on port 3001
