@@ -1,12 +1,13 @@
 import React, { memo } from 'react';
 import PropTypes from 'prop-types';
 import { Plus, Sparkles } from 'lucide-react';
-import { describePrediction } from '../hooks/usePurchasePredictions';
+import { describePrediction, isFrequentFallback } from '../hooks/usePurchasePredictions';
 
 const MAX_PREDICTION_CHIPS = 6;
 
 /**
- * "Running low?" row of one-tap suggestions, shown above a non-empty list.
+ * "Running low?" (or "Buy again?" for the most-bought fallback) row of
+ * one-tap suggestions, shown above a non-empty list.
  */
 const PredictionChips = memo(({ predictions, onAddItems, disabled = false }) => {
   const chips = predictions.slice(0, MAX_PREDICTION_CHIPS);
@@ -16,7 +17,7 @@ const PredictionChips = memo(({ predictions, onAddItems, disabled = false }) => 
     <div className="mb-6">
       <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2 px-1">
         <Sparkles className="size-3.5 text-primary" />
-        Running low?
+        {isFrequentFallback(chips) ? 'Buy again?' : 'Running low?'}
       </p>
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-1 sm:flex-wrap [scrollbar-width:none]">
         {chips.map((prediction) => (

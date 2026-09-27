@@ -35,6 +35,7 @@ const HelpPage = ({ onBack }) => {
         'Based on how often you have checked items off before',
         'An empty list shows “You’ll probably need”; a busy one shows “Running low?”',
         'Suggested items are marked “Due” in autocomplete',
+        'New here? Your most-bought items show until a buying pattern emerges',
       ],
     },
     {

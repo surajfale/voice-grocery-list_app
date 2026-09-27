@@ -4,6 +4,7 @@ import {
   buildPurchaseHistory,
   scoreItem,
   rankPredictions,
+  rankFrequentItems,
   isValidDateString
 } from '../groceryPrediction.js';
 
@@ -133,6 +134,51 @@ describe('rankPredictions', () => {
 
   it('respects the limit and exposes display fields', () => {
     const [top] = rankPredictions(history, { nowTs, limit: 1 });
-    expect(top).toMatchObject({ key: 'milk', text: 'Milk', category: 'Other', suggestedCount: 1 });
+    expect(top).toMatchObject({ key: 'milk', text: 'Milk', category: 'Other', suggestedCount: 1, reason: 'due' });
+  });
+
+  it('never mixes fallback items in when something is due', () => {
+    const predictions = rankPredictions(history, { nowTs });
+    expect(predictions.every((p) => p.reason === 'due')).toBe(true);
+  });
+});
+
+describe('frequent-item fallback', () => {
+  const nowTs = ts('2026-09-26');
+
+  it('kicks in when nothing is due, most-bought first', () => {
+    // Everything was bought yesterday, so nothing is due yet
+    const history = buildPurchaseHistory([
+      ...everyNDays('2026-09-25', 7, 4).map((d) => list(d, ['Milk'])),
+      ...everyNDays('2026-09-25', 7, 2).map((d) => list(d, ['Eggs'])),
+      list('2026-09-25', ['Saffron'])
+    ]);
+
+    const predictions = rankPredictions(history, { nowTs });
+    expect(predictions.map((p) => p.key)).toEqual(['milk', 'eggs', 'saffron']);
+    expect(predictions.every((p) => p.reason === 'frequent')).toBe(true);
+    expect(predictions[0]).toMatchObject({ purchases: 4, daysSinceLast: 1, lastPurchased: '2026-09-25' });
+  });
+
+  it('helps brand-new users with a single shopping trip', () => {
+    const history = buildPurchaseHistory([list('2026-09-20', ['Bread', 'Butter'])]);
+    const predictions = rankPredictions(history, { nowTs });
+    expect(predictions.map((p) => p.text).sort()).toEqual(['Bread', 'Butter']);
+  });
+
+  it('still respects items already on the list and the limit', () => {
+    const history = buildPurchaseHistory([list('2026-09-20', ['Bread', 'Butter', 'Jam'])]);
+    const predictions = rankPredictions(history, { nowTs, excludeKeys: ['bread'], limit: 1 });
+    expect(predictions).toHaveLength(1);
+    expect(predictions[0].key).not.toBe('bread');
+  });
+
+  it('breaks purchase-count ties by recency', () => {
+    const history = buildPurchaseHistory([list('2026-09-01', ['Old']), list('2026-09-20', ['Recent'])]);
+    expect(rankFrequentItems(history, { nowTs }).map((p) => p.key)).toEqual(['recent', 'old']);
+  });
+
+  it('returns nothing without any history', () => {
+    expect(rankPredictions([], { nowTs })).toEqual([]);
   });
 });

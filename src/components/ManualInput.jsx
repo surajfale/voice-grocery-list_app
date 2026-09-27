@@ -31,6 +31,7 @@ const ManualInput = memo(({
   const predictionRank = useMemo(() => new Map(
     predictions.map((prediction, index) => [prediction.text.toLowerCase(), index])
   ), [predictions]);
+  const predictionLabel = predictions.some((prediction) => prediction.reason === 'due') ? 'Due' : 'Usual';
 
   const suggestions = useMemo(() => {
     if (inputValue === '') {
@@ -173,7 +174,7 @@ const ManualInput = memo(({
                 {predictionRank.has(suggestion.toLowerCase()) && (
                   <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
                     <Sparkles className="size-3 text-primary" />
-                    Due
+                    {predictionLabel}
                   </span>
                 )}
               </button>

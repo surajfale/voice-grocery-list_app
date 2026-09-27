@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import PropTypes from 'prop-types';
 import { ShoppingBasket, Sparkles, Plus } from 'lucide-react';
 import { Button } from './ui/button';
-import { formatPredictionFrequency, describePrediction } from '../hooks/usePurchasePredictions';
+import { formatPredictionFrequency, describePrediction, isFrequentFallback } from '../hooks/usePurchasePredictions';
 
 const MAX_EMPTY_PREDICTIONS = 8;
 
@@ -14,6 +14,7 @@ const EmptyState = memo(({
 }) => {
   const topPredictions = predictions.slice(0, MAX_EMPTY_PREDICTIONS);
   const showPredictions = !readOnly && topPredictions.length > 0 && typeof onAddItems === 'function';
+  const frequentOnly = isFrequentFallback(topPredictions);
 
   return (
     <div className="animate-in fade-in duration-300">
@@ -23,9 +24,11 @@ const EmptyState = memo(({
             <div>
               <h2 id="predictions-heading" className="flex items-center gap-1.5 text-base font-semibold">
                 <Sparkles className="size-4 text-primary" />
-                You&apos;ll probably need
+                {frequentOnly ? 'Your usual items' : 'You\u2019ll probably need'}
               </h2>
-              <p className="text-sm text-muted-foreground">Based on how often you buy these</p>
+              <p className="text-sm text-muted-foreground">
+                {frequentOnly ? 'The things you buy most often' : 'Based on how often you buy these'}
+              </p>
             </div>
             <Button
               size="sm"
