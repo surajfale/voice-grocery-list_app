@@ -14,7 +14,7 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts';
-import { Wallet, ReceiptText, Store, Share2, Download } from 'lucide-react';
+import { Wallet, ReceiptText, Store, Share2, Download, TrendingUp, ArrowUp, ArrowDown } from 'lucide-react';
 import { Card } from '../ui/card';
 import {
   Select,
@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { buildCategoryResolver } from '../../utils/receiptInsights';
+import { buildCategoryResolver, findPriceChanges } from '../../utils/receiptInsights';
 import { getCategoryStyle, hueFromString } from '../../utils/categoryStyles';
 import SpendingExportCard, { toCategoryRow, toStoreRow } from './SpendingExportCard.jsx';
 import { renderImage, saveBlob, shareImage } from '../../utils/downloadList';
@@ -38,6 +38,7 @@ const TOP_CATEGORY_LIMIT = 8;
 const SHARE_STORE_LIMIT = 4;
 const SHARE_CATEGORY_LIMIT = 5;
 const SHARE_TREND_MONTHS = 6;
+const PRICE_CHANGES_PREVIEW = 5;
 
 const formatCurrency = (value, currency = '$') => `${currency}${value.toFixed(2)}`;
 
@@ -69,6 +70,7 @@ const sumBy = (entries, keyOf, valueOf) => {
 const SpendingInsights = ({ receipts, loading = false }) => {
   const [selectedStore, setSelectedStore] = useState('all');
   const [shareMonthChoice, setShareMonthChoice] = useState(null);
+  const [showAllPriceChanges, setShowAllPriceChanges] = useState(false);
   const exportCardRef = useRef(null);
   const pendingExportRef = useRef(null);
 
@@ -152,6 +154,11 @@ const SpendingInsights = ({ receipts, loading = false }) => {
   // the latest one when a store filter leaves it without receipts.
   const shareMonths = useMemo(() => monthlyTrend.map((point) => point.month).reverse(), [monthlyTrend]);
   const shareMonth = shareMonths.includes(shareMonthChoice) ? shareMonthChoice : shareMonths[0];
+
+  // Unit-price changes between the last two visits to the same store
+  const priceChanges = useMemo(() => findPriceChanges(filteredReceipts), [filteredReceipts]);
+  const shownPriceChanges = showAllPriceChanges ? priceChanges : priceChanges.slice(0, PRICE_CHANGES_PREVIEW);
+  const pricierCount = priceChanges.filter((item) => item.change > 0).length;
 
   // Shareable summary of the chosen month (respects the store filter)
   const shareSummary = useMemo(() => {
@@ -333,6 +340,73 @@ const SpendingInsights = ({ receipts, loading = false }) => {
           </Card>
         ))}
       </div>
+
+      <Card className="p-5 rounded-2xl gap-0">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <h6 className="font-medium">Price changes</h6>
+            <p className="text-xs text-muted-foreground mt-0.5">Unit price on your last visit vs the one before, at the same store</p>
+          </div>
+          {priceChanges.length > 0 && (
+            <span className="text-xs font-medium text-muted-foreground tabular-nums shrink-0 pt-0.5">
+              {pricierCount} up · {priceChanges.length - pricierCount} down
+            </span>
+          )}
+        </div>
+        {priceChanges.length === 0 ? (
+          <div className="flex items-center gap-3 rounded-xl bg-muted/50 px-3.5 py-3">
+            <TrendingUp className="size-4 text-muted-foreground shrink-0" />
+            <p className="text-sm text-muted-foreground">
+              No price changes yet. They show up once you&apos;ve bought the same item twice at a store.
+            </p>
+          </div>
+        ) : (
+          <>
+            <ul className="divide-y divide-border">
+              {shownPriceChanges.map((item) => {
+                const up = item.change > 0;
+                const Arrow = up ? ArrowUp : ArrowDown;
+                return (
+                  <li key={item.key} className="flex items-center gap-3 py-2.5">
+                    <span
+                      className={`size-8 rounded-lg flex items-center justify-center shrink-0 ${
+                        up ? 'bg-red-500/12 text-red-600 dark:text-red-400' : 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-400'
+                      }`}
+                    >
+                      <Arrow className="size-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate capitalize">{item.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.store} · {dayjs(item.previous.date).format('MMM D')} → {dayjs(item.latest.date).format('MMM D')}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm tabular-nums">
+                        <span className="text-muted-foreground line-through decoration-muted-foreground/50">{formatMoney(item.previous.unitPrice, item.currency)}</span>
+                        {' '}
+                        <span className="font-semibold">{formatMoney(item.latest.unitPrice, item.currency)}</span>
+                      </p>
+                      <p className={`text-xs font-semibold tabular-nums ${up ? 'text-red-600 dark:text-red-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
+                        {up ? '+' : '−'}{Math.round(Math.abs(item.changePct) * 100)}%
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            {priceChanges.length > PRICE_CHANGES_PREVIEW && (
+              <button
+                type="button"
+                onClick={() => setShowAllPriceChanges((value) => !value)}
+                className="mt-2 text-sm font-medium text-primary hover:underline self-start"
+              >
+                {showAllPriceChanges ? 'Show fewer' : `Show all ${priceChanges.length}`}
+              </button>
+            )}
+          </>
+        )}
+      </Card>
 
       <Card className="p-5 rounded-2xl gap-0">
         <h6 className="font-medium mb-3">

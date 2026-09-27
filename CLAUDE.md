@@ -113,7 +113,7 @@ pnpm dev
 
 ### Utilities (src/utils/)
 - **logger.js** - Centralized logging system with different log levels
-- **receiptInsights.js** - `buildCategoryResolver` (item category = user pick → pick remembered by item name from any receipt → groceryIntelligence guess), `RECEIPT_CATEGORIES`, and `getTotalMismatch` (flags receipts whose priced items differ from the total by >15%; shown as a "Check total" badge)
+- **receiptInsights.js** - `buildCategoryResolver` (item category = user pick → pick remembered by item name from any receipt → groceryIntelligence guess), `RECEIPT_CATEGORIES`, `getTotalMismatch` (flags receipts whose priced items differ from the total by >15%; shown as a "Check total" badge), and `findPriceChanges` (unit price = line price ÷ quantity, latest vs previous purchase of the same item at the same store; ignores changes <3% or <2¢; shown in the Spending tab's "Price changes" card)
 
 ### Database Schema
 - **Users**: firstName, lastName, email, password (hashed with bcryptjs)
