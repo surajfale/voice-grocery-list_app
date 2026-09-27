@@ -1,7 +1,9 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { getCategoryStyle } from '../utils/categoryStyles';
 import {
   ArrowLeft,
+  Mic,
   AudioLines,
   Wand2,
   Tags,
@@ -20,6 +22,7 @@ const HelpPage = ({ onBack }) => {
     {
       Icon: AudioLines,
       title: 'Voice input',
+      hue: 265,
       description: 'Say multiple items in one go and they are split and categorized for you.',
       tips: [
         'Speak at a normal pace; items are processed when you stop',
@@ -30,6 +33,7 @@ const HelpPage = ({ onBack }) => {
     {
       Icon: Sparkles,
       title: 'Suggestions',
+      hue: 330,
       description: 'Items you buy regularly show up when they are probably due again.',
       tips: [
         'Based on how often you have checked items off before',
@@ -41,6 +45,7 @@ const HelpPage = ({ onBack }) => {
     {
       Icon: Wand2,
       title: 'Spelling fixes',
+      hue: 55,
       description: 'Common misspellings are detected and you choose whether to accept the fix.',
       tips: [
         'Keep your original wording or use the correction',
@@ -50,6 +55,7 @@ const HelpPage = ({ onBack }) => {
     {
       Icon: Tags,
       title: 'Categories',
+      hue: 145,
       description: 'Items are grouped into aisles like Produce and Dairy automatically.',
       tips: [
         'Use an item’s ⋯ menu to rename it, change the quantity or move it to another category',
@@ -59,6 +65,7 @@ const HelpPage = ({ onBack }) => {
     {
       Icon: CalendarRange,
       title: 'Lists by date',
+      hue: 215,
       description: 'Each date has its own list, so you can plan future trips.',
       tips: [
         'Switch dates from the sidebar (or tap the title on mobile)',
@@ -102,38 +109,49 @@ const HelpPage = ({ onBack }) => {
         <span className="font-semibold tracking-tight">Help &amp; tips</span>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-16">
-        <h1 className="text-[28px] sm:text-3xl font-semibold tracking-tight">How it works</h1>
-        <p className="text-muted-foreground mt-1 mb-8">Three steps, then the app mostly stays out of your way.</p>
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 pt-6 sm:pt-10 pb-16">
+        {/* Hero: the three steps on the accent gradient */}
+        <section className="hero-gradient rounded-[28px] p-6 mb-10">
+          <div className="relative z-10">
+            <h1 className="text-[30px] sm:text-4xl font-semibold tracking-tight leading-tight">How it works</h1>
+            <p className="text-sm mt-1 opacity-85">Three steps, then the app mostly stays out of your way.</p>
 
-        <ol className="space-y-4 mb-12">
-          {quickStart.map((item, index) => (
-            <li key={item.title} className="flex gap-4">
-              <span className="size-7 rounded-full bg-primary text-primary-foreground text-sm font-semibold flex items-center justify-center shrink-0 tabular-nums">
-                {index + 1}
-              </span>
-              <div className="pt-0.5">
-                <p className="font-medium">{item.title}</p>
-                <p className="text-sm text-muted-foreground">{item.description}</p>
-              </div>
-            </li>
-          ))}
-        </ol>
+            <ol className="grid sm:grid-cols-3 gap-2.5 mt-6">
+              {quickStart.map((item, index) => (
+                <li
+                  key={item.title}
+                  className="rise-in rounded-2xl p-3.5 bg-[color-mix(in_oklch,var(--primary-foreground)_14%,transparent)]"
+                  style={{ animationDelay: `${index * 80}ms` }}
+                >
+                  <span className="size-7 rounded-full bg-primary-foreground text-primary text-sm font-bold flex items-center justify-center tabular-nums mb-2.5">
+                    {index + 1}
+                  </span>
+                  <p className="font-semibold">{item.title}</p>
+                  <p className="text-sm opacity-85 mt-0.5">{item.description}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
 
         <h2 className="section-label mb-3 px-1">Features</h2>
-        <div className="rounded-xl border border-border bg-card shadow-xs divide-y divide-border mb-12">
-          {features.map(({ Icon, title, description, tips }) => (
-            <section key={title} className="flex gap-4 p-4 sm:p-5">
-              <div className="size-9 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                <Icon className="size-4.5 text-foreground" />
+        <div className="space-y-3 mb-12">
+          {features.map(({ Icon, title, description, tips, hue }, index) => (
+            <section
+              key={title}
+              className="rise-in cat-card rounded-2xl border bg-card flex gap-4 p-4 sm:p-5"
+              style={{ '--cat-h': hue, animationDelay: `${index * 60}ms` }}
+            >
+              <div className="cat-tile cat-label size-11 rounded-xl flex items-center justify-center shrink-0">
+                <Icon className="size-5" />
               </div>
               <div className="min-w-0">
-                <h3 className="font-medium">{title}</h3>
+                <h3 className="font-semibold">{title}</h3>
                 <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
-                <ul className="mt-2.5 space-y-1">
+                <ul className="mt-2.5 space-y-1.5">
                   {tips.map((tip) => (
                     <li key={tip} className="flex gap-2 text-sm">
-                      <span className="size-1 rounded-full bg-muted-foreground/60 mt-2 shrink-0" />
+                      <span className="size-1.5 rounded-full mt-2 shrink-0 bg-[oklch(0.65_0.12_var(--cat-h))]" />
                       {tip}
                     </li>
                   ))}
@@ -146,21 +164,37 @@ const HelpPage = ({ onBack }) => {
         <h2 className="section-label mb-3 px-1">Try saying</h2>
         <ul className="flex flex-wrap gap-2 mb-12">
           {voiceCommands.map((command) => (
-            <li key={command} className="rounded-full bg-muted px-3 py-1.5 text-sm">
+            <li
+              key={command}
+              className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-sm"
+            >
+              <Mic className="size-3.5 text-primary" />
               &ldquo;{command}&rdquo;
             </li>
           ))}
         </ul>
 
         <h2 className="section-label mb-3 px-1">Categories</h2>
-        <dl className="rounded-xl border border-border bg-card shadow-xs divide-y divide-border">
-          {categories.map((category) => (
-            <div key={category.name} className="flex items-baseline justify-between gap-4 px-4 py-3">
-              <dt className="text-sm font-medium">{category.name}</dt>
-              <dd className="text-sm text-muted-foreground text-right">{category.items}</dd>
-            </div>
-          ))}
-        </dl>
+        <ul className="grid sm:grid-cols-2 gap-2">
+          {categories.map((category) => {
+            const { emoji, hue } = getCategoryStyle(category.name);
+            return (
+              <li
+                key={category.name}
+                className="cat-card rounded-2xl border bg-card flex items-center gap-3 px-3 py-2.5"
+                style={{ '--cat-h': hue }}
+              >
+                <span aria-hidden="true" className="cat-tile size-9 rounded-xl flex items-center justify-center text-lg shrink-0">
+                  {emoji}
+                </span>
+                <div className="min-w-0">
+                  <p className="cat-label text-sm font-semibold">{category.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{category.items}</p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       </main>
     </div>
   );
