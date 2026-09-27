@@ -14,7 +14,7 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts';
-import { Wallet, ReceiptText, Store, Share2, Download, TrendingUp, ArrowUp, ArrowDown } from 'lucide-react';
+import { Wallet, ReceiptText, Store, Share2, Download, TrendingUp, ArrowUp, ArrowDown, BadgeDollarSign } from 'lucide-react';
 import { Card } from '../ui/card';
 import {
   Select,
@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-import { buildCategoryResolver, findPriceChanges } from '../../utils/receiptInsights';
+import { buildCategoryResolver, findCheapestStores, findPriceChanges, CHEAPEST_WINDOW_DAYS } from '../../utils/receiptInsights';
 import { getCategoryStyle, hueFromString } from '../../utils/categoryStyles';
 import SpendingExportCard, { toCategoryRow, toStoreRow } from './SpendingExportCard.jsx';
 import { renderImage, saveBlob, shareImage } from '../../utils/downloadList';
@@ -71,6 +71,7 @@ const SpendingInsights = ({ receipts, loading = false }) => {
   const [selectedStore, setSelectedStore] = useState('all');
   const [shareMonthChoice, setShareMonthChoice] = useState(null);
   const [showAllPriceChanges, setShowAllPriceChanges] = useState(false);
+  const [showAllCheapest, setShowAllCheapest] = useState(false);
   const exportCardRef = useRef(null);
   const pendingExportRef = useRef(null);
 
@@ -159,6 +160,10 @@ const SpendingInsights = ({ receipts, loading = false }) => {
   const priceChanges = useMemo(() => findPriceChanges(filteredReceipts), [filteredReceipts]);
   const shownPriceChanges = showAllPriceChanges ? priceChanges : priceChanges.slice(0, PRICE_CHANGES_PREVIEW);
   const pricierCount = priceChanges.filter((item) => item.change > 0).length;
+
+  // Cross-store comparison needs every store, so it ignores the store filter
+  const cheapestStores = useMemo(() => findCheapestStores(receipts), [receipts]);
+  const shownCheapest = showAllCheapest ? cheapestStores : cheapestStores.slice(0, PRICE_CHANGES_PREVIEW);
 
   // Shareable summary of the chosen month (respects the store filter)
   const shareSummary = useMemo(() => {
@@ -407,6 +412,53 @@ const SpendingInsights = ({ receipts, loading = false }) => {
           </>
         )}
       </Card>
+
+      {cheapestStores.length > 0 && (
+        <Card className="p-5 rounded-2xl gap-0">
+          <div className="mb-3">
+            <h6 className="font-medium">Where it&apos;s cheapest</h6>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Latest unit price at each store over the last {Math.round(CHEAPEST_WINDOW_DAYS / 30)} months · all stores
+            </p>
+          </div>
+          <ul className="divide-y divide-border">
+            {shownCheapest.map((item) => {
+              const [best, ...others] = item.stores;
+              return (
+                <li key={item.itemKey} className="flex items-center gap-3 py-2.5">
+                  <span className="size-8 rounded-lg flex items-center justify-center shrink-0 bg-emerald-500/12 text-emerald-700 dark:text-emerald-400">
+                    <BadgeDollarSign className="size-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate capitalize">{item.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      <span className="font-medium text-foreground">{best.store} {formatMoney(best.unitPrice, item.currency)}</span>
+                      {others.map((entry) => (
+                        <span key={entry.store}> · {entry.store} {formatMoney(entry.unitPrice, item.currency)}</span>
+                      ))}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                      Save {formatMoney(item.saving, item.currency)}
+                    </p>
+                    <p className="text-xs text-muted-foreground tabular-nums">{Math.round(item.savingPct * 100)}% less</p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          {cheapestStores.length > PRICE_CHANGES_PREVIEW && (
+            <button
+              type="button"
+              onClick={() => setShowAllCheapest((value) => !value)}
+              className="mt-2 text-sm font-medium text-primary hover:underline self-start"
+            >
+              {showAllCheapest ? 'Show fewer' : `Show all ${cheapestStores.length}`}
+            </button>
+          )}
+        </Card>
+      )}
 
       <Card className="p-5 rounded-2xl gap-0">
         <h6 className="font-medium mb-3">

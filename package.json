@@ -45,6 +45,7 @@
     "tw-animate-css": "^1.4.0",
     "vite": "^6.4.3",
     "vite-plugin-pwa": "^1.1.0",
+    "vitest": "^3.2.7",
     "workbox-window": "^7.3.0"
   },
   "pnpm": {
@@ -73,6 +74,7 @@
     "lint:fix": "pnpm lint:frontend:fix && pnpm lint:backend:fix",
     "lint:frontend:fix": "eslint src --fix",
     "lint:backend:fix": "cd backend && pnpm lint:fix",
-    "postinstall": "echo 'Run pnpm lint to check for issues'"
+    "postinstall": "echo 'Run pnpm lint to check for issues'",
+    "test": "vitest run"
   }
 }

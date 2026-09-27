@@ -18,6 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pnpm lint:fix` - Auto-fix ESLint issues in src/
 - `pnpm lint:backend` - Run ESLint on backend code
 - `pnpm lint:backend:fix` - Auto-fix backend ESLint issues
+- `pnpm test` - Run frontend unit tests (vitest, `src/**/*.test.js`, config in `vitest.config.js`)
 
 ### Backend (Node.js + Express)
 - `pnpm --filter backend dev` - Start backend in development mode with nodemon (port 3001)
@@ -110,10 +111,11 @@ pnpm dev
 - **useReceipts.js** - Receipt list/upload/selection state, backed by ReceiptService
 - **useReceiptChat.js** - RAG chat state (question history, date-range filters, streaming stages), backed by ReceiptRagClient
 - **usePurchasePredictions.js** - Fetches "you'll probably need" predictions for the selected date and filters out items already on the list
+- **usePriceSignals.js** - Loads receipts while the list view is showing and returns a lookup (item text → price rise / cheaper store) used for the ▲ price hints on grocery list items
 
 ### Utilities (src/utils/)
 - **logger.js** - Centralized logging system with different log levels
-- **receiptInsights.js** - `buildCategoryResolver` (item category = user pick → pick remembered by item name from any receipt → groceryIntelligence guess), `RECEIPT_CATEGORIES`, `getTotalMismatch` (flags receipts whose priced items differ from the total by >15%; shown as a "Check total" badge), and `findPriceChanges` (unit price = line price ÷ quantity, latest vs previous purchase of the same item at the same store; ignores changes <3% or <2¢; shown in the Spending tab's "Price changes" card)
+- **receiptInsights.js** - `buildCategoryResolver` (item category = user pick → pick remembered by item name from any receipt → groceryIntelligence guess), `RECEIPT_CATEGORIES`, `getTotalMismatch` (flags receipts whose priced items differ from the total by >15%; shown as a "Check total" badge), `findPriceChanges` (unit price = line price ÷ quantity, latest vs previous comparable purchase of the same item at the same store; ignores changes <3% or <2¢), `findCheapestStores` (each store's latest unit price over the last 180 days), and `buildPriceSignals` (per-item rise / cheaper-store hints for the grocery list). Items are matched with `parseItemName` (strips pack sizes, SKU numbers, punctuation and simple plurals, keeping the size separately); different known pack sizes are never compared, and a 2× gap without a matching known size is treated as a different pack
 
 ### Database Schema
 - **Users**: firstName, lastName, email, password (hashed with bcryptjs)
@@ -180,7 +182,7 @@ This app was migrated from JSONBin to MongoDB backend. See `MIGRATION_NOTES.md` 
 ### Development Notes
 - This is a pnpm workspace with frontend (root) and backend packages
 - ESLint configured: frontend (max 10 warnings), backend (max 5 warnings)
-- No testing setup currently configured
+- Frontend unit tests use vitest (`pnpm test`); pure helpers like `src/utils/receiptInsights.js` are covered in `receiptInsights.test.js`
 - Fonts (Geist / Geist Mono) are self-hosted via `@fontsource-variable/*`, imported in `src/main.jsx` (works offline and inside exported images)
 - Uses Tailwind CSS v4 (via `@tailwindcss/vite`) with CSS custom properties for theming; shadcn/ui primitives live in `src/components/ui/` (hand-authored, not CLI-generated) and wrap `radix-ui` for accessible behavior. Path alias `@` resolves to `src/`
 - Voice recognition requires HTTPS in production (uses Web Speech API)

@@ -52,6 +52,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import ReceiptsPage from './pages/ReceiptsPage';
 import { useGroceryList } from './hooks/useGroceryList';
 import { usePurchasePredictions } from './hooks/usePurchasePredictions';
+import usePriceSignals from './hooks/usePriceSignals';
 import groceryIntelligence from './services/groceryIntelligence';
 import { downloadListAsImage, downloadListAsPDF, generateListText, listFileName, renderImage, shareImage } from './utils/downloadList';
 import { Button } from './components/ui/button';
@@ -538,6 +539,8 @@ const VoiceGroceryList = ({ user, logout }) => {
 
   const isPastDate = currentDate.isBefore(dayjs().startOf('day'));
   const predictions = usePurchasePredictions(user, currentDateString, currentItems, !isPastDate);
+  // Receipt price hints (▲ price rises / cheaper store) on list items
+  const priceSignalFor = usePriceSignals(user, !isReceiptsView);
 
   const completedCount = currentItems.filter(item => item.completed).length;
   const remainingCount = currentItems.length - completedCount;
@@ -1206,6 +1209,7 @@ const VoiceGroceryList = ({ user, logout }) => {
                           onUpdateCount={updateItemCount}
                           categoryList={categoryList}
                           loading={loading}
+                          priceSignalFor={priceSignalFor}
                         />
                       ) : (
                         <div className="text-center py-12">
