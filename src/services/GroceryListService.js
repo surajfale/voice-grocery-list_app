@@ -1,4 +1,4 @@
-import { BaseService } from './BaseService.js';
+import { BaseService, nonRetryable } from './BaseService.js';
 import ApiService from './ApiService.js';
 import logger from '../utils/logger.js';
 
@@ -41,7 +41,7 @@ export class GroceryListService extends BaseService {
         return this.createSuccessResponse(result.lists, 'Grocery lists loaded successfully');
       }
       
-      throw new Error(result.error || 'Failed to load grocery lists');
+      throw nonRetryable(result.error || 'Failed to load grocery lists');
     }, { context: { userId } });
   }
 
@@ -66,7 +66,7 @@ export class GroceryListService extends BaseService {
         return this.createSuccessResponse(result.list, 'Grocery list loaded successfully');
       }
       
-      throw new Error(result.error || 'Failed to load grocery list');
+      throw nonRetryable(result.error || 'Failed to load grocery list');
     }, { context: { userId, date } });
   }
 
@@ -88,7 +88,7 @@ export class GroceryListService extends BaseService {
         return this.createSuccessResponse(result.predictions, 'Predictions loaded successfully');
       }
 
-      throw new Error(result.error || 'Failed to load predictions');
+      throw nonRetryable(result.error || 'Failed to load predictions');
     }, { context: { userId, date } });
   }
 
@@ -120,7 +120,7 @@ export class GroceryListService extends BaseService {
         return this.createSuccessResponse(result.list, 'Item added successfully');
       }
       
-      throw new Error(result.error || 'Failed to add item');
+      throw nonRetryable(result.error || 'Failed to add item');
     }, { context: { userId, date, itemText: itemData.text } });
   }
 
@@ -159,7 +159,7 @@ export class GroceryListService extends BaseService {
       }
 
       logger.error('Update item failed:', result);
-      throw new Error(result.error || 'Failed to update item');
+      throw nonRetryable(result.error || 'Failed to update item');
     }, { context: { userId, date, itemId } });
   }
 
@@ -190,7 +190,7 @@ export class GroceryListService extends BaseService {
         return this.createSuccessResponse(result.list, 'Item removed successfully');
       }
       
-      throw new Error(result.error || 'Failed to remove item');
+      throw nonRetryable(result.error || 'Failed to remove item');
     }, { context: { userId, date, itemId } });
   }
 
@@ -220,7 +220,7 @@ export class GroceryListService extends BaseService {
         return this.createSuccessResponse(result.list, 'List cleared successfully');
       }
       
-      throw new Error(result.error || 'Failed to clear list');
+      throw nonRetryable(result.error || 'Failed to clear list');
     }, { context: { userId, date } });
   }
 
@@ -247,7 +247,7 @@ export class GroceryListService extends BaseService {
         return this.createSuccessResponse(null, 'List deleted successfully');
       }
       
-      throw new Error(result.error || 'Failed to delete list');
+      throw nonRetryable(result.error || 'Failed to delete list');
     }, { context: { userId, date } });
   }
 
@@ -284,7 +284,7 @@ export class GroceryListService extends BaseService {
         return this.createSuccessResponse(result.list, 'Lists merged successfully');
       }
 
-      throw new Error(result.error || 'Failed to merge grocery lists');
+      throw nonRetryable(result.error || 'Failed to merge grocery lists');
     }, { context: { userId, sourceDates, targetDate } });
   }
 

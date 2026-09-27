@@ -16,18 +16,21 @@ function AlertDialogPortal(props) {
   return <AlertDialogPrimitive.Portal data-slot="alert-dialog-portal" {...props} />;
 }
 
-function AlertDialogOverlay({ className, ...props }) {
-  return (
-    <AlertDialogPrimitive.Overlay
-      data-slot="alert-dialog-overlay"
-      className={cn(
-        'fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
-        className
-      )}
-      {...props}
-    />
-  );
-}
+// forwardRef: the Portal/Presence parent passes a ref to its direct children
+// (React 18 drops refs on plain function components, which also breaks
+// Presence's exit-animation tracking for the overlay)
+const AlertDialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
+  <AlertDialogPrimitive.Overlay
+    ref={ref}
+    data-slot="alert-dialog-overlay"
+    className={cn(
+      'fixed inset-0 z-50 bg-black/50 backdrop-blur-[2px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      className
+    )}
+    {...props}
+  />
+));
+AlertDialogOverlay.displayName = 'AlertDialogOverlay';
 
 function AlertDialogContent({ className, ...props }) {
   return (

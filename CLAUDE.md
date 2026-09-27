@@ -86,7 +86,7 @@ pnpm dev
 
 ### Service Architecture (src/services/)
 - **ServiceManager.js** - Centralized service orchestration and dependency management
-- **BaseService.js** - Base class with common service functionality
+- **BaseService.js** - Base class with common service functionality; `executeWithRetry` retries only transient failures (network errors, 408, 5xx). `ApiService` throws `HttpError` (carries `status`), and services throw `nonRetryable(...)` when the server answered with `success: false`, so rejected requests (4xx incl. 429) fail fast instead of retrying
 - **AuthService.js** - Authentication and user management
 - **GroceryListService.js** - Grocery list CRUD operations and business logic
 - **ApiService.js** - Low-level API communication layer
