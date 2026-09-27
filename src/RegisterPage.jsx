@@ -210,7 +210,7 @@ const RegisterPage = ({ onSwitchToLogin }) => {
               </div>
             </div>
 
-            <Button type="submit" size="lg" disabled={loading} className="w-full">
+            <Button type="submit" size="lg" disabled={loading} className="w-full h-12 rounded-xl btn-gradient border-0 hover:opacity-95">
               <UserPlus />
               {loading ? 'Creating account…' : 'Create account'}
             </Button>
