@@ -1,4 +1,4 @@
-import { BaseService } from './BaseService.js';
+import { BaseService, HttpError } from './BaseService.js';
 import logger from '../utils/logger.js';
 
 const TOKEN_STORAGE_KEY = 'groceryListToken';
@@ -64,7 +64,9 @@ export class ApiService extends BaseService {
     const response = await fetch(url, requestOptions);
     if (timeoutId) { clearTimeout(timeoutId); }
       
-      const data = await response.json();
+      // Error pages from proxies (e.g. an HTML 502) aren't JSON; don't let the
+      // parse failure hide the status
+      const data = await response.json().catch(() => ({}));
       
       // Handle different response statuses
       if (!response.ok) {
@@ -108,8 +110,8 @@ export class ApiService extends BaseService {
       return { success: false, error: errorMessage };
     }
     
-    // Throw error for other status codes
-    throw new Error(errorMessage);
+    // Throw for other status codes; the status decides whether to retry
+    throw new HttpError(errorMessage, status);
   }
 
   /**

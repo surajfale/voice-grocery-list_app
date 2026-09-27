@@ -1,6 +1,26 @@
 import logger from '../utils/logger.js';
 
 /**
+ * Error for a failed HTTP response. Carries the status so retry logic can
+ * tell a rejected request (4xx: retrying can't help) from a transient failure
+ * (5xx / 408: retrying might). The message is the server's error text.
+ */
+export class HttpError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.name = 'HttpError';
+    this.status = status;
+    this.retryable = status >= 500 || status === 408;
+  }
+}
+
+/**
+ * Error for a request the client itself refuses to send (missing input), so
+ * it is never retried.
+ */
+export const nonRetryable = (message) => Object.assign(new Error(message), { retryable: false });
+
+/**
  * Base Service Class
  * Provides common functionality for all service classes including:
  * - Error handling
@@ -91,6 +111,12 @@ export class BaseService {
    * @returns {boolean} True if should not retry
    */
   shouldNotRetry(error) {
+    // Errors that know whether they're transient (HttpError, nonRetryable)
+    if (typeof error.retryable === 'boolean') {
+      return !error.retryable;
+    }
+
+    // Fallback for untyped errors: match status words in the message
     // Don't retry on authentication errors
     if (error.message.includes('401') || error.message.includes('Unauthorized')) {
       return true;

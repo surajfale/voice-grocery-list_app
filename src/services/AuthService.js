@@ -1,4 +1,4 @@
-import { BaseService } from './BaseService.js';
+import { BaseService, nonRetryable } from './BaseService.js';
 import ApiService from './ApiService.js';
 import logger from '../utils/logger.js';
 
@@ -37,7 +37,7 @@ export class AuthService extends BaseService {
         return this.createSuccessResponse(result.user, 'User registered successfully');
       }
       
-      throw new Error(result.error || 'Registration failed');
+      throw nonRetryable(result.error || 'Registration failed');
     }, { context: { email: userData.email } });
   }
 
@@ -64,7 +64,7 @@ export class AuthService extends BaseService {
         return this.createSuccessResponse(result.user, 'Login successful');
       }
       
-      throw new Error(result.error || 'Login failed');
+      throw nonRetryable(result.error || 'Login failed');
     }, { context: { email } });
   }
 
@@ -82,7 +82,7 @@ export class AuthService extends BaseService {
         return this.createSuccessResponse(result.user, 'Profile retrieved successfully');
       }
       
-      throw new Error(result.error || 'Failed to retrieve profile');
+      throw nonRetryable(result.error || 'Failed to retrieve profile');
     }, { context: { userId } });
   }
 
@@ -222,7 +222,7 @@ export class AuthService extends BaseService {
         return this.createSuccessResponse(result.token, 'Token refreshed successfully');
       }
 
-      throw new Error(result.error || 'Token refresh failed');
+      throw nonRetryable(result.error || 'Token refresh failed');
     });
   }
 
@@ -253,7 +253,7 @@ export class AuthService extends BaseService {
         return this.createSuccessResponse(null, 'Account deleted successfully');
       }
 
-      throw new Error(result.error || 'Account deletion failed');
+      throw nonRetryable(result.error || 'Account deletion failed');
     }, { context: { userId } });
   }
 }

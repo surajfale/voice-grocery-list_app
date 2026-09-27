@@ -1,4 +1,4 @@
-import { BaseService } from './BaseService.js';
+import { BaseService, HttpError, nonRetryable } from './BaseService.js';
 import ApiService from './ApiService.js';
 
 const TOKEN_STORAGE_KEY = 'groceryListToken';
@@ -23,11 +23,11 @@ export class ReceiptService extends BaseService {
 
     return this.executeWithRetry(async () => {
       if (!userId) {
-        throw new Error('User ID is required');
+        throw nonRetryable('User ID is required');
       }
 
       if (!normalizedFiles.length) {
-        throw new Error('Receipt file is required');
+        throw nonRetryable('Receipt file is required');
       }
 
       const formData = new FormData();
@@ -43,10 +43,14 @@ export class ReceiptService extends BaseService {
         body: formData
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to upload receipt');
+      if (!response.ok) {
+        // A rejected upload (bad file type, too large) must not be re-sent
+        throw new HttpError(data.error || 'Failed to upload receipt', response.status);
+      }
+      if (!data.success) {
+        throw nonRetryable(data.error || 'Failed to upload receipt');
       }
 
       return this.createSuccessResponse(data.receipt, data.message || 'Receipt uploaded');
@@ -66,7 +70,7 @@ export class ReceiptService extends BaseService {
         return this.createSuccessResponse(result.receipts, 'Receipts loaded');
       }
 
-      throw new Error(result.error || 'Failed to load receipts');
+      throw nonRetryable(result.error || 'Failed to load receipts');
     }, { context: { userId } });
   }
 
@@ -79,7 +83,7 @@ export class ReceiptService extends BaseService {
         return this.createSuccessResponse(result.receipt, 'Receipt loaded');
       }
 
-      throw new Error(result.error || 'Failed to load receipt');
+      throw nonRetryable(result.error || 'Failed to load receipt');
     }, { context: { userId, receiptId } });
   }
 
@@ -94,10 +98,8 @@ export class ReceiptService extends BaseService {
         return this.createSuccessResponse(result.receipt, 'Receipt updated');
       }
 
-      throw new Error(result.error || 'Failed to update receipt');
-      // Single attempt: ApiService surfaces 400s as bare messages, which the
-      // retry loop can't tell apart from transient failures
-    }, { context: { userId, receiptId }, maxAttempts: 1 });
+      throw nonRetryable(result.error || 'Failed to update receipt');
+    }, { context: { userId, receiptId } });
   }
 
   async deleteReceipt(userId, receiptId) {
@@ -111,7 +113,7 @@ export class ReceiptService extends BaseService {
         return this.createSuccessResponse(null, 'Receipt deleted');
       }
 
-      throw new Error(result.error || 'Failed to delete receipt');
+      throw nonRetryable(result.error || 'Failed to delete receipt');
     }, { context: { userId, receiptId } });
   }
 
@@ -138,7 +140,7 @@ export class ReceiptService extends BaseService {
         }, 'Embedding status checked');
       }
 
-      throw new Error(result.error || 'Failed to check embedding status');
+      throw nonRetryable(result.error || 'Failed to check embedding status');
     }, { context: { userId, receiptIds } });
   }
 
@@ -162,7 +164,7 @@ export class ReceiptService extends BaseService {
         }, result.message || 'Embedding triggered');
       }
 
-      throw new Error(result.error || 'Failed to trigger embedding');
+      throw nonRetryable(result.error || 'Failed to trigger embedding');
     }, { context: { userId, receiptId } });
   }
 }
