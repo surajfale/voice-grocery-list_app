@@ -264,12 +264,41 @@ RAG_TOP_K=5
 RAG_CHUNK_SIZE=512
 RAG_VECTOR_INDEX=receiptVectorIndex
 EMBEDDINGS_VERSION=1
+# Sign-up is CLOSED unless one of these is set (see "Sign-up and invites")
+# SIGNUP_INVITE_CODE=<share-privately>
+# SIGNUP_OPEN=true
 ```
 
 **Verification tips**
 - After saving the variables in Railway, open the service shell and run `env | grep RAG_` to confirm they are injected.
 - Hit `https://<railway-app>/api/health` and confirm no errors appear in logs related to missing OpenAI credentials.
 - Trigger `pnpm --filter backend ingest:receipts` once in production to ensure the ingestion job can see the credentials.
+
+### Sign-up and invites
+This is a personal-use app, so **account creation is closed by default**. The backend decides; the sign-up screen only reflects `GET /api/auth/signup-mode`.
+
+| Railway variable | Mode | Account creation |
+|---|---|---|
+| neither set (default) | `closed` | Always refused (`403`, `code: SIGNUP_CLOSED`) |
+| `SIGNUP_INVITE_CODE=<code>` | `invite` | Only with the matching code (`403`, `code: INVALID_INVITE_CODE` otherwise) |
+| `SIGNUP_OPEN=true` | `open` | Anyone (takes precedence over an invite code) |
+
+An empty, missing or `false` `SIGNUP_OPEN` never opens sign-up, and a blank `SIGNUP_INVITE_CODE` counts as unset. The existing 10-account cap still applies, and sign-up attempts, including wrong codes, are limited to 3 per hour per IP.
+
+**To invite someone:**
+1. In Railway → the backend service → Variables, set `SIGNUP_INVITE_CODE` to a long random value (e.g. `openssl rand -base64 18`). Railway redeploys the service when variables change.
+2. Share the code privately. They enter it in the "Invite code" field on the sign-up screen.
+3. Once they've signed up, delete the variable (back to closed) or change it (rotate).
+
+The code is compared in constant time and is never stored with the account.
+
+**To see who has an account** (read-only; never prints passwords or reset tokens):
+```bash
+# From the Railway service shell, or locally with the production MONGODB_URI
+pnpm --filter backend accounts:list            # table, newest first
+pnpm --filter backend accounts:list -- --json  # machine-readable
+```
+It lists each account's email, name, sign-up and last-login time, and its number of grocery lists, list items and receipts.
 
 ### Frontend (Netlify)
 ```

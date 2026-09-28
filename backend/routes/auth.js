@@ -11,9 +11,11 @@ import {
   passwordResetCompletionLimiter,
   loginLimiter,
   registrationLimiter,
+  signupModeLimiter,
   accountDeletionLimiter
 } from '../middleware/rateLimiter.js';
 import { generateAuthToken, authenticate, requireOwnUserId } from '../middleware/auth.js';
+import { checkSignupAllowed, getSignupMode } from '../utils/signupPolicy.js';
 
 const router = express.Router();
 
@@ -31,9 +33,28 @@ const getClientIP = (req) => {
          'unknown';
 };
 
+// Current sign-up mode ("open" | "invite" | "closed"). Only adapts the UI;
+// /register enforces the same policy itself.
+router.get('/signup-mode', signupModeLimiter, (req, res) => {
+  res.json({ success: true, mode: getSignupMode() });
+});
+
 // Register new user (with rate limiting)
 router.post('/register', registrationLimiter, async (req, res) => {
   try {
+    // Sign-up policy first, before any database access, so a refused caller
+    // learns nothing about which emails already have accounts. The invite
+    // code is only checked here and is never stored with the account.
+    const signup = checkSignupAllowed(req.body?.inviteCode);
+    if (!signup.allowed) {
+      console.warn(`⚠️ Registration refused (${signup.code}, mode=${signup.mode}) from IP: ${getClientIP(req)}`);
+      return res.status(signup.status).json({
+        success: false,
+        code: signup.code,
+        error: signup.error
+      });
+    }
+
     const { firstName, lastName, email, password } = req.body;
 
     // Validate input

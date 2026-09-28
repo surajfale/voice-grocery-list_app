@@ -42,6 +42,23 @@ export class AuthService extends BaseService {
   }
 
   /**
+   * Current sign-up mode from the server: 'open' | 'invite' | 'closed', or
+   * null when it can't be determined (offline, old backend). Only adapts the
+   * UI; the server enforces the policy on /auth/register itself.
+   *
+   * @returns {Promise<'open'|'invite'|'closed'|null>}
+   */
+  async getSignupMode() {
+    try {
+      const result = await this.apiService.makeRequest('/auth/signup-mode');
+      return ['open', 'invite', 'closed'].includes(result?.mode) ? result.mode : null;
+    } catch (error) {
+      logger.warn('Could not load sign-up mode:', error.message);
+      return null;
+    }
+  }
+
+  /**
    * Login user with email and password
    * 
    * @param {string} email - User email

@@ -96,14 +96,15 @@ export const loginLimiter = rateLimit({
 
 /**
  * Rate limiter for registration
- * Prevents spam account creation
+ * Prevents spam account creation and invite-code guessing: every attempt
+ * counts, including refused ones (wrong code, sign-up closed)
  */
 export const registrationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3, // Max 3 registrations per hour per IP
+  max: 3, // Max 3 sign-up attempts per hour per IP
   message: {
     success: false,
-    error: 'Too many accounts created. Please try again later.'
+    error: 'Too many sign-up attempts. Please try again later.'
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -111,7 +112,24 @@ export const registrationLimiter = rateLimit({
     console.warn(`⚠️ Rate limit exceeded for registration: IP=${req.ip}`);
     res.status(429).json({
       success: false,
-      error: 'Too many accounts created. Please try again later.'
+      error: 'Too many sign-up attempts. Please try again later.'
+    });
+  }
+});
+
+/**
+ * Rate limiter for the public sign-up mode endpoint (read-only, cheap, but
+ * still public)
+ */
+export const signupModeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 60, // Max 60 checks per window per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      success: false,
+      error: 'Too many requests. Please try again later.'
     });
   }
 });

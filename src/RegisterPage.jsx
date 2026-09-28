@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import isEmail from 'validator/lib/isEmail';
 import PropTypes from 'prop-types';
-import { User, Mail, Lock, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, UserPlus, Eye, EyeOff, KeyRound, LogIn, Loader2 } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import PasswordRequirements from './components/PasswordRequirements';
 import { validatePassword } from './utils/passwordValidator';
@@ -10,6 +10,9 @@ import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Button } from './components/ui/button';
 import { Alert, AlertDescription } from './components/ui/alert';
+import { Checkbox } from './components/ui/checkbox';
+import PersonalUseNotice from './components/PersonalUseNotice';
+import { useSignupMode } from './hooks/useSignupMode';
 
 const RegisterPage = ({ onSwitchToLogin }) => {
   const [formData, setFormData] = useState({
@@ -23,7 +26,14 @@ const RegisterPage = ({ onSwitchToLogin }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [inviteCode, setInviteCode] = useState('');
+  // Local only: never sent to or stored by the server
+  const [acknowledged, setAcknowledged] = useState(false);
   const { register } = useAuth();
+  const signupMode = useSignupMode();
+  // 'unknown' (e.g. offline): show the field and let the server decide
+  const showInviteField = signupMode === 'invite' || signupMode === 'unknown';
+  const inviteRequired = signupMode === 'invite';
 
   const handleInputChange = (field) => (e) => {
     setFormData({
@@ -34,6 +44,10 @@ const RegisterPage = ({ onSwitchToLogin }) => {
 
   const validateForm = () => {
     const { firstName, lastName, email, password, confirmPassword } = formData;
+
+    if (inviteRequired && !inviteCode.trim()) {
+      return 'Invite code is required';
+    }
 
     if (!firstName.trim()) {
       return 'First name is required';
@@ -68,6 +82,10 @@ const RegisterPage = ({ onSwitchToLogin }) => {
     }
     /* eslint-enable security/detect-possible-timing-attacks */
 
+    if (!acknowledged) {
+      return 'Please confirm you understand this is a personal learning project.';
+    }
+
     return null;
   };
 
@@ -88,7 +106,8 @@ const RegisterPage = ({ onSwitchToLogin }) => {
         formData.firstName,
         formData.lastName,
         formData.email,
-        formData.password
+        formData.password,
+        showInviteField ? inviteCode.trim() : undefined
       );
 
       if (!result.success) {
@@ -102,10 +121,41 @@ const RegisterPage = ({ onSwitchToLogin }) => {
     }
   };
 
+  if (signupMode === 'closed') {
+    return (
+      <AuthLayout title="Sign-up is closed" footer={null}>
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Sign-up is closed. This is a personal learning project and isn&apos;t taking new accounts.
+        </p>
+        <Button
+          type="button"
+          size="lg"
+          onClick={onSwitchToLogin}
+          className="w-full h-12 rounded-xl btn-gradient border-0 hover:opacity-95 mt-6"
+        >
+          <LogIn />
+          Sign in
+        </Button>
+      </AuthLayout>
+    );
+  }
+
+  if (signupMode === 'loading') {
+    return (
+      <AuthLayout title="Create your account" footer={null}>
+        <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          Checking whether sign-up is open…
+        </p>
+      </AuthLayout>
+    );
+  }
+
   return (
     <AuthLayout
       title="Create your account"
       subtitle="Your lists, synced across devices."
+      footer={null}
     >
 
           {/* Error Alert */}
@@ -117,6 +167,26 @@ const RegisterPage = ({ onSwitchToLogin }) => {
 
           {/* Registration Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
+            {showInviteField && (
+              <div className="space-y-1.5">
+                <Label htmlFor="inviteCode">
+                  Invite code{!inviteRequired && <span className="font-normal text-muted-foreground"> (if you have one)</span>}
+                </Label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <Input
+                    id="inviteCode"
+                    value={inviteCode}
+                    onChange={(event) => setInviteCode(event.target.value)}
+                    required={inviteRequired}
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="firstName">First name</Label>
@@ -210,7 +280,22 @@ const RegisterPage = ({ onSwitchToLogin }) => {
               </div>
             </div>
 
-            <Button type="submit" size="lg" disabled={loading} className="w-full h-12 rounded-xl btn-gradient border-0 hover:opacity-95">
+            <PersonalUseNotice variant="full" />
+
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="acknowledge"
+                checked={acknowledged}
+                onCheckedChange={(checked) => setAcknowledged(checked === true)}
+                required
+                className="mt-0.5"
+              />
+              <Label htmlFor="acknowledge" className="text-sm font-normal leading-snug cursor-pointer">
+                I understand this is a personal learning project, not a public service.
+              </Label>
+            </div>
+
+            <Button type="submit" size="lg" disabled={loading || !acknowledged} className="w-full h-12 rounded-xl btn-gradient border-0 hover:opacity-95">
               <UserPlus />
               {loading ? 'Creating account…' : 'Create account'}
             </Button>

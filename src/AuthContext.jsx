@@ -89,15 +89,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (firstName, lastName, email, password) => {
+  // No global setLoading here (same as login): App swaps every screen for a
+  // spinner while `loading` is true, which unmounted RegisterPage mid-request
+  // and threw away the server's error and the typed-in form.
+  // RegisterPage shows its own pending state.
+  const register = async (firstName, lastName, email, password, inviteCode) => {
     try {
-      setLoading(true);
-      
       const result = await apiStorage.createUser({
         firstName,
         lastName,
         email,
-        password
+        password,
+        // Only sent when the invite field was shown and filled in
+        ...(inviteCode ? { inviteCode } : {})
       });
       
       if (result.success) {
@@ -117,8 +121,6 @@ export const AuthProvider = ({ children }) => {
         success: false,
         error: 'Network error. Please check your connection.'
       };
-    } finally {
-      setLoading(false);
     }
   };
 

@@ -6,7 +6,8 @@ export default defineConfig({
     include: [
       'services/__tests__/**/*.test.js',
       'routes/__tests__/**/*.test.js',
-      'utils/__tests__/**/*.test.js'
+      'utils/__tests__/**/*.test.js',
+      'scripts/__tests__/**/*.test.js'
     ],
     globals: true,
     reporters: ['default'],

@@ -30,6 +30,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pnpm --filter backend ingest:receipts -- --force` - Reprocess receipts that previously failed embedding
 - `pnpm --filter backend test:receipt-local` - Run the local receipt OCR/RAG pipeline against a sample image
 - `pnpm --filter backend rag:query` - Query the receipt RAG pipeline from the CLI
+- `pnpm --filter backend accounts:list [-- --json]` - Read-only list of all accounts (email, name, sign-up/last-login time, list/item/receipt counts); never reads password or reset-token fields
 - `pnpm install` - Install all dependencies (frontend and backend)
 
 ### Full Development Setup
@@ -68,7 +69,7 @@ pnpm dev
 ### Key Components
 - **App.jsx** - Main application component with voice recognition, categorization logic, and smart corrections dialog
 - **AuthContext.jsx** - Authentication state management with user validation
-- **LoginPage.jsx/RegisterPage.jsx** - Modern authentication UI with Material Design
+- **LoginPage.jsx/RegisterPage.jsx** - Authentication UI. Both show `PersonalUseNotice` (short / full). RegisterPage adapts to the sign-up mode (closed message, required invite field, unknown → optional field) and requires a local-only "personal learning project" acknowledgement; LoginPage hides "Create account" when sign-up is closed
 - **HelpPage.jsx** - User help and documentation component
 - **ThemeSettings.jsx** - Dynamic theme customization component
 - **ThemeContext.jsx** - Theme state management (light/dark mode, color schemes)
@@ -147,7 +148,8 @@ pnpm dev
 - Improved error handling that suppresses expected "aborted" errors from manual stops
 
 ### API Structure
-- `/api/auth/register` - User registration
+- `/api/auth/register` - User registration. Sign-up policy (`backend/utils/signupPolicy.js`) is enforced first, before any DB access: closed by default, invite-only with `SIGNUP_INVITE_CODE` (optional `inviteCode` body field, constant-time compare, never stored), open with `SIGNUP_OPEN=true`; refusals are `403` with `code: SIGNUP_CLOSED | INVALID_INVITE_CODE`. 3 attempts/hour/IP; 10-account cap still applies
+- `/api/auth/signup-mode` - Public, rate-limited `{ mode: 'open' | 'invite' | 'closed' }` from the same policy; only adapts the UI (`useSignupMode`)
 - `/api/auth/login` - User login
 - `/api/auth/forgot-password` / `/api/auth/reset-password/:token` - Password reset flow
 - `/api/grocery-lists/` - CRUD operations for grocery lists
@@ -166,6 +168,7 @@ Backend requires `.env` file with:
 - `PORT` - Server port (default 3001)
 - `CORS_ORIGIN` - Frontend URL (default http://localhost:5173)
 - `JWT_SECRET` - Secret used to sign/verify session JWTs
+- `SIGNUP_INVITE_CODE` / `SIGNUP_OPEN` - Sign-up mode (unset = closed; code = invite-only; `SIGNUP_OPEN=true` = open). See docs/DEPLOYMENT.md "Sign-up and invites"
 - `RESEND_API_KEY` - Resend API key for sending emails
 - `EMAIL_FROM` - Verified sender email address (e.g., noreply@yourdomain.com)
 - `OPENAI_API_KEY` - OpenAI API key powering receipt OCR parsing, embeddings, and RAG chat completions

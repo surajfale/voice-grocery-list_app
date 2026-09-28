@@ -65,7 +65,13 @@ const PreviewCard = () => (
  * Desktop: gradient story panel on the left, form on the right.
  * Mobile: gradient header with the form card overlapping it.
  */
-const AuthLayout = ({ title, subtitle = null, children }) => (
+const DEFAULT_FOOTER = (
+  <p className="text-xs text-muted-foreground text-center">
+    A personal learning project. Availability isn&apos;t guaranteed and data may be reset.
+  </p>
+);
+
+const AuthLayout = ({ title, subtitle = null, children, footer = DEFAULT_FOOTER }) => (
   <div className="min-h-dvh lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
     {/* Story panel (desktop) */}
     <aside className="hidden lg:flex hero-gradient m-4 rounded-[32px] p-10 flex-col justify-between">
@@ -112,9 +118,7 @@ const AuthLayout = ({ title, subtitle = null, children }) => (
         </div>
       </main>
 
-      <p className="mt-8 text-xs text-muted-foreground text-center max-w-sm">
-        A personal learning project. Availability isn&apos;t guaranteed and data may be reset.
-      </p>
+      {footer && <div className="mt-8 w-full max-w-sm">{footer}</div>}
     </div>
   </div>
 );
@@ -123,6 +127,8 @@ AuthLayout.propTypes = {
   title: PropTypes.node.isRequired,
   subtitle: PropTypes.node,
   children: PropTypes.node.isRequired,
+  // Shown under the form; sign-in/sign-up pass the personal-use notice
+  footer: PropTypes.node,
 };
 
 export default AuthLayout;

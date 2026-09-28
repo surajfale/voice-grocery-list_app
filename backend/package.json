@@ -15,7 +15,8 @@
     "ingest:receipts": "node jobs/receiptEmbeddingJob.js",
     "test": "vitest run",
     "test:receipt-local": "node scripts/localReceiptPipeline.js",
-    "rag:query": "node scripts/localRagQuery.js"
+    "rag:query": "node scripts/localRagQuery.js",
+    "accounts:list": "node scripts/listAccounts.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
