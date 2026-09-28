@@ -3,6 +3,8 @@ import PropTypes from 'prop-types';
 import { Mail, Lock, LogIn, Eye, EyeOff, } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import AuthLayout from './components/AuthLayout';
+import PersonalUseNotice from './components/PersonalUseNotice';
+import { useSignupMode } from './hooks/useSignupMode';
 import { Input } from './components/ui/input';
 import { Label } from './components/ui/label';
 import { Button } from './components/ui/button';
@@ -15,6 +17,9 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const signupMode = useSignupMode();
+  // No sign-up link while loading (avoids a flash) or when sign-up is closed
+  const canSignUp = signupMode !== 'loading' && signupMode !== 'closed';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,6 +57,7 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
     <AuthLayout
       title="Welcome back"
       subtitle="Sign in to see your lists on any device."
+      footer={<PersonalUseNotice variant="short" />}
     >
 
           {/* Error Alert */}
@@ -117,17 +123,19 @@ const LoginPage = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
             </Button>
           </form>
 
-          {/* Switch to Register */}
-          <p className="text-center text-sm text-muted-foreground mt-5">
-            Don&apos;t have an account?{' '}
-            <button
-              type="button"
-              onClick={onSwitchToRegister}
-              className="font-semibold text-primary hover:underline"
-            >
-              Create account
-            </button>
-          </p>
+          {/* Switch to Register (hidden when sign-up is closed) */}
+          {canSignUp && (
+            <p className="text-center text-sm text-muted-foreground mt-5">
+              Don&apos;t have an account?{' '}
+              <button
+                type="button"
+                onClick={onSwitchToRegister}
+                className="font-semibold text-primary hover:underline"
+              >
+                Create account
+              </button>
+            </p>
+          )}
 
     </AuthLayout>
   );
