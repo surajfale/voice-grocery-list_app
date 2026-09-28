@@ -6,12 +6,12 @@ import crypto from 'crypto';
  * this, so enforcement and what the UI is told can't disagree.
  *
  * Configuration (read on every call, so a restart-free env change applies):
- *   SIGNUP_OPEN=true          → "open": anyone can sign up
- *   SIGNUP_INVITE_CODE=<code> → "invite": sign-up requires the matching code
- *   neither set               → "closed" (the default)
+ *   SIGNUP_OPEN=true                → "open": anyone can sign up
+ *   REGISTRATION_INVITE_CODE=<code> → "invite": sign-up requires the matching code
+ *   neither set                     → "closed" (the default)
  *
  * Closed by default: a missing, empty or non-"true" SIGNUP_OPEN never means
- * open, and a blank SIGNUP_INVITE_CODE is treated as unset.
+ * open, and a blank REGISTRATION_INVITE_CODE is treated as unset.
  */
 
 export const SIGNUP_MODES = Object.freeze({
@@ -23,7 +23,7 @@ export const SIGNUP_MODES = Object.freeze({
 const ENABLED_VALUES = new Set(['true', '1', 'yes', 'on']);
 
 const configuredInviteCode = (env) => (
-  typeof env.SIGNUP_INVITE_CODE === 'string' ? env.SIGNUP_INVITE_CODE.trim() : ''
+  typeof env.REGISTRATION_INVITE_CODE === 'string' ? env.REGISTRATION_INVITE_CODE.trim() : ''
 );
 
 /**
@@ -45,7 +45,7 @@ export const getSignupMode = (env = process.env) => {
 const digest = (value) => crypto.createHash('sha256').update(value, 'utf8').digest();
 
 /**
- * Constant-time check of a submitted invite code against SIGNUP_INVITE_CODE.
+ * Constant-time check of a submitted invite code against REGISTRATION_INVITE_CODE.
  * Surrounding whitespace is ignored (codes get copy-pasted); empty and
  * non-string values are rejected.
  * @param {unknown} provided

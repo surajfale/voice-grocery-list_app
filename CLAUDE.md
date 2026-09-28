@@ -148,7 +148,7 @@ pnpm dev
 - Improved error handling that suppresses expected "aborted" errors from manual stops
 
 ### API Structure
-- `/api/auth/register` - User registration. Sign-up policy (`backend/utils/signupPolicy.js`) is enforced first, before any DB access: closed by default, invite-only with `SIGNUP_INVITE_CODE` (optional `inviteCode` body field, constant-time compare, never stored), open with `SIGNUP_OPEN=true`; refusals are `403` with `code: SIGNUP_CLOSED | INVALID_INVITE_CODE`. 3 attempts/hour/IP; 10-account cap still applies
+- `/api/auth/register` - User registration. Sign-up policy (`backend/utils/signupPolicy.js`) is enforced first, before any DB access: closed by default, invite-only with `REGISTRATION_INVITE_CODE` (optional `inviteCode` body field, constant-time compare, never stored), open with `SIGNUP_OPEN=true`; refusals are `403` with `code: SIGNUP_CLOSED | INVALID_INVITE_CODE`. 3 attempts/hour/IP; 10-account cap still applies
 - `/api/auth/signup-mode` - Public, rate-limited `{ mode: 'open' | 'invite' | 'closed' }` from the same policy; only adapts the UI (`useSignupMode`)
 - `/api/auth/login` - User login
 - `/api/auth/forgot-password` / `/api/auth/reset-password/:token` - Password reset flow
@@ -168,7 +168,7 @@ Backend requires `.env` file with:
 - `PORT` - Server port (default 3001)
 - `CORS_ORIGIN` - Frontend URL (default http://localhost:5173)
 - `JWT_SECRET` - Secret used to sign/verify session JWTs
-- `SIGNUP_INVITE_CODE` / `SIGNUP_OPEN` - Sign-up mode (unset = closed; code = invite-only; `SIGNUP_OPEN=true` = open). See docs/DEPLOYMENT.md "Sign-up and invites"
+- `REGISTRATION_INVITE_CODE` / `SIGNUP_OPEN` - Sign-up mode (unset = closed; code = invite-only; `SIGNUP_OPEN=true` = open). See docs/DEPLOYMENT.md "Sign-up and invites"
 - `RESEND_API_KEY` - Resend API key for sending emails
 - `EMAIL_FROM` - Verified sender email address (e.g., noreply@yourdomain.com)
 - `OPENAI_API_KEY` - OpenAI API key powering receipt OCR parsing, embeddings, and RAG chat completions

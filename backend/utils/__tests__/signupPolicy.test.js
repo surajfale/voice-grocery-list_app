@@ -17,14 +17,14 @@ describe('getSignupMode', () => {
     [{ SIGNUP_OPEN: '0' }, 'closed'],
     [{ SIGNUP_OPEN: 'no' }, 'closed'],
     [{ SIGNUP_OPEN: 'maybe' }, 'closed'],
-    [{ SIGNUP_INVITE_CODE: '' }, 'closed'],
-    [{ SIGNUP_INVITE_CODE: '   ' }, 'closed'],
-    [{ SIGNUP_INVITE_CODE: CODE }, 'invite'],
-    [{ SIGNUP_INVITE_CODE: CODE, SIGNUP_OPEN: 'false' }, 'invite'],
+    [{ REGISTRATION_INVITE_CODE: '' }, 'closed'],
+    [{ REGISTRATION_INVITE_CODE: '   ' }, 'closed'],
+    [{ REGISTRATION_INVITE_CODE: CODE }, 'invite'],
+    [{ REGISTRATION_INVITE_CODE: CODE, SIGNUP_OPEN: 'false' }, 'invite'],
     [{ SIGNUP_OPEN: 'true' }, 'open'],
     [{ SIGNUP_OPEN: ' TRUE ' }, 'open'],
     [{ SIGNUP_OPEN: '1' }, 'open'],
-    [{ SIGNUP_OPEN: 'true', SIGNUP_INVITE_CODE: CODE }, 'open'],
+    [{ SIGNUP_OPEN: 'true', REGISTRATION_INVITE_CODE: CODE }, 'open'],
   ])('%j → %s', (env, mode) => {
     expect(getSignupMode(env)).toBe(mode);
   });
@@ -33,9 +33,9 @@ describe('getSignupMode', () => {
     const saved = { ...process.env };
     try {
       delete process.env.SIGNUP_OPEN;
-      delete process.env.SIGNUP_INVITE_CODE;
+      delete process.env.REGISTRATION_INVITE_CODE;
       expect(getSignupMode()).toBe('closed');
-      process.env.SIGNUP_INVITE_CODE = CODE;
+      process.env.REGISTRATION_INVITE_CODE = CODE;
       expect(getSignupMode()).toBe('invite');
     } finally {
       process.env = saved;
@@ -44,7 +44,7 @@ describe('getSignupMode', () => {
 });
 
 describe('isInviteCodeValid', () => {
-  const env = { SIGNUP_INVITE_CODE: CODE };
+  const env = { REGISTRATION_INVITE_CODE: CODE };
 
   afterEach(() => vi.restoreAllMocks());
 
@@ -67,12 +67,12 @@ describe('isInviteCodeValid', () => {
   });
 
   it('accepts a code configured with surrounding whitespace', () => {
-    expect(isInviteCodeValid(CODE, { SIGNUP_INVITE_CODE: `  ${CODE}  ` })).toBe(true);
+    expect(isInviteCodeValid(CODE, { REGISTRATION_INVITE_CODE: `  ${CODE}  ` })).toBe(true);
   });
 
   it('never matches when no code is configured, even an empty submission', () => {
     expect(isInviteCodeValid('', {})).toBe(false);
-    expect(isInviteCodeValid('', { SIGNUP_INVITE_CODE: '  ' })).toBe(false);
+    expect(isInviteCodeValid('', { REGISTRATION_INVITE_CODE: '  ' })).toBe(false);
   });
 
   it('compares equal-length digests in constant time for every input', () => {
@@ -94,7 +94,7 @@ describe('checkSignupAllowed', () => {
   });
 
   it('allows a matching code in invite mode and refuses others with a distinct error', () => {
-    const env = { SIGNUP_INVITE_CODE: CODE };
+    const env = { REGISTRATION_INVITE_CODE: CODE };
     expect(checkSignupAllowed(CODE, env)).toEqual({ allowed: true, mode: 'invite' });
     expect(checkSignupAllowed('nope', env)).toEqual({ allowed: false, mode: 'invite', status: 403, ...SIGNUP_ERRORS.INVALID_INVITE });
     expect(SIGNUP_ERRORS.INVALID_INVITE.code).not.toBe(SIGNUP_ERRORS.CLOSED.code);

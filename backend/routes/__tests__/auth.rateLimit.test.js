@@ -8,12 +8,12 @@ import User from '../../models/User.js';
 describe('sign-up rate limits', () => {
   beforeAll(() => {
     delete process.env.SIGNUP_OPEN;
-    process.env.SIGNUP_INVITE_CODE = 'grocer-2026-Kx9';
+    process.env.REGISTRATION_INVITE_CODE = 'grocer-2026-Kx9';
     vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   afterAll(() => {
-    delete process.env.SIGNUP_INVITE_CODE;
+    delete process.env.REGISTRATION_INVITE_CODE;
     vi.restoreAllMocks();
   });
 

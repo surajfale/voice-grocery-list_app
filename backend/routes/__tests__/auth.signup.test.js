@@ -48,7 +48,7 @@ describe('POST /api/auth/register sign-up policy', () => {
 
   beforeEach(() => {
     delete process.env.SIGNUP_OPEN;
-    delete process.env.SIGNUP_INVITE_CODE;
+    delete process.env.REGISTRATION_INVITE_CODE;
     saved = [];
     countSpy = vi.spyOn(User, 'countDocuments').mockResolvedValue(1);
     findOneSpy = vi.spyOn(User, 'findOne').mockResolvedValue(null);
@@ -64,7 +64,7 @@ describe('POST /api/auth/register sign-up policy', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     delete process.env.SIGNUP_OPEN;
-    delete process.env.SIGNUP_INVITE_CODE;
+    delete process.env.REGISTRATION_INVITE_CODE;
   });
 
   const expectRefusedWithoutLookups = (res, code) => {
@@ -80,7 +80,7 @@ describe('POST /api/auth/register sign-up policy', () => {
       ['nothing set', {}],
       ['SIGNUP_OPEN=false', { SIGNUP_OPEN: 'false' }],
       ['SIGNUP_OPEN empty', { SIGNUP_OPEN: '' }],
-      ['blank invite code', { SIGNUP_INVITE_CODE: '   ' }],
+      ['blank invite code', { REGISTRATION_INVITE_CODE: '   ' }],
     ])('refuses when %s, before any user lookup', async (_label, env) => {
       Object.assign(process.env, env);
       const res = await register(newUser({ inviteCode: CODE }));
@@ -97,7 +97,7 @@ describe('POST /api/auth/register sign-up policy', () => {
 
   describe('invite', () => {
     beforeEach(() => {
-      process.env.SIGNUP_INVITE_CODE = CODE;
+      process.env.REGISTRATION_INVITE_CODE = CODE;
     });
 
     it('creates the account with the correct code', async () => {
@@ -184,12 +184,12 @@ describe('POST /api/auth/register sign-up policy', () => {
 describe('GET /api/auth/signup-mode', () => {
   afterEach(() => {
     delete process.env.SIGNUP_OPEN;
-    delete process.env.SIGNUP_INVITE_CODE;
+    delete process.env.REGISTRATION_INVITE_CODE;
   });
 
   it.each([
     [{}, 'closed'],
-    [{ SIGNUP_INVITE_CODE: CODE }, 'invite'],
+    [{ REGISTRATION_INVITE_CODE: CODE }, 'invite'],
     [{ SIGNUP_OPEN: 'true' }, 'open'],
   ])('%j → %s', async (env, mode) => {
     Object.assign(process.env, env);
@@ -201,7 +201,7 @@ describe('GET /api/auth/signup-mode', () => {
 
   it('reflects configuration changes without a restart', async () => {
     expect((await request(app).get('/api/auth/signup-mode')).body.mode).toBe('closed');
-    process.env.SIGNUP_INVITE_CODE = CODE;
+    process.env.REGISTRATION_INVITE_CODE = CODE;
     expect((await request(app).get('/api/auth/signup-mode')).body.mode).toBe('invite');
   });
 });
