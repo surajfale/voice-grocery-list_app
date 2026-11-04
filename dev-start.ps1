@@ -243,7 +243,8 @@ if ($global:HasPython -and (-not $BackendOnly) -and (-not $FrontendOnly)) {
         }
     }
 
-    $ocrCmd = "cd '$OcrDir'; Write-Host ''; Write-Host '=== OCR SERVICE (port 8000) ===' -ForegroundColor Yellow; Write-Host ''; python app.py"
+    # Local dev: the OCR service requires OCR_SERVICE_TOKEN unless this is set
+    $ocrCmd = "cd '$OcrDir'; if (-not `$env:OCR_SERVICE_TOKEN) { `$env:OCR_ALLOW_UNAUTHENTICATED = 'true' }; Write-Host ''; Write-Host '=== OCR SERVICE (port 8000) ===' -ForegroundColor Yellow; Write-Host ''; python app.py"
     Start-Process pwsh -ArgumentList "-NoExit", "-Command", $ocrCmd -WindowStyle Normal
     Write-Ok "OCR Service launched in new terminal"
     Write-Info "OCR: http://localhost:8000/health"

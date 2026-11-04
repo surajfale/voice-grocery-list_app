@@ -113,8 +113,11 @@ The OCR microservice runs as a **separate Railway service** in the same project.
 2. Add the following environment variable (required for text extraction):
 ```
 GOOGLE_CLOUD_API_KEY=your_google_cloud_api_key_here
+OCR_SERVICE_TOKEN=<long random secret, e.g. `openssl rand -hex 32`>
 PORT=8000
 ```
+> **`OCR_SERVICE_TOKEN` is required.** The backend sends it as `Authorization: Bearer <token>`; without it, anyone who finds the URL could spend your Google Vision quota. If it is unset, `/ocr` refuses every request (HTTP 503). `OCR_ALLOW_UNAUTHENTICATED=true` turns the check off, for local development only.
+>
 > Railway automatically injects `PORT` and the service respects it via `${PORT:-8000}`. `GOOGLE_CLOUD_API_KEY` is required because the OCR microservice uses Google Vision API to rapidly transcribe text from images before sending it back to the node backend for LLM parsing.
 
 ### 2b.4 Generate a Public Domain
@@ -130,15 +133,16 @@ PORT=8000
 
 ```   
 OCR_SERVICE_URL=https://ocr-service-production-xxxx.up.railway.app
+OCR_SERVICE_TOKEN=<the same secret as on the OCR service>
 ```
 
-Replace with the actual URL from step 2b.4.
+Replace with the actual URL from step 2b.4. Set the token on both services before deploying, or receipt OCR fails with HTTP 401/503.
 
 > **Private networking alternative**: If both services are in the same Railway project, you can use Railway's internal networking for lower latency and zero egress costs. In the OCR service's Settings → Networking, note the **private domain** (e.g., `ocr-service.railway.internal`). Then set:
 > ```
 > OCR_SERVICE_URL=http://ocr-service.railway.internal:8000
 > ```
-> Private networking is only available on Railway's paid plans.
+> Private networking is only available on Railway's paid plans. Prefer it when available: the OCR service then needs no public domain at all (keep `OCR_SERVICE_TOKEN` set anyway).
 
 ### 2b.6 Verify OCR Service Deployment
 1. Visit the OCR service health endpoint:
@@ -150,9 +154,10 @@ Replace with the actual URL from step 2b.4.
 2. Test OCR with curl:
    ```bash
    curl -X POST -F "file=@receipt.jpg" \
+     -H "Authorization: Bearer $OCR_SERVICE_TOKEN" \
      https://ocr-service-production-xxxx.up.railway.app/ocr
    ```
-   Should return: `{"raw_text": "...", "lines": [...], "items": [...]}`
+   Should return: `{"raw_text": "...", "lines": [...], "items": [...]}`. Without the header it must return `401`.
 
 3. Upload a receipt through the app's Receipts page and verify the OCR text appears correctly
 

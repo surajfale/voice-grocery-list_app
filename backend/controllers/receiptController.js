@@ -788,16 +788,19 @@ export const triggerEmbedding = async (req, res) => {
     }
 
     const normalizedUserId = new mongoose.Types.ObjectId(userId);
-    const query = { userId: normalizedUserId, status: 'ready' };
+    // Only receipts that aren't synced or need re-embedding, even when one is
+    // named: re-embedding an up-to-date receipt costs OpenAI calls for nothing
+    const query = {
+      userId: normalizedUserId,
+      status: 'ready',
+      $or: [
+        { embeddingStatus: { $ne: 'synced' } },
+        { embeddingsVersion: { $lt: ragConfig.embeddingsVersion } }
+      ]
+    };
 
     if (receiptId && ensureValidObjectId(receiptId)) {
       query._id = receiptId;
-    } else {
-      // Only process receipts that aren't synced or need re-embedding
-      query.$or = [
-        { embeddingStatus: { $ne: 'synced' } },
-        { embeddingsVersion: { $lt: ragConfig.embeddingsVersion } }
-      ];
     }
 
     const receipts = await Receipt.find(query).limit(10).sort({ updatedAt: 1 });

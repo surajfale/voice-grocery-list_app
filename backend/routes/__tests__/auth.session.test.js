@@ -72,6 +72,8 @@ describe('session tokens (tokenVersion revocation)', () => {
     const stale = generateAuthToken({ _id: userId, tokenVersion: 0 });
     const res = await request(protectedApp()).get('/private').set('Authorization', `Bearer ${stale}`);
     expect(res.status).toBe(401);
+    // The frontend logs out only on this code (not on e.g. a wrong password)
+    expect(res.body.code).toBe('SESSION_INVALID');
   });
 
   it('rejects a token for a deleted user', async () => {
@@ -184,3 +186,30 @@ describe('client IP used for audit fields and emails', () => {
     expect(user.resetRequestIP).toBe(requestIP);
   });
 });
+
+describe('POST /api/auth/login does not reveal which emails exist', () => {
+  const app = express();
+  app.use(express.json());
+  app.use('/api/auth', authRouter);
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('gives the same answer, after a bcrypt compare, for an unknown email and a wrong password', async () => {
+    const compareSpy = vi.spyOn(bcrypt, 'compare').mockResolvedValue(false);
+
+    vi.spyOn(User, 'findOne').mockResolvedValueOnce(null);
+    const unknown = await request(app).post('/api/auth/login').send({ email: 'nobody@example.com', password: 'x' });
+
+    vi.spyOn(User, 'findOne').mockResolvedValueOnce({ password: 'real-hash' });
+    const wrong = await request(app).post('/api/auth/login').send({ email: 'ada@example.com', password: 'x' });
+
+    expect(unknown.status).toBe(401);
+    expect(wrong.status).toBe(401);
+    expect(unknown.body).toEqual(wrong.body);
+    expect(compareSpy).toHaveBeenCalledTimes(2);
+    // The unknown-email path compares against a real cost-12 bcrypt hash
+    expect(compareSpy.mock.calls[0][1]).toMatch(/^\$2a\$12\$/);
+    expect(compareSpy.mock.calls[1][1]).toBe('real-hash');
+  });
+});
+

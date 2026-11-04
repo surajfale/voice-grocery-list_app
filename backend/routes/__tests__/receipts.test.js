@@ -52,6 +52,8 @@ vi.mock('../../middleware/rateLimiter.js', () => {
     __esModule: true,
     receiptChatIpLimiter: ipLimiter,
     receiptChatUserLimiter: userLimiter,
+    receiptUploadUserLimiter: userLimiter,
+    receiptEmbeddingUserLimiter: userLimiter,
     limiterState: state
   };
 });

@@ -128,6 +128,7 @@ pnpm dev
 - JWT session (`jsonwebtoken`, HS256, signed with `JWT_SECRET`) issued on login/register, stored in localStorage; sent only in the `Authorization` header, never in a URL (receipt images are fetched as blobs)
 - `authenticate` looks up the user on each request: the token's `tv` claim must equal `User.tokenVersion`. Password reset and account deletion bump it, revoking every session. Account deletion also removes receipts, GridFS images and `ReceiptChunk`s
 - Rate limits key on `req.ip`; `TRUST_PROXY` is a hop count (default 1 in production), never `true` (`backend/utils/trustProxy.js`). Email templates HTML-escape every interpolated value (`escapeHtml`)
+- Session-ending 401s carry `code: SESSION_INVALID`; the frontend (`src/services/session.js`) then clears the stored session and reloads to the login page. Other 401s (wrong password) are left to the caller
 - Protected routes require authentication
 
 ### Receipts & RAG (Retrieval-Augmented Generation)
@@ -135,7 +136,7 @@ pnpm dev
 - **OCR + parsing** (`backend/services/receiptOcr.js`): raw text comes from an external EasyOCR/Vision microservice (`OCR_SERVICE_URL`), then an OpenAI LLM call structures it into merchant/date/items/totals JSON
 - **Chunking & embedding** (`backend/services/receiptChunker.js`, `backend/jobs/receiptEmbeddingJob.js`): parsed receipts are chunked and embedded via `backend/utils/embeddingClient.js` (OpenAI embeddings, model set by `RAG_EMBEDDINGS_MODEL`), producing `ReceiptChunk` documents; the job can run on a schedule (see `docs/INGESTION_JOB_SETUP.md`) or via `pnpm --filter backend ingest:receipts`
 - **Chat** (`backend/services/ReceiptRagService.js`, `POST /api/receipts/chat`): embeds the user's question, runs a `$vectorSearch` query (optionally filtered by `receiptIds`/`dateRange`) against `receiptChunks`, then asks an OpenAI completion model (`RAG_COMPLETIONS_MODEL`) to answer grounded in the retrieved chunks — see `docs/API.md` for the full request/response contract
-- Rate-limited per-user and per-IP (`backend/middleware/rateLimiter.js`); costs are estimated in `backend/utils/costEstimator.js` and logged via structured `rag.*`/`ingest.*` log events
+- Rate-limited per-user and per-IP (`backend/middleware/rateLimiter.js`); uploads (30/hour) and `/embedding/trigger` (10/15 min, skips already-synced receipts) have per-user limits because they call paid APIs; costs are estimated in `backend/utils/costEstimator.js` and logged via structured `rag.*`/`ingest.*` log events
 
 ### Voice Recognition & Intelligence
 - Uses Web Speech API (webkitSpeechRecognition/SpeechRecognition)
@@ -151,7 +152,7 @@ pnpm dev
 ### API Structure
 - `/api/auth/register` - User registration. Sign-up policy (`backend/utils/signupPolicy.js`) is enforced first, before any DB access: closed by default, invite-only with `REGISTRATION_INVITE_CODE` (optional `inviteCode` body field, constant-time compare, never stored), open with `SIGNUP_OPEN=true`; refusals are `403` with `code: SIGNUP_CLOSED | INVALID_INVITE_CODE`. 3 attempts/hour/IP; 10-account cap still applies
 - `/api/auth/signup-mode` - Public, rate-limited `{ mode: 'open' | 'invite' | 'closed' }` from the same policy; only adapts the UI (`useSignupMode`)
-- `/api/auth/login` - User login
+- `/api/auth/login` - User login. One generic error for unknown email and wrong password, with a bcrypt compare on both paths (no account enumeration)
 - `/api/auth/forgot-password` / `/api/auth/reset-password/:token` - Password reset flow
 - `/api/grocery-lists/` - CRUD operations for grocery lists
 - `/api/grocery-lists/user/:userId/predictions?date=YYYY-MM-DD&limit=10` - Stats-based purchase predictions (no AI calls): completed items = purchases; scores each item bought 2+ times by median gap between purchases vs. days since last purchase (`backend/services/groceryPrediction.js`; when nothing is due it falls back to the user's most-bought items, tagged `reason: 'frequent'`)
@@ -176,6 +177,7 @@ Backend requires `.env` file with:
 - `RAG_EMBEDDINGS_MODEL` / `RAG_COMPLETIONS_MODEL` - OpenAI models for embeddings and chat completions (defaults: `text-embedding-3-large`, `gpt-4o`)
 - `RAG_TOP_K` / `RAG_CHUNK_SIZE` / `RAG_VECTOR_INDEX` / `EMBEDDINGS_VERSION` - RAG retrieval and chunking tuning knobs
 - `OCR_SERVICE_URL` - Base URL of the external EasyOCR/Vision microservice used for raw receipt text extraction (default `http://localhost:8000`)
+- `OCR_SERVICE_TOKEN` - Shared secret sent to the OCR service as a bearer token; set the same value on the OCR service, whose `/ocr` refuses requests without it (`OCR_ALLOW_UNAUTHENTICATED=true` there for local dev only)
 
 Frontend uses `.env` with:
 - `VITE_API_BASE_URL` - Backend API URL (default http://localhost:3001/api)

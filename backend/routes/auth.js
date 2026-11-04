@@ -21,6 +21,11 @@ import { checkSignupAllowed, getSignupMode } from '../utils/signupPolicy.js';
 
 const router = express.Router();
 
+const INVALID_CREDENTIALS = 'Incorrect email or password. Please try again.';
+// bcrypt hash (cost 12, same as real passwords) of a throwaway string. Compared
+// against when the email has no account so that path costs the same time.
+const TIMING_EQUALIZER_HASH = '$2a$12$03TMSQVpdxUEauCNjqwJAeNlLod0osTPUTDFj4CqdQMOGRD/XqbKC';
+
 /**
  * Client IP for logs, audit fields and emails. Uses req.ip only: Express
  * derives it from X-Forwarded-For according to the "trust proxy" hop count
@@ -154,21 +159,20 @@ router.post('/login', loginLimiter, async (req, res) => {
       });
     }
 
-    // Find user
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) {
+    // One answer for "no such account" and "wrong password", and a bcrypt
+    // compare either way, so neither the message nor the response time
+    // reveals which emails are registered
+    const user = typeof email === 'string'
+      ? await User.findOne({ email: email.toLowerCase() })
+      : null;
+    const passwordMatch = await bcrypt.compare(
+      typeof password === 'string' ? password : '',
+      user?.password || TIMING_EQUALIZER_HASH
+    );
+    if (!user || !passwordMatch) {
       return res.status(401).json({
         success: false,
-        error: 'No account found with this email address. Please register first.'
-      });
-    }
-
-    // Check password
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) {
-      return res.status(401).json({
-        success: false,
-        error: 'Incorrect password. Please try again.'
+        error: INVALID_CREDENTIALS
       });
     }
 
