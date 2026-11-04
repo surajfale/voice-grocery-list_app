@@ -399,4 +399,27 @@ describe('runReceiptOcr (LLM Powered v3.0)', () => {
         expect(result.savings).toBe(1.50);
         expect(result.detectedStore).toBe('walmart');
     });
+
+    // -------------------------------------------------------
+    // Service authentication
+    // -------------------------------------------------------
+
+    describe('OCR service token', () => {
+        afterEach(() => {
+            delete process.env.OCR_SERVICE_TOKEN;
+        });
+
+        it('sends OCR_SERVICE_TOKEN as a bearer token', async () => {
+            process.env.OCR_SERVICE_TOKEN = '  s3cret  ';
+            mockFetch.mockResolvedValueOnce(makeMockResponse({ raw_text: '' }));
+            await runReceiptOcr(Buffer.from('img'));
+            expect(mockFetch.mock.calls[0][1].headers).toEqual({ Authorization: 'Bearer s3cret' });
+        });
+
+        it('sends no Authorization header when no token is configured', async () => {
+            mockFetch.mockResolvedValueOnce(makeMockResponse({ raw_text: '' }));
+            await runReceiptOcr(Buffer.from('img'));
+            expect(mockFetch.mock.calls[0][1].headers).toEqual({});
+        });
+    });
 });

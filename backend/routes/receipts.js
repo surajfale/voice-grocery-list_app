@@ -12,9 +12,14 @@ import {
   triggerEmbedding,
   checkChunks
 } from '../controllers/receiptController.js';
-import { receiptChatIpLimiter, receiptChatUserLimiter } from '../middleware/rateLimiter.js';
+import {
+  receiptChatIpLimiter,
+  receiptChatUserLimiter,
+  receiptUploadUserLimiter,
+  receiptEmbeddingUserLimiter
+} from '../middleware/rateLimiter.js';
 import validateChatRequest from '../middleware/validateChatRequest.js';
-import { authenticate, authenticateFlexible, requireOwnUserId } from '../middleware/auth.js';
+import { authenticate, requireOwnUserId } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -42,7 +47,8 @@ const upload = multer({
   }
 });
 
-router.post('/', authenticate, upload.any(), uploadReceipt);
+// Limiter before multer, so a limited user's upload isn't buffered at all
+router.post('/', authenticate, receiptUploadUserLimiter, upload.any(), uploadReceipt);
 router.get('/user/:userId', authenticate, requireOwnUserId, listReceipts);
 router.post(
   '/chat',
@@ -53,10 +59,10 @@ router.post(
   chatAboutReceipts
 );
 router.post('/embedding/status', authenticate, checkEmbeddingStatus);
-router.post('/embedding/trigger', authenticate, triggerEmbedding);
+router.post('/embedding/trigger', authenticate, receiptEmbeddingUserLimiter, triggerEmbedding);
 router.get('/embedding/chunks', authenticate, checkChunks);
 router.get('/:receiptId', authenticate, getReceipt);
-router.get('/:receiptId/image', authenticateFlexible, streamReceiptImage);
+router.get('/:receiptId/image', authenticate, streamReceiptImage);
 router.patch('/:receiptId', authenticate, updateReceipt);
 router.delete('/:receiptId', authenticate, deleteReceipt);
 

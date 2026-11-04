@@ -28,6 +28,7 @@ GET  /health – → 200 {status: "ok"}
 
 from __future__ import annotations
 
+import hmac
 import io
 import os
 import re
@@ -35,7 +36,7 @@ import json
 import logging
 from typing import Optional
 
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Request
 from fastapi.responses import JSONResponse
 from google.cloud import vision
 from PIL import Image, ImageOps
@@ -73,6 +74,20 @@ else:
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+# Shared secret the backend sends as "Authorization: Bearer <token>". Without
+# it anyone who finds the URL could spend the Vision quota. Fail closed: with
+# no token configured, /ocr refuses requests unless OCR_ALLOW_UNAUTHENTICATED
+# is set (local development only).
+OCR_SERVICE_TOKEN = os.getenv("OCR_SERVICE_TOKEN", "").strip()
+OCR_ALLOW_UNAUTHENTICATED = os.getenv("OCR_ALLOW_UNAUTHENTICATED", "").strip().lower() in {"1", "true", "yes", "on"}
+PROTECTED_PATHS = {"/ocr"}
+
+if not OCR_SERVICE_TOKEN:
+    if OCR_ALLOW_UNAUTHENTICATED:
+        logger.warning("OCR_SERVICE_TOKEN is not set and OCR_ALLOW_UNAUTHENTICATED is on: /ocr is open to anyone")
+    else:
+        logger.error("OCR_SERVICE_TOKEN is not set: /ocr will refuse every request")
+
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/jpg", "image/webp"}
 MAX_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB (Vision API limit)
 
@@ -889,6 +904,32 @@ app = FastAPI(
     description="Extracts text from grocery receipts using Google Cloud Vision API.",
     version="3.0.0",
 )
+
+
+def check_service_auth(path: str, authorization: Optional[str]) -> Optional[tuple[int, str]]:
+    """Return (status, message) when the request must be refused, else None."""
+    if path.rstrip("/") not in PROTECTED_PATHS:
+        return None
+    if not OCR_SERVICE_TOKEN:
+        if OCR_ALLOW_UNAUTHENTICATED:
+            return None
+        return 503, "OCR service is not configured (OCR_SERVICE_TOKEN is not set)."
+    expected = f"Bearer {OCR_SERVICE_TOKEN}".encode()
+    provided = (authorization or "").encode()
+    if not hmac.compare_digest(provided, expected):
+        return 401, "Unauthorized"
+    return None
+
+
+@app.middleware("http")
+async def require_service_token(request: Request, call_next):
+    # Runs before the multipart body is read, so unauthenticated uploads
+    # cost almost nothing
+    refusal = check_service_auth(request.url.path, request.headers.get("authorization"))
+    if refusal:
+        status, message = refusal
+        return JSONResponse(status_code=status, content={"detail": message})
+    return await call_next(request)
 
 
 @app.get("/health")

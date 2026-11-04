@@ -122,7 +122,7 @@ const ReceiptsPage = ({ user }) => {
     updateReceipt,
     deleteReceipt,
     selectReceipt,
-    receiptImageUrl,
+    selectedReceiptImageUrl,
     reloadReceipts
   } = useReceipts(user);
 
@@ -574,10 +574,10 @@ const ReceiptsPage = ({ user }) => {
                   <Separator />
 
                   <div className="flex flex-col md:flex-row gap-3">
-                    {receiptImageUrl(selectedReceipt._id) && (
+                    {selectedReceiptImageUrl && (
                       <div className="flex-1 rounded-xl border border-border overflow-hidden max-h-80 flex items-center justify-center bg-muted/50">
                         <img
-                          src={receiptImageUrl(selectedReceipt._id)}
+                          src={selectedReceiptImageUrl}
                           alt={`Receipt from ${selectedReceipt.merchant || 'unknown store'}`}
                           className="w-full h-full object-contain"
                           // Missing/expired image: drop the box rather than show a broken icon

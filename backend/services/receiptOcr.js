@@ -59,8 +59,11 @@ export const runReceiptOcr = async (buffer, { logger: progressLogger } = {}) => 
 
   let response;
   try {
+    // Shared secret checked by the OCR service (OCR_SERVICE_TOKEN on both sides)
+    const serviceToken = (process.env.OCR_SERVICE_TOKEN || '').trim();
     response = await fetch(`${OCR_SERVICE_URL}/ocr`, {
       method: 'POST',
+      headers: serviceToken ? { Authorization: `Bearer ${serviceToken}` } : {},
       body: form,
       signal: controller.signal
     });

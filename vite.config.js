@@ -51,10 +51,18 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/.*\.railway\.app\/api\/.*/i,
+            // Offline fallback for API reads (GET only, Workbox's default).
+            // Never cached: auth responses and receipt images. The cache is
+            // deleted on logout and when the session ends (src/services/session.js)
+            urlPattern: ({ url }) => /\.railway\.app$/i.test(url.hostname)
+              && url.pathname.startsWith('/api/')
+              && !url.pathname.startsWith('/api/auth/')
+              && !url.pathname.endsWith('/image'),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
+              // Only successful responses; never an error page or opaque reply
+              cacheableResponse: { statuses: [200] },
               expiration: {
                 maxEntries: 50,
                 maxAgeSeconds: 60 * 5 // 5 minutes

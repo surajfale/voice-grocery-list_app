@@ -140,12 +140,38 @@ export const useReceipts = (user) => {
     }
   }, [refreshSelectedReceipt]);
 
-  const receiptImageUrl = useCallback((receiptId) => {
-    if (!receiptId || !userId) {
-      return null;
+  // Object URL for the selected receipt's image, loaded with the auth header
+  // (null while loading, on error, or with nothing selected)
+  const [selectedReceiptImageUrl, setSelectedReceiptImageUrl] = useState(null);
+
+  useEffect(() => {
+    if (!selectedReceiptId || !userId) {
+      setSelectedReceiptImageUrl(null);
+      return undefined;
     }
-    return receiptService.getImageUrl(receiptId, userId);
-  }, [userId]);
+
+    const controller = new globalThis.AbortController();
+    let objectUrl = null;
+    setSelectedReceiptImageUrl(null);
+
+    receiptService.fetchImageBlob(selectedReceiptId, { signal: controller.signal })
+      .then((blob) => {
+        objectUrl = URL.createObjectURL(blob);
+        setSelectedReceiptImageUrl(objectUrl);
+      })
+      .catch((err) => {
+        if (err?.name !== 'AbortError') {
+          logger.warn('Failed to load receipt image:', err);
+        }
+      });
+
+    return () => {
+      controller.abort();
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [selectedReceiptId, userId]);
 
   useEffect(() => {
     setReceipts([]);
@@ -174,7 +200,7 @@ export const useReceipts = (user) => {
     updateReceipt,
     deleteReceipt,
     selectReceipt,
-    receiptImageUrl,
+    selectedReceiptImageUrl,
     reloadReceipts: loadReceipts
   };
 };

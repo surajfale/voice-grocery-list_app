@@ -6,9 +6,18 @@ import receiptsRouter from '../receipts.js';
 import { chatMock } from '../../services/ReceiptRagService.js';
 import { limiterState } from '../../middleware/rateLimiter.js';
 import mongoose from 'mongoose';
+import User from '../../models/User.js';
 import { validateReceiptUpdate } from '../../controllers/receiptController.js';
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret';
+
+// authenticate() checks the user still exists and the token version matches;
+// these tests sign tokens for a user with tokenVersion 0
+beforeEach(() => {
+  vi.spyOn(User, 'findById').mockReturnValue({
+    select: () => ({ lean: async () => ({ tokenVersion: 0 }) })
+  });
+});
 
 vi.mock('../../services/ReceiptRagService.js', () => {
   const chatMock = vi.fn();
@@ -43,6 +52,8 @@ vi.mock('../../middleware/rateLimiter.js', () => {
     __esModule: true,
     receiptChatIpLimiter: ipLimiter,
     receiptChatUserLimiter: userLimiter,
+    receiptUploadUserLimiter: userLimiter,
+    receiptEmbeddingUserLimiter: userLimiter,
     limiterState: state
   };
 });
@@ -259,5 +270,17 @@ describe('PATCH /api/receipts/:receiptId', () => {
       .send({ purchaseDate: 'yesterday' });
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/YYYY-MM-DD/);
+  });
+});
+
+describe('GET /api/receipts/:receiptId/image', () => {
+  const app = buildApp();
+  const userId = new mongoose.Types.ObjectId().toString();
+  const receiptId = new mongoose.Types.ObjectId().toString();
+  const authToken = jwt.sign({ userId }, process.env.JWT_SECRET);
+
+  it('no longer accepts the session token in the query string', async () => {
+    const res = await request(app).get(`/api/receipts/${receiptId}/image?token=${authToken}`);
+    expect(res.status).toBe(401);
   });
 });

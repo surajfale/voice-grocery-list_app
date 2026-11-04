@@ -1,7 +1,6 @@
 import { BaseService, HttpError } from './BaseService.js';
 import logger from '../utils/logger.js';
-
-const TOKEN_STORAGE_KEY = 'groceryListToken';
+import { endSessionIfUnauthorized, TOKEN_STORAGE_KEY } from './session.js';
 
 /**
  * API Service Class
@@ -70,6 +69,8 @@ export class ApiService extends BaseService {
       
       // Handle different response statuses
       if (!response.ok) {
+        // Expired or revoked session: back to the login page
+        endSessionIfUnauthorized(response.status, data);
         return this.handleHttpError(response, data, endpoint);
       }
       

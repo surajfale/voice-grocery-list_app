@@ -193,3 +193,33 @@ export const receiptChatIpLimiter = rateLimit({
     });
   }
 });
+/**
+ * Per-user limiters for the receipt endpoints that call paid APIs (Vision
+ * OCR + an LLM per upload, OpenAI embeddings per re-embed). Keyed on the
+ * authenticated user, so they must run after authenticate.
+ */
+const perUserLimiter = ({ windowMs, max, error, label }) => rateLimit({
+  windowMs,
+  max,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `user:${req.userId}`,
+  handler: (req, res) => {
+    console.warn(`⚠️ ${label} rate limit exceeded for user=${req.userId}`);
+    res.status(429).json({ success: false, error });
+  }
+});
+
+export const receiptUploadUserLimiter = perUserLimiter({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 30,
+  label: 'Receipt upload',
+  error: 'You have uploaded a lot of receipts in the last hour. Please try again later.'
+});
+
+export const receiptEmbeddingUserLimiter = perUserLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,
+  label: 'Receipt embedding',
+  error: 'Too many re-index requests. Please wait a few minutes before trying again.'
+});

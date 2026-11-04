@@ -585,6 +585,46 @@ export const deleteReceipt = async (req, res) => {
   }
 };
 
+/**
+ * Delete every receipt a user owns: GridFS images, RAG chunks and the
+ * Receipt documents. Used by account deletion. Image deletion is best-effort
+ * (a missing file must not block the account deletion); the DB deletes throw.
+ * @param {string|mongoose.Types.ObjectId} userId
+ * @returns {Promise<{ receipts: number, chunks: number, files: number, fileErrors: number }>}
+ */
+export const deleteAllReceiptDataForUser = async (userId) => {
+  const ownerId = new mongoose.Types.ObjectId(userId.toString());
+  const receipts = await Receipt.find({ userId: ownerId }).select('fileId').lean();
+
+  let files = 0;
+  let fileErrors = 0;
+  for (const { fileId } of receipts) {
+    if (!fileId) { continue; }
+    try {
+      await deleteFileFromGridFs(fileId);
+      files += 1;
+    } catch (error) {
+      fileErrors += 1;
+      logger.error('account.delete_receipt_file_failed', {
+        userId: ownerId.toString(),
+        fileId: fileId.toString(),
+        error: error.message || error
+      });
+    }
+  }
+
+  const ReceiptChunk = (await import('../models/ReceiptChunk.js')).default;
+  const chunkResult = await ReceiptChunk.deleteMany({ userId: ownerId });
+  const receiptResult = await Receipt.deleteMany({ userId: ownerId });
+
+  return {
+    receipts: receiptResult.deletedCount || 0,
+    chunks: chunkResult.deletedCount || 0,
+    files,
+    fileErrors
+  };
+};
+
 export const streamReceiptImage = async (req, res) => {
   try {
     const { receiptId } = req.params;
@@ -619,7 +659,8 @@ export const streamReceiptImage = async (req, res) => {
     const fileStream = getFileStreamFromGridFs(receipt.fileId);
 
     res.setHeader('Content-Type', receipt.mimeType || 'application/octet-stream');
-    res.setHeader('Content-Disposition', `inline; filename="${receipt.originalFilename || 'receipt'}"`);
+    // Fixed name: the uploaded filename is user input and must not reach a header
+    res.setHeader('Content-Disposition', `inline; filename="receipt-${receipt._id}.png"`);
 
     fileStream.on('error', (error) => {
       console.error('Failed to stream receipt image:', error);
@@ -748,16 +789,19 @@ export const triggerEmbedding = async (req, res) => {
     }
 
     const normalizedUserId = new mongoose.Types.ObjectId(userId);
-    const query = { userId: normalizedUserId, status: 'ready' };
+    // Only receipts that aren't synced or need re-embedding, even when one is
+    // named: re-embedding an up-to-date receipt costs OpenAI calls for nothing
+    const query = {
+      userId: normalizedUserId,
+      status: 'ready',
+      $or: [
+        { embeddingStatus: { $ne: 'synced' } },
+        { embeddingsVersion: { $lt: ragConfig.embeddingsVersion } }
+      ]
+    };
 
     if (receiptId && ensureValidObjectId(receiptId)) {
       query._id = receiptId;
-    } else {
-      // Only process receipts that aren't synced or need re-embedding
-      query.$or = [
-        { embeddingStatus: { $ne: 'synced' } },
-        { embeddingsVersion: { $lt: ragConfig.embeddingsVersion } }
-      ];
     }
 
     const receipts = await Receipt.find(query).limit(10).sort({ updatedAt: 1 });

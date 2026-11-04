@@ -1,9 +1,11 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import net from 'net';
 import User from '../models/User.js';
 import GroceryList from '../models/GroceryList.js';
 import emailService from '../services/emailService.js';
+import { deleteAllReceiptDataForUser } from '../controllers/receiptController.js';
 import { validatePassword } from '../utils/passwordValidator.js';
 import {
   passwordResetLimiter,
@@ -19,18 +21,22 @@ import { checkSignupAllowed, getSignupMode } from '../utils/signupPolicy.js';
 
 const router = express.Router();
 
+const INVALID_CREDENTIALS = 'Incorrect email or password. Please try again.';
+// bcrypt hash (cost 12, same as real passwords) of a throwaway string. Compared
+// against when the email has no account so that path costs the same time.
+const TIMING_EQUALIZER_HASH = '$2a$12$03TMSQVpdxUEauCNjqwJAeNlLod0osTPUTDFj4CqdQMOGRD/XqbKC';
+
 /**
- * Helper function to get client IP address
+ * Client IP for logs, audit fields and emails. Uses req.ip only: Express
+ * derives it from X-Forwarded-For according to the "trust proxy" hop count
+ * (server.js), so a client can't spoof it by sending its own header. Anything
+ * that isn't a plain IP address is never passed on (it is shown in emails).
  * @param {Object} req - Express request object
- * @returns {string} - Client IP address
+ * @returns {string} - Client IP address or 'unknown'
  */
-const getClientIP = (req) => {
-  return req.headers['x-forwarded-for']?.split(',')[0] ||
-         req.headers['x-real-ip'] ||
-         req.connection.remoteAddress ||
-         req.socket.remoteAddress ||
-         req.ip ||
-         'unknown';
+export const getClientIP = (req) => {
+  const ip = req.ip || req.socket?.remoteAddress || '';
+  return net.isIP(ip) ? ip : 'unknown';
 };
 
 // Current sign-up mode ("open" | "invite" | "closed"). Only adapts the UI;
@@ -128,7 +134,7 @@ router.post('/register', registrationLimiter, async (req, res) => {
     res.status(201).json({
       success: true,
       user: userResponse,
-      token: generateAuthToken(user._id)
+      token: generateAuthToken(user)
     });
 
   } catch (error) {
@@ -153,21 +159,20 @@ router.post('/login', loginLimiter, async (req, res) => {
       });
     }
 
-    // Find user
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) {
+    // One answer for "no such account" and "wrong password", and a bcrypt
+    // compare either way, so neither the message nor the response time
+    // reveals which emails are registered
+    const user = typeof email === 'string'
+      ? await User.findOne({ email: email.toLowerCase() })
+      : null;
+    const passwordMatch = await bcrypt.compare(
+      typeof password === 'string' ? password : '',
+      user?.password || TIMING_EQUALIZER_HASH
+    );
+    if (!user || !passwordMatch) {
       return res.status(401).json({
         success: false,
-        error: 'No account found with this email address. Please register first.'
-      });
-    }
-
-    // Check password
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) {
-      return res.status(401).json({
-        success: false,
-        error: 'Incorrect password. Please try again.'
+        error: INVALID_CREDENTIALS
       });
     }
 
@@ -187,7 +192,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     res.json({
       success: true,
       user: userResponse,
-      token: generateAuthToken(user._id)
+      token: generateAuthToken(user)
     });
 
   } catch (error) {
@@ -436,6 +441,8 @@ router.post('/reset-password', passwordResetCompletionLimiter, async (req, res) 
     user.resetTokenExpiry = null;
     user.resetTokenUsed = true; // Mark as used to prevent reuse
     user.lastPasswordChange = new Date();
+    // Revoke every existing session: a stolen token must not outlive a reset
+    user.tokenVersion = (user.tokenVersion ?? 0) + 1;
     // Keep resetRequestIP and resetRequestTime for security audit trail
     await user.save();
 
@@ -514,11 +521,18 @@ router.delete('/account', accountDeletionLimiter, authenticate, async (req, res)
     // Log security event
     console.log(`🗑️ Account deletion initiated for ${userEmail} from IP: ${clientIP}`);
 
-    // Step 1: Delete all user's grocery lists
+    // Step 1: Revoke all sessions first, so the current token stops working
+    // even if a later step fails part-way (the user can log in and retry)
+    user.tokenVersion = (user.tokenVersion ?? 0) + 1;
+    await user.save();
+
+    // Step 2: Delete all user data: receipts (images, RAG chunks) and lists
+    const deletedReceipts = await deleteAllReceiptDataForUser(user._id);
+    console.log(`✅ Deleted ${deletedReceipts.receipts} receipts, ${deletedReceipts.chunks} chunks and ${deletedReceipts.files} images for user ${userEmail}`);
     const deletedLists = await GroceryList.deleteMany({ userId: user._id });
     console.log(`✅ Deleted ${deletedLists.deletedCount} grocery lists for user ${userEmail}`);
 
-    // Step 2: Send confirmation email (before deleting user account)
+    // Step 3: Send confirmation email (before deleting user account)
     try {
       await emailService.sendAccountDeletionConfirmation(userEmail, userName);
       console.log(`✅ Account deletion confirmation email sent to ${userEmail}`);
@@ -528,7 +542,7 @@ router.delete('/account', accountDeletionLimiter, authenticate, async (req, res)
       // User has already confirmed they want to delete
     }
 
-    // Step 3: Delete user account (after email is sent)
+    // Step 4: Delete user account (after email is sent)
     await User.findByIdAndDelete(user._id);
     console.log(`✅ User account deleted: ${userEmail} from IP: ${clientIP}`);
 
