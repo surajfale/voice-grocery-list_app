@@ -209,7 +209,7 @@ This repository includes a `netlify.toml` file with optimized pnpm configuration
 **Manual configuration alternative (if not using netlify.toml):**
 1. In "Build & deploy" settings
 2. Set Node version if needed:
-   - Add environment variable: `NODE_VERSION=18`
+   - Add environment variable: `NODE_VERSION=24`
    - Add environment variable: `NPM_FLAGS=--version` (helps with pnpm detection)
 
 ### 3.5 Get Netlify Frontend URL
@@ -308,7 +308,7 @@ It lists each account's email, name, sign-up and last-login time, and its number
 ### Frontend (Netlify)
 ```
 VITE_API_BASE_URL=https://your-railway-app.up.railway.app/api
-NODE_VERSION=18
+NODE_VERSION=24
 NPM_FLAGS=--version
 ```
 
