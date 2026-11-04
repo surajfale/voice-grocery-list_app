@@ -1,66 +1,70 @@
 import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
 
 const TOKEN_EXPIRY = '7d';
 
 /**
- * Sign a session token for a given user id.
- * @param {string} userId
+ * Sign a session token for a user. The token carries the user's current
+ * tokenVersion (`tv`); bumping User.tokenVersion revokes every token issued
+ * before the bump (password reset, account deletion).
+ * @param {{ _id: unknown, tokenVersion?: number }} user
  * @returns {string} signed JWT
  */
-export const generateAuthToken = (userId) => {
-  return jwt.sign({ userId: userId.toString() }, process.env.JWT_SECRET, {
-    expiresIn: TOKEN_EXPIRY
-  });
+export const generateAuthToken = (user) => {
+  return jwt.sign(
+    { userId: user._id.toString(), tv: user.tokenVersion ?? 0 },
+    process.env.JWT_SECRET,
+    { algorithm: 'HS256', expiresIn: TOKEN_EXPIRY }
+  );
 };
 
 const extractToken = (req) => {
-  const authHeader = req.headers.authorization || req.headers.Authorization;
+  const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.slice('Bearer '.length).trim();
   }
   return null;
 };
 
+const unauthorized = (res, error) => res.status(401).json({ success: false, error });
+
 /**
- * Require a valid session token. Attaches the authenticated user id to req.userId.
+ * Require a valid, non-revoked session token. Attaches the authenticated user
+ * id to req.userId. One indexed lookup per request: the user must still exist
+ * and the token's version must match (tokens from before a password reset or
+ * from a deleted account are rejected).
  */
-export const authenticate = (req, res, next) => {
+export const authenticate = async (req, res, next) => {
   const token = extractToken(req);
 
   if (!token) {
-    return res.status(401).json({
-      success: false,
-      error: 'Authentication required'
-    });
+    return unauthorized(res, 'Authentication required');
+  }
+
+  let decoded;
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+  } catch {
+    return unauthorized(res, 'Invalid or expired session. Please log in again.');
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.userId;
-    return next();
-  } catch {
-    return res.status(401).json({
-      success: false,
-      error: 'Invalid or expired session. Please log in again.'
-    });
+    const user = await User.findById(decoded.userId).select('tokenVersion').lean();
+    // Tokens issued before tokenVersion existed carry no `tv`: treat as 0
+    if (!user || (user.tokenVersion ?? 0) !== (decoded.tv ?? 0)) {
+      return unauthorized(res, 'Your session has ended. Please log in again.');
+    }
+  } catch (error) {
+    return next(error);
   }
-};
 
-/**
- * Same as authenticate, but also accepts the token via `?token=` query string.
- * Needed for endpoints loaded directly by the browser (e.g. <img src>) where
- * an Authorization header cannot be set.
- */
-export const authenticateFlexible = (req, res, next) => {
-  if (!extractToken(req) && req.query && req.query.token) {
-    req.headers.authorization = `Bearer ${req.query.token}`;
-  }
-  return authenticate(req, res, next);
+  req.userId = decoded.userId;
+  return next();
 };
 
 /**
  * Ensures the authenticated user matches the :userId route param.
- * Must run after authenticate/authenticateFlexible.
+ * Must run after authenticate.
  */
 export const requireOwnUserId = (req, res, next) => {
   if (req.params.userId && req.params.userId !== req.userId) {
@@ -72,4 +76,4 @@ export const requireOwnUserId = (req, res, next) => {
   return next();
 };
 
-export default { generateAuthToken, authenticate, authenticateFlexible, requireOwnUserId };
+export default { generateAuthToken, authenticate, requireOwnUserId };

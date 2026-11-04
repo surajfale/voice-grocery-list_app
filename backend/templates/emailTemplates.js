@@ -3,6 +3,22 @@
  * Centralized email templates for consistent branding and maintainability
  */
 
+import { isIPv4 } from 'net';
+
+/**
+ * Escape a value for interpolation into HTML (text or a quoted attribute).
+ * Every caller-supplied value in the HTML bodies goes through this.
+ * @param {unknown} value
+ * @returns {string}
+ */
+export const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;'
+}[char]));
+
 /**
  * Base HTML template wrapper for all emails
  * @param {string} content - Email content HTML
@@ -158,7 +174,7 @@ export const welcomeEmail = ({ userName, userEmail }) => {
       <h1>Welcome to Grocery List App!</h1>
     </div>
     <div class="content">
-      <h2>Hello ${userName}! 👋</h2>
+      <h2>Hello ${escapeHtml(userName)}! 👋</h2>
       <p>Thank you for joining Grocery List App! We're thrilled to have you on board.</p>
 
       <div class="success-box">
@@ -175,13 +191,13 @@ export const welcomeEmail = ({ userName, userEmail }) => {
       </ul>
 
       <div class="info-box">
-        <strong>📧 Your account email:</strong> ${userEmail}
+        <strong>📧 Your account email:</strong> ${escapeHtml(userEmail)}
       </div>
 
       <p>Ready to get started? Log in now and create your first grocery list!</p>
 
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}" class="button">
+        <a href="${escapeHtml(process.env.FRONTEND_URL || 'http://localhost:5173')}" class="button">
           Start Shopping 🛒
         </a>
       </div>
@@ -251,7 +267,9 @@ const maskEmail = (email) => {
  * @returns {string} - Formatted IP or location
  */
 const formatIPAddress = (ip) => {
-  if (!ip) {return 'Unknown location';}
+  // Only a real IPv4 address is shown; anything else (IPv6, a header value
+  // that isn't an IP) never reaches the email
+  if (!ip || !isIPv4(ip)) {return 'Unknown location';}
   // Mask last octet for privacy
   const parts = ip.split('.');
   if (parts.length === 4) {
@@ -298,15 +316,15 @@ export const passwordResetEmail = ({ userName, resetToken, userEmail, requestIP,
       <h1>Password Reset Request</h1>
     </div>
     <div class="content">
-      <h2>Hello ${userName}!</h2>
+      <h2>Hello ${escapeHtml(userName)}!</h2>
       <p>We received a request to reset your password for your Grocery List App account.</p>
 
       <div class="info-box">
         <strong>🔍 Request Details (Anti-Phishing Verification):</strong>
         <ul style="margin: 10px 0; list-style: none; padding-left: 0;">
-          <li><strong>Account:</strong> ${maskedEmail}</li>
+          <li><strong>Account:</strong> ${escapeHtml(maskedEmail)}</li>
           <li><strong>Request Time:</strong> ${requestTimeStr} UTC</li>
-          <li><strong>Request Location:</strong> ${formattedIP}</li>
+          <li><strong>Request Location:</strong> ${escapeHtml(formattedIP)}</li>
           <li><strong>One-Time Use:</strong> This link can only be used once</li>
         </ul>
       </div>
@@ -314,13 +332,13 @@ export const passwordResetEmail = ({ userName, resetToken, userEmail, requestIP,
       <p>Click the button below to create a new password:</p>
 
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${resetUrl}" class="button">
+        <a href="${escapeHtml(resetUrl)}" class="button">
           Reset Password 🔑
         </a>
       </div>
 
       <p style="font-size: 13px; color: #666;">Or copy and paste this secure link into your browser:</p>
-      <div class="link-box">${resetUrl}</div>
+      <div class="link-box">${escapeHtml(resetUrl)}</div>
 
       <div class="warning-box">
         <strong>⚠️ Critical Security Information:</strong>
@@ -329,7 +347,7 @@ export const passwordResetEmail = ({ userName, resetToken, userEmail, requestIP,
           <li>The link can only be used <strong>once</strong></li>
           <li>If you didn't request this, <strong>ignore this email</strong> and your password won't change</li>
           <li><strong>Never share this link</strong> with anyone - not even Grocery List App support</li>
-          <li>Check the URL starts with: <code>${secureFrontendUrl}</code></li>
+          <li>Check the URL starts with: <code>${escapeHtml(secureFrontendUrl)}</code></li>
         </ul>
       </div>
 
@@ -412,7 +430,7 @@ export const passwordResetConfirmation = ({ userName }) => {
       <h1>Password Reset Successful</h1>
     </div>
     <div class="content">
-      <h2>Hello ${userName}!</h2>
+      <h2>Hello ${escapeHtml(userName)}!</h2>
 
       <div class="success-box">
         <strong>✅ Your password has been successfully reset!</strong>
@@ -421,7 +439,7 @@ export const passwordResetConfirmation = ({ userName }) => {
       <p>You can now log in to your Grocery List App account using your new password.</p>
 
       <div style="text-align: center; margin: 30px 0;">
-        <a href="${loginUrl}" class="button">
+        <a href="${escapeHtml(loginUrl)}" class="button">
           Log In Now 🔓
         </a>
       </div>
@@ -498,7 +516,7 @@ export const accountDeletionConfirmation = ({ userName, userEmail }) => {
       <h1>Account Deletion Confirmed</h1>
     </div>
     <div class="content">
-      <h2>Goodbye ${userName}</h2>
+      <h2>Goodbye ${escapeHtml(userName)}</h2>
       <p>We're sorry to see you go! Your account deletion request has been processed.</p>
 
       <div class="success-box">
@@ -515,7 +533,7 @@ export const accountDeletionConfirmation = ({ userName, userEmail }) => {
 
       <div class="info-box">
         <strong>📧 Final confirmation:</strong>
-        <p style="margin: 10px 0;">Your account (<strong>${userEmail}</strong>) will be completely removed from our system after this email is sent.</p>
+        <p style="margin: 10px 0;">Your account (<strong>${escapeHtml(userEmail)}</strong>) will be completely removed from our system after this email is sent.</p>
       </div>
 
       <div class="warning-box">

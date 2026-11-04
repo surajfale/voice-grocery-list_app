@@ -53,6 +53,12 @@ const userSchema = new mongoose.Schema({
   passwordResetCount: {
     type: Number,
     default: 0
+  },
+  // Session tokens carry this as `tv`; incrementing it revokes every
+  // outstanding session (see middleware/auth.js)
+  tokenVersion: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true

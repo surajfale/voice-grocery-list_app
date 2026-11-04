@@ -2,11 +2,20 @@ import express from 'express';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
+import User from '../../models/User.js';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import groceryListsRouter from '../groceryLists.js';
 import { predictItems } from '../../services/groceryPrediction.js';
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret';
+
+// authenticate() checks the user still exists and the token version matches;
+// these tests sign tokens for a user with tokenVersion 0
+beforeEach(() => {
+  vi.spyOn(User, 'findById').mockReturnValue({
+    select: () => ({ lean: async () => ({ tokenVersion: 0 }) })
+  });
+});
 
 vi.mock('../../services/groceryPrediction.js', async (importOriginal) => {
   const actual = await importOriginal();

@@ -14,7 +14,7 @@ import {
 } from '../controllers/receiptController.js';
 import { receiptChatIpLimiter, receiptChatUserLimiter } from '../middleware/rateLimiter.js';
 import validateChatRequest from '../middleware/validateChatRequest.js';
-import { authenticate, authenticateFlexible, requireOwnUserId } from '../middleware/auth.js';
+import { authenticate, requireOwnUserId } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -56,7 +56,7 @@ router.post('/embedding/status', authenticate, checkEmbeddingStatus);
 router.post('/embedding/trigger', authenticate, triggerEmbedding);
 router.get('/embedding/chunks', authenticate, checkChunks);
 router.get('/:receiptId', authenticate, getReceipt);
-router.get('/:receiptId/image', authenticateFlexible, streamReceiptImage);
+router.get('/:receiptId/image', authenticate, streamReceiptImage);
 router.patch('/:receiptId', authenticate, updateReceipt);
 router.delete('/:receiptId', authenticate, deleteReceipt);
 

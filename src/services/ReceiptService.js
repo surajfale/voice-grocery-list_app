@@ -11,11 +11,32 @@ export class ReceiptService extends BaseService {
     this.apiBaseUrl = this.apiService.apiBaseUrl;
   }
 
-  getImageUrl(receiptId) {
-    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
-    const params = new globalThis.URLSearchParams(token ? { token } : {});
-    const query = params.toString();
-    return `${this.apiBaseUrl}/receipts/${receiptId}/image${query ? `?${query}` : ''}`;
+  /**
+   * Fetch a receipt image as a Blob. The session token goes in the
+   * Authorization header, never in the URL (URLs end up in server/proxy logs
+   * and browser history). Callers show it with URL.createObjectURL.
+   * @param {string} receiptId
+   * @param {{ signal?: AbortSignal }} [options]
+   * @returns {Promise<Blob>}
+   */
+  async fetchImageBlob(receiptId, { signal } = {}) {
+    let token = null;
+    try {
+      token = localStorage.getItem(TOKEN_STORAGE_KEY);
+    } catch {
+      // localStorage unavailable - the request will be rejected as unauthenticated
+    }
+
+    const response = await fetch(`${this.apiBaseUrl}/receipts/${encodeURIComponent(receiptId)}/image`, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      signal
+    });
+
+    if (!response.ok) {
+      throw new HttpError('Failed to load receipt image', response.status);
+    }
+
+    return response.blob();
   }
 
   async uploadReceipt(userId, files) {

@@ -125,8 +125,9 @@ pnpm dev
 - **ReceiptChunks**: receiptId, userId, chunkIndex, text, embedding (vector), merchant, purchaseDate, total, items, metadata — indexed by the `receiptVectorIndex` Atlas Vector Search index (see `docs/atlas_vector_index.md`)
 
 ### Authentication Flow
-- JWT session (`jsonwebtoken`, signed with `JWT_SECRET`) issued on login/register, stored in localStorage
-- User validation on each API request
+- JWT session (`jsonwebtoken`, HS256, signed with `JWT_SECRET`) issued on login/register, stored in localStorage; sent only in the `Authorization` header, never in a URL (receipt images are fetched as blobs)
+- `authenticate` looks up the user on each request: the token's `tv` claim must equal `User.tokenVersion`. Password reset and account deletion bump it, revoking every session. Account deletion also removes receipts, GridFS images and `ReceiptChunk`s
+- Rate limits key on `req.ip`; `TRUST_PROXY` is a hop count (default 1 in production), never `true` (`backend/utils/trustProxy.js`). Email templates HTML-escape every interpolated value (`escapeHtml`)
 - Protected routes require authentication
 
 ### Receipts & RAG (Retrieval-Augmented Generation)
