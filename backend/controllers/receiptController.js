@@ -659,7 +659,8 @@ export const streamReceiptImage = async (req, res) => {
     const fileStream = getFileStreamFromGridFs(receipt.fileId);
 
     res.setHeader('Content-Type', receipt.mimeType || 'application/octet-stream');
-    res.setHeader('Content-Disposition', `inline; filename="${receipt.originalFilename || 'receipt'}"`);
+    // Fixed name: the uploaded filename is user input and must not reach a header
+    res.setHeader('Content-Disposition', `inline; filename="receipt-${receipt._id}.png"`);
 
     fileStream.on('error', (error) => {
       console.error('Failed to stream receipt image:', error);

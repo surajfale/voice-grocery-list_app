@@ -69,8 +69,11 @@ app.use(cors({
 app.options('*', cors());
 
 // Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+// JSON bodies are small (largest: a 200-item receipt edit, ~30 kB). Receipt
+// images are multipart and go through multer's own limits instead. Keeping
+// this low limits what an unauthenticated client can make the server parse.
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: false, limit: '100kb' }));
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI)

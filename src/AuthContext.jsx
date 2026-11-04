@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import apiStorage from './services/apiStorage.js';
 import logger from './utils/logger.js';
+import { clearApiCache } from './services/session.js';
 import useErrorHandler from './hooks/useErrorHandler.js';
 
 const AuthContext = createContext();
@@ -133,6 +134,7 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(false);
       // Clear any cached data on logout for security
       await apiStorage.clearCache();
+      await clearApiCache();
       logger.auth('Logout completed');
     } catch (error) {
       logger.error('Logout error:', error);
@@ -153,6 +155,7 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         setIsAuthenticated(false);
         await apiStorage.clearCache();
+        await clearApiCache();
         logger.auth('Account deletion completed');
         return { success: true };
       }

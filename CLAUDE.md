@@ -154,7 +154,7 @@ pnpm dev
 - `/api/auth/signup-mode` - Public, rate-limited `{ mode: 'open' | 'invite' | 'closed' }` from the same policy; only adapts the UI (`useSignupMode`)
 - `/api/auth/login` - User login. One generic error for unknown email and wrong password, with a bcrypt compare on both paths (no account enumeration)
 - `/api/auth/forgot-password` / `/api/auth/reset-password/:token` - Password reset flow
-- `/api/grocery-lists/` - CRUD operations for grocery lists
+- `/api/grocery-lists/` - CRUD operations for grocery lists. Inputs are type-checked before any query (`:date` must be YYYY-MM-DD; item text ≤200 chars, category ≤60, `completed` boolean, `count` integer 1-9999; merge takes ≤60 date strings), so request values never reach Mongo filters as objects
 - `/api/grocery-lists/user/:userId/predictions?date=YYYY-MM-DD&limit=10` - Stats-based purchase predictions (no AI calls): completed items = purchases; scores each item bought 2+ times by median gap between purchases vs. days since last purchase (`backend/services/groceryPrediction.js`; when nothing is due it falls back to the user's most-bought items, tagged `reason: 'frequent'`)
 - `/api/receipts` - Upload a receipt (POST, multipart)
 - `/api/receipts/user/:userId` - List a user's receipts
@@ -216,7 +216,9 @@ All documentation is organized in the `/docs` folder:
 ### Deployment
 - **Frontend**: Deployed on Netlify with automatic builds
 - **Backend**: Deployed on Railway with MongoDB Atlas
-- **Configuration**: Uses netlify.toml for build optimization and security headers
+- **Configuration**: Uses netlify.toml for build optimization and security headers, including a Content-Security-Policy. The inline theme script in `index.html` is allowed by hash: change it and you must update the hash in netlify.toml (`src/securityHeaders.test.js` fails until you do). A new API host or third-party origin needs adding to `connect-src`
+- **PWA API cache**: the service worker caches successful API GETs (NetworkFirst, 5 min) except `/api/auth/*` and receipt images; the cache is deleted on logout, account deletion and session expiry (`clearApiCache` in `src/services/session.js`)
+- **Body size**: JSON/urlencoded bodies are capped at 100 kB; receipt images use multipart (multer limits)
 - **Environment**: Production-ready with CORS configuration and rate limiting
 
 ## Commit Message Guidelines

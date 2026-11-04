@@ -7,6 +7,46 @@ const router = express.Router();
 router.use(authenticate);
 router.use('/user/:userId', requireOwnUserId);
 
+const MAX_TEXT_LENGTH = 200;
+const MAX_CATEGORY_LENGTH = 60;
+const MAX_COUNT = 9999;
+const MAX_MERGE_SOURCES = 60;
+
+const badRequest = (res, error) => res.status(400).json({ success: false, error });
+
+// Every :date must be a real YYYY-MM-DD string. Request values only ever reach
+// Mongo filters as plain strings, never as objects (no query operators)
+router.param('date', (req, res, next, date) => (
+  isValidDateString(date) ? next() : badRequest(res, 'date must be in YYYY-MM-DD format')
+));
+
+const isNonEmptyString = (value, max) => typeof value === 'string' && value.trim().length > 0 && value.trim().length <= max;
+
+/**
+ * Validates item fields from a request body. Only the given keys are checked;
+ * absent keys are left alone (partial updates).
+ * @returns {string|null} error message, or null when valid
+ */
+const validateItemFields = (body, keys) => {
+  for (const key of keys) {
+    if (body[key] === undefined) { continue; }
+    const value = body[key];
+    if (key === 'text' && !isNonEmptyString(value, MAX_TEXT_LENGTH)) {
+      return `Item text must be 1-${MAX_TEXT_LENGTH} characters`;
+    }
+    if (key === 'category' && !isNonEmptyString(value, MAX_CATEGORY_LENGTH)) {
+      return `Category must be 1-${MAX_CATEGORY_LENGTH} characters`;
+    }
+    if (key === 'completed' && typeof value !== 'boolean') {
+      return 'completed must be true or false';
+    }
+    if (key === 'count' && !(Number.isInteger(value) && value >= 1 && value <= MAX_COUNT)) {
+      return `Count must be a whole number from 1 to ${MAX_COUNT}`;
+    }
+  }
+  return null;
+};
+
 /**
  * Helper function to check if a date is in the past
  * @param {string} dateString - Date string in YYYY-MM-DD format
@@ -129,13 +169,14 @@ router.get('/user/:userId/date/:date', async (req, res) => {
 router.post('/user/:userId/date/:date/items', async (req, res) => {
   try {
     const { userId, date } = req.params;
-    const { text, category } = req.body;
+    const { text, category } = req.body || {};
 
-    if (!text) {
-      return res.status(400).json({
-        success: false,
-        error: 'Item text is required'
-      });
+    if (text === undefined) {
+      return badRequest(res, 'Item text is required');
+    }
+    const invalid = validateItemFields({ text, category: category ?? undefined }, ['text', 'category']);
+    if (invalid) {
+      return badRequest(res, invalid);
     }
 
     let list = await GroceryList.findOne({ userId, date });
@@ -160,8 +201,8 @@ router.post('/user/:userId/date/:date/items', async (req, res) => {
 
     const newItem = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      text,
-      category: category || 'Other',
+      text: text.trim(),
+      category: category ? category.trim() : 'Other',
       completed: false,
       count: 1,
       addedAt: new Date()
@@ -191,7 +232,12 @@ router.post('/user/:userId/date/:date/items', async (req, res) => {
 router.put('/user/:userId/date/:date/items/:itemId', async (req, res) => {
   try {
     const { userId, date, itemId } = req.params;
-    const updates = req.body;
+    const updates = req.body && typeof req.body === 'object' ? req.body : {};
+
+    const invalid = validateItemFields(updates, ['text', 'category', 'completed', 'count']);
+    if (invalid) {
+      return badRequest(res, invalid);
+    }
 
     const list = await GroceryList.findOne({ userId, date });
 
@@ -213,7 +259,7 @@ router.put('/user/:userId/date/:date/items/:itemId', async (req, res) => {
     // Update item properties
     Object.keys(updates).forEach(key => {
       if (['text', 'category', 'completed', 'count'].includes(key)) {
-        item[key] = updates[key];
+        item[key] = typeof updates[key] === 'string' ? updates[key].trim() : updates[key];
       }
     });
 
@@ -317,13 +363,19 @@ router.delete('/user/:userId/date/:date/items', async (req, res) => {
 router.post('/user/:userId/merge-lists', async (req, res) => {
   try {
     const { userId } = req.params;
-    const { sourceDates, targetDate } = req.body;
+    const { sourceDates, targetDate } = req.body || {};
 
     if (!targetDate || !Array.isArray(sourceDates) || sourceDates.length === 0) {
       return res.status(400).json({
         success: false,
         error: 'sourceDates (array) and targetDate are required'
       });
+    }
+
+    if (!isValidDateString(targetDate)
+      || sourceDates.length > MAX_MERGE_SOURCES
+      || !sourceDates.every(isValidDateString)) {
+      return badRequest(res, `targetDate and up to ${MAX_MERGE_SOURCES} sourceDates must be YYYY-MM-DD dates`);
     }
 
     if (isPastDate(targetDate)) {

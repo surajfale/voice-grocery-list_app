@@ -12,6 +12,22 @@ export const USER_STORAGE_KEY = 'groceryListUser';
 
 export const SESSION_INVALID = 'SESSION_INVALID';
 
+// Workbox runtime cache for API responses (vite.config.js). It holds the
+// signed-in user's lists and receipts, so it must not outlive the session.
+export const API_CACHE_NAME = 'api-cache';
+
+/**
+ * Delete the service worker's API response cache. Never throws.
+ * @returns {Promise<void>}
+ */
+export const clearApiCache = async () => {
+  try {
+    await globalThis.caches?.delete(API_CACHE_NAME);
+  } catch {
+    // Cache Storage unavailable (e.g. insecure context): nothing cached
+  }
+};
+
 let ending = false;
 
 /**
@@ -32,8 +48,11 @@ export const endSessionIfUnauthorized = (status, body) => {
     // Storage unavailable: nothing stored to clear
   }
 
-  // Several requests can fail at once; only the first one redirects
-  globalThis.location?.replace(import.meta.env?.BASE_URL || '/');
+  // Several requests can fail at once; only the first one redirects, after
+  // the cached API responses are gone
+  clearApiCache().finally(() => {
+    globalThis.location?.replace(import.meta.env?.BASE_URL || '/');
+  });
   return true;
 };
 
