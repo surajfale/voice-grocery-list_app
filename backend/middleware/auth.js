@@ -26,7 +26,10 @@ const extractToken = (req) => {
   return null;
 };
 
-const unauthorized = (res, error) => res.status(401).json({ success: false, error });
+// The code lets clients tell a dead session (log out) apart from other 401s
+// such as a wrong password on account deletion
+export const SESSION_INVALID = 'SESSION_INVALID';
+const unauthorized = (res, error) => res.status(401).json({ success: false, code: SESSION_INVALID, error });
 
 /**
  * Require a valid, non-revoked session token. Attaches the authenticated user

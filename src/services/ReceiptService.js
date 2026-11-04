@@ -1,7 +1,6 @@
 import { BaseService, HttpError, nonRetryable } from './BaseService.js';
 import ApiService from './ApiService.js';
-
-const TOKEN_STORAGE_KEY = 'groceryListToken';
+import { endSessionIfUnauthorized, TOKEN_STORAGE_KEY } from './session.js';
 
 export class ReceiptService extends BaseService {
   constructor() {
@@ -33,6 +32,7 @@ export class ReceiptService extends BaseService {
     });
 
     if (!response.ok) {
+      endSessionIfUnauthorized(response.status, await response.json().catch(() => null));
       throw new HttpError('Failed to load receipt image', response.status);
     }
 
@@ -67,6 +67,7 @@ export class ReceiptService extends BaseService {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
+        endSessionIfUnauthorized(response.status, data);
         // A rejected upload (bad file type, too large) must not be re-sent
         throw new HttpError(data.error || 'Failed to upload receipt', response.status);
       }
