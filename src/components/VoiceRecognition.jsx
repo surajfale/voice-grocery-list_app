@@ -4,7 +4,7 @@ import { Mic, Square } from 'lucide-react';
 import logger from '../utils/logger.js';
 import groceryIntelligence from '../services/groceryIntelligence.js';
 
-const VoiceRecognition = memo(({ onItemsDetected, disabled = false, onListeningChange }) => {
+const VoiceRecognition = memo(({ onItemsDetected, disabled = false, onListeningChange, autoStart = false, onAutoStartDone }) => {
   const [isListening, setIsListening] = useState(false);
   const [_transcript, setTranscript] = useState('');
   const [fullTranscript, setFullTranscript] = useState('');
@@ -195,6 +195,12 @@ const VoiceRecognition = memo(({ onItemsDetected, disabled = false, onListeningC
       };
 
       recognitionRef.current.onerror = (event) => {
+        // The app-icon "Add by voice" shortcut couldn't start the mic
+        // (e.g. no permission without a tap): let the app say so
+        if (autoStartPendingRef.current) {
+          autoStartPendingRef.current = false;
+          onAutoStartDoneRef.current?.(false);
+        }
         // Don't log "aborted" errors as they're expected when user stops manually
         if (event.error === 'aborted' && isManualStopRef.current) {
           logger.voice('Speech recognition stopped by user');
@@ -203,6 +209,13 @@ const VoiceRecognition = memo(({ onItemsDetected, disabled = false, onListeningC
         }
         setIsListening(false);
         isManualStopRef.current = false; // Reset flag
+      };
+
+      recognitionRef.current.onstart = () => {
+        if (autoStartPendingRef.current) {
+          autoStartPendingRef.current = false;
+          onAutoStartDoneRef.current?.(true);
+        }
       };
 
       recognitionRef.current.onend = () => {
@@ -224,6 +237,24 @@ const VoiceRecognition = memo(({ onItemsDetected, disabled = false, onListeningC
       recognitionRef.current.start();
     }
   };
+
+  // "Add by voice" app shortcut: start listening once on launch
+  const autoStartPendingRef = useRef(false);
+  const onAutoStartDoneRef = useRef(onAutoStartDone);
+  onAutoStartDoneRef.current = onAutoStartDone;
+  const startListeningRef = useRef(startListening);
+  startListeningRef.current = startListening;
+  useEffect(() => {
+    if (!autoStart || disabled || !recognitionRef.current) { return; }
+    autoStartPendingRef.current = true;
+    try {
+      startListeningRef.current();
+    } catch {
+      autoStartPendingRef.current = false;
+      setIsListening(false);
+      onAutoStartDoneRef.current?.(false);
+    }
+  }, [autoStart, disabled]);
 
   const stopListening = () => {
     if (recognitionRef.current) {
@@ -277,7 +308,9 @@ VoiceRecognition.displayName = 'VoiceRecognition';
 VoiceRecognition.propTypes = {
   onItemsDetected: PropTypes.func.isRequired,
   disabled: PropTypes.bool,
-  onListeningChange: PropTypes.func
+  onListeningChange: PropTypes.func,
+  autoStart: PropTypes.bool,
+  onAutoStartDone: PropTypes.func
 };
 
 export default VoiceRecognition;

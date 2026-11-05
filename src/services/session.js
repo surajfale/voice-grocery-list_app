@@ -1,3 +1,5 @@
+import { SHARE_CACHE_NAME } from '../utils/shareTarget.js';
+
 /**
  * Session expiry handling. The backend answers 401 when a session token is
  * expired or revoked (password reset or account deletion bumps the user's
@@ -17,12 +19,15 @@ export const SESSION_INVALID = 'SESSION_INVALID';
 export const API_CACHE_NAME = 'api-cache';
 
 /**
- * Delete the service worker's API response cache. Never throws.
+ * Delete the service worker's API response cache (and any shared receipt
+ * photos not uploaded yet). Never throws.
  * @returns {Promise<void>}
  */
 export const clearApiCache = async () => {
   try {
     await globalThis.caches?.delete(API_CACHE_NAME);
+    // Receipt photos shared into the app but not uploaded yet
+    await globalThis.caches?.delete(SHARE_CACHE_NAME);
   } catch {
     // Cache Storage unavailable (e.g. insecure context): nothing cached
   }

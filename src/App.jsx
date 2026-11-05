@@ -29,6 +29,10 @@ import {
 import { AuthProvider, useAuth } from './AuthContext';
 import { CustomThemeProvider, useThemeContext } from './contexts/ThemeContext';
 import { useIsMobile } from './hooks/useIsMobile';
+import { useBackToClose } from './hooks/useBackToClose';
+import useWakeLock from './hooks/useWakeLock';
+import { haptic } from './utils/haptics';
+import { isShareLaunch } from './utils/shareTarget';
 import LoginPage from './LoginPage';
 import RegisterPage from './RegisterPage';
 import ForgotPasswordPage from './ForgotPasswordPage';
@@ -75,6 +79,26 @@ import {
 } from './components/ui/dropdown-menu';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
+
+// Primary destinations; a pill in the header on wide screens, a bottom tab
+// bar (thumb reach) on phones
+const NAV_ITEMS = [
+  { view: 'lists', label: 'Lists', Icon: ListChecks },
+  { view: 'receipts', label: 'Receipts', Icon: Receipt },
+];
+
+// App-icon shortcuts (manifest) open /?action=voice | receipts; a photo shared
+// into the app opens /?share-target=1 (handled by ReceiptsPage)
+const getLaunchAction = () => {
+  if (typeof window === 'undefined') { return null; }
+  if (isShareLaunch()) { return 'receipts'; }
+  return new globalThis.URLSearchParams(window.location.search).get('action');
+};
+
+const KEEP_SCREEN_ON_KEY = 'keepScreenOn';
+const readKeepScreenOn = () => {
+  try { return localStorage.getItem(KEEP_SCREEN_ON_KEY) === 'true'; } catch { return false; }
+};
 
 // Twelve dots fanned left/up/down from the progress bar's end (the bar ends at the
 // card's right edge, so dots flying right would just be clipped)
@@ -176,8 +200,13 @@ const VoiceGroceryList = ({ user, logout }) => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, _setTranscript] = useState('');
   const [showOnlyRemaining, setShowOnlyRemaining] = useState(false);
-  const [activeView, setActiveView] = useState('lists');
-  const [displayedView, setDisplayedView] = useState('lists');
+  const [launchAction] = useState(getLaunchAction);
+  const initialView = launchAction === 'receipts' ? 'receipts' : 'lists';
+  const [activeView, setActiveView] = useState(initialView);
+  const [displayedView, setDisplayedView] = useState(initialView);
+  const [voiceAutoStart, setVoiceAutoStart] = useState(launchAction === 'voice');
+  const [keepScreenOn, setKeepScreenOn] = useState(readKeepScreenOn);
+  const [composerFocused, setComposerFocused] = useState(false);
   const [viewContentVisible, setViewContentVisible] = useState(true);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedDatesForMove, setSelectedDatesForMove] = useState([]);
@@ -204,6 +233,23 @@ const VoiceGroceryList = ({ user, logout }) => {
   // Responsive design helpers
   const isMobile = useIsMobile(900);
   const isReceiptsView = activeView === 'receipts';
+
+  // Android back from Receipts returns to Lists instead of leaving the app
+  useBackToClose(isReceiptsView, () => setActiveView('lists'));
+
+  // Shortcut handled: drop ?action= so a reload doesn't repeat it
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('action')) { return; }
+    url.searchParams.delete('action');
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+  }, []);
+
+  // "Keep screen on" while the list is open (shopping in the store)
+  useEffect(() => {
+    try { localStorage.setItem(KEEP_SCREEN_ON_KEY, String(keepScreenOn)); } catch { /* storage blocked */ }
+  }, [keepScreenOn]);
+  const wakeLock = useWakeLock(keepScreenOn && !isReceiptsView);
 
   // Cross-fade the main content when switching between Lists and Receipts
   useEffect(() => {
@@ -236,6 +282,7 @@ const VoiceGroceryList = ({ user, logout }) => {
     rejectCorrections,
     toggleItem,
     removeItem,
+    restoreItem,
     updateItemCategory,
     updateItemText,
     updateItemCount,
@@ -380,6 +427,8 @@ const VoiceGroceryList = ({ user, logout }) => {
    * @param {string} itemId - Item ID to toggle
    */
   const handleItemToggle = (itemId) => {
+    const item = currentItems.find((entry) => entry.id === itemId);
+    if (item && !item.completed) { haptic(12); }
     toggleItem(itemId);
   };
 
@@ -389,7 +438,14 @@ const VoiceGroceryList = ({ user, logout }) => {
    * @param {string} itemId - Item ID to remove
    */
   const handleItemRemove = (itemId) => {
+    const item = currentItems.find((entry) => entry.id === itemId);
+    const fromDate = currentDateString;
     removeItem(itemId);
+    if (item) {
+      toast(`Removed ${item.text}`, {
+        action: { label: 'Undo', onClick: () => restoreItem(item, fromDate) }
+      });
+    }
   };
 
   /**
@@ -796,6 +852,11 @@ const VoiceGroceryList = ({ user, logout }) => {
           onItemsDetected={handleVoiceItems}
           disabled={loading || isPastDate}
           onListeningChange={setIsListening}
+          autoStart={voiceAutoStart}
+          onAutoStartDone={(started) => {
+            setVoiceAutoStart(false);
+            if (!started) { toast('Tap the mic to add items by voice'); }
+          }}
         />
       )}
     />
@@ -921,7 +982,7 @@ const VoiceGroceryList = ({ user, logout }) => {
             <button
               type="button"
               onClick={() => setMobileDrawerOpen(true)}
-              className="-ml-1 size-9 rounded-xl flex items-center justify-center hover:bg-primary/10 transition-colors"
+              className="touch-target -ml-1 size-9 rounded-xl flex items-center justify-center hover:bg-primary/10 transition-colors"
               aria-label="Open lists"
             >
               <MenuIcon className="size-5" />
@@ -937,17 +998,15 @@ const VoiceGroceryList = ({ user, logout }) => {
             </span>
           </div>
 
-          {/* Primary navigation: a gradient pill slides to the active tab */}
+          {/* Primary navigation: a gradient pill slides to the active tab (phones: bottom bar) */}
+          {!isMobile && (
           <nav aria-label="Primary" className="relative grid grid-cols-2 rounded-full bg-muted p-1">
             <span
               aria-hidden="true"
               className="btn-gradient absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full transition-transform duration-300 ease-[cubic-bezier(0.34,1.4,0.64,1)]"
               style={{ transform: activeView === 'receipts' ? 'translateX(100%)' : 'translateX(0)' }}
             />
-            {[
-              { view: 'lists', label: 'Lists', Icon: ListChecks },
-              { view: 'receipts', label: 'Receipts', Icon: Receipt },
-            ].map(({ view, label, Icon }) => {
+            {NAV_ITEMS.map(({ view, label, Icon }) => {
               const isActive = activeView === view;
               return (
                 <button
@@ -965,6 +1024,7 @@ const VoiceGroceryList = ({ user, logout }) => {
               );
             })}
           </nav>
+          )}
 
           {/* Account + preferences */}
           <DropdownMenu>
@@ -972,7 +1032,7 @@ const VoiceGroceryList = ({ user, logout }) => {
               <button
                 type="button"
                 aria-label="Account and settings"
-                className="ml-1 rounded-full p-[2px] btn-gradient transition-transform hover:scale-105 active:scale-95 data-[state=open]:scale-105"
+                className="touch-target ml-1 rounded-full p-[2px] btn-gradient transition-transform hover:scale-105 active:scale-95 data-[state=open]:scale-105"
               >
                 <Avatar className="size-8 border-2 border-background">
                   <AvatarFallback className="bg-card text-foreground text-xs font-bold">
@@ -1048,11 +1108,11 @@ const VoiceGroceryList = ({ user, logout }) => {
           <main
             id="main"
             className={`flex-1 min-w-0 flex flex-col px-4 sm:px-6 ${
-              isMobile && !isReceiptsView ? 'pb-32' : 'pb-8'
+              isMobile ? (isReceiptsView ? 'pb-24' : 'pb-44') : 'pb-8'
             }`}
           >
             <div
-              className={`w-full mx-auto pt-6 sm:pt-10 flex-1 flex flex-col transition-opacity ${
+              className={`w-full mx-auto pt-4 sm:pt-10 flex-1 flex flex-col transition-opacity ${
                 displayedView === 'receipts' ? 'max-w-5xl' : 'max-w-2xl'
               }`}
               style={{ opacity: viewContentVisible ? 1 : 0, transitionDuration: viewContentVisible ? '200ms' : '120ms' }}
@@ -1062,7 +1122,7 @@ const VoiceGroceryList = ({ user, logout }) => {
               ) : (
                 <div className="flex-1">
                   {/* Hero: date, progress and list actions on an accent gradient */}
-                  <div className="hero-gradient rounded-[28px] px-5 pt-5 pb-5 mb-6">
+                  <div className="hero-gradient rounded-3xl sm:rounded-[28px] p-4 sm:p-5 mb-4 sm:mb-6">
                     <div className="relative z-10">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -1073,7 +1133,7 @@ const VoiceGroceryList = ({ user, logout }) => {
                             tabIndex={isMobile ? 0 : -1}
                             aria-label={isMobile ? 'Change list date' : undefined}
                           >
-                            <h1 className="text-[30px] sm:text-4xl font-semibold tracking-tight leading-tight">
+                            <h1 className="text-[26px] sm:text-4xl font-semibold tracking-tight leading-tight">
                               {relativeDayLabel(currentDateString)}
                             </h1>
                             {isMobile && <ChevronDown className="size-5 opacity-80 mt-1" />}
@@ -1093,6 +1153,11 @@ const VoiceGroceryList = ({ user, logout }) => {
                                 · <Lock className="size-3" /> read-only
                               </span>
                             )}
+                            {wakeLock.active && (
+                              <span className="inline-flex items-center gap-1">
+                                · <Sun className="size-3" /> screen stays on
+                              </span>
+                            )}
                           </p>
                         </div>
 
@@ -1102,7 +1167,7 @@ const VoiceGroceryList = ({ user, logout }) => {
                               <button
                                 type="button"
                                 aria-label="List options"
-                                className="size-9 shrink-0 rounded-xl flex items-center justify-center border border-[color-mix(in_oklch,var(--primary-foreground)_25%,transparent)] bg-[color-mix(in_oklch,var(--primary-foreground)_14%,transparent)] hover:bg-[color-mix(in_oklch,var(--primary-foreground)_24%,transparent)] transition-colors"
+                                className="touch-target size-9 shrink-0 rounded-xl flex items-center justify-center border border-[color-mix(in_oklch,var(--primary-foreground)_25%,transparent)] bg-[color-mix(in_oklch,var(--primary-foreground)_14%,transparent)] hover:bg-[color-mix(in_oklch,var(--primary-foreground)_24%,transparent)] transition-colors"
                               >
                                 <MoreHorizontal className="size-4" />
                               </button>
@@ -1114,6 +1179,14 @@ const VoiceGroceryList = ({ user, logout }) => {
                           >
                             Hide bought items
                           </DropdownMenuCheckboxItem>
+                          {wakeLock.supported && (
+                            <DropdownMenuCheckboxItem
+                              checked={keepScreenOn}
+                              onCheckedChange={(checked) => setKeepScreenOn(Boolean(checked))}
+                            >
+                              Keep screen on
+                            </DropdownMenuCheckboxItem>
+                          )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={handleShare}>
                             <Share2 />
@@ -1143,7 +1216,7 @@ const VoiceGroceryList = ({ user, logout }) => {
 
                       {currentItems.length > 0 && (
                         <div
-                          className="relative mt-5 h-2 rounded-full bg-[color-mix(in_oklch,var(--primary-foreground)_24%,transparent)]"
+                          className="relative mt-4 sm:mt-5 h-2 rounded-full bg-[color-mix(in_oklch,var(--primary-foreground)_24%,transparent)]"
                           role="progressbar"
                           aria-label="Items bought"
                           aria-valuemin={0}
@@ -1255,11 +1328,54 @@ const VoiceGroceryList = ({ user, logout }) => {
 
               {/* Mobile: composer pinned to the thumb zone */}
               {isMobile && (
-                <div className="fixed inset-x-0 bottom-0 z-30 bg-gradient-to-t from-background via-background/90 to-transparent px-3 pt-6 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                <div
+                  role="group"
+                  aria-label="Add items"
+                  onFocus={() => setComposerFocused(true)}
+                  onBlur={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget)) { setComposerFocused(false); }
+                  }}
+                  className={`fixed inset-x-0 z-30 bg-gradient-to-t from-background via-background/90 to-transparent px-3 pt-6 ${
+                    composerFocused
+                      ? 'bottom-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]'
+                      : 'bottom-[calc(3.5rem+env(safe-area-inset-bottom))] pb-2'
+                  }`}
+                >
                   {renderComposer({ floating: true })}
                 </div>
               )}
             </>
+          )}
+
+          {/* Phones: primary navigation in the thumb zone. Hidden while typing,
+              when the keyboard needs the room */}
+          {isMobile && !composerFocused && (
+            <nav
+              aria-label="Primary"
+              className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
+            >
+              <div className="grid grid-cols-2 h-14">
+                {NAV_ITEMS.map(({ view, label, Icon }) => {
+                  const isActive = activeView === view;
+                  return (
+                    <button
+                      key={view}
+                      type="button"
+                      onClick={() => setActiveView(view)}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors ${
+                        isActive ? 'text-primary' : 'text-muted-foreground'
+                      }`}
+                    >
+                      <span className={`flex items-center justify-center h-7 w-14 rounded-full transition-colors duration-200 ${isActive ? 'bg-primary/15' : ''}`}>
+                        <Icon className="size-5" />
+                      </span>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
           )}
         </div>
       </div>

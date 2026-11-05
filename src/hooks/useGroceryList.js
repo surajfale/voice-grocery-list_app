@@ -272,6 +272,36 @@ export const useGroceryList = (user) => {
     }
   }, [user, currentDateString, setError]);
 
+  /**
+   * Put a just-removed item back (Undo): same text, category, quantity and
+   * bought state, on the list it was removed from.
+   * @param {{ text: string, category?: string, count?: number, completed?: boolean }} item
+   * @param {string} dateString - YYYY-MM-DD list it came from
+   */
+  const restoreItem = useCallback(async (item, dateString) => {
+    if (!user?._id || !item?.text) { return; }
+    try {
+      const added = await apiStorage.addGroceryItem(user._id, dateString, { text: item.text, category: item.category });
+      if (!added.success) {
+        setError(added.error || 'Failed to restore item');
+        return;
+      }
+      let items = added.list.items;
+      const restored = items[items.length - 1];
+      const updates = {};
+      if ((item.count || 1) > 1) { updates.count = item.count; }
+      if (item.completed) { updates.completed = true; }
+      if (restored && Object.keys(updates).length) {
+        const updated = await apiStorage.updateGroceryItem(user._id, dateString, restored.id, updates);
+        if (updated.success) { items = updated.list.items; }
+      }
+      setAllLists(prev => ({ ...prev, [dateString]: items }));
+    } catch (error) {
+      logger.error('Error restoring item:', error);
+      setError('Failed to restore item. Please try again.');
+    }
+  }, [user, setError]);
+
   // Update item category
   const updateItemCategory = useCallback(async (id, newCategory) => {
     if (!user?._id) {return;}
@@ -592,6 +622,7 @@ export const useGroceryList = (user) => {
     rejectCorrections,
     toggleItem,
     removeItem,
+    restoreItem,
     updateItemCategory,
     updateItemText,
     updateItemCount,

@@ -226,6 +226,37 @@ time {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* Touch: a 48px tap area around small controls without changing their look
+   (Android's minimum). The control must not already use ::before. In the
+   components layer so utilities such as `absolute` still win over
+   `position: relative`. */
+@layer components {
+  .touch-target {
+    position: relative;
+  }
+  @media (pointer: coarse) {
+    .touch-target::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: max(100%, 48px);
+      height: max(100%, 48px);
+      transform: translate(-50%, -50%);
+    }
+  }
+}
+
+/* Shown only with a mouse/trackpad (e.g. keyboard shortcut hints) */
+@media (pointer: coarse) {
+  .pointer-fine-only { display: none; }
+}
+
+/* Website-only chrome (footer credits): hidden in the installed app */
+@media (display-mode: standalone) {
+  .web-only { display: none; }
+}
+
 /* ---------- Vibrant list styling ---------- */
 
 /* "Today" hero: accent gradient that follows the chosen preset in both modes */

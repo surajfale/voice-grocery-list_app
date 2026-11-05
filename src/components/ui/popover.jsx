@@ -1,11 +1,11 @@
 import * as React from 'react';
 import { Popover as PopoverPrimitive } from 'radix-ui';
+import { withBackToClose } from '@/hooks/useBackToClose';
 
 import { cn } from '@/lib/utils';
 
-function Popover(props) {
-  return <PopoverPrimitive.Root data-slot="popover" {...props} />;
-}
+// Android back closes it instead of leaving the app (hooks/useBackToClose)
+const Popover = withBackToClose(PopoverPrimitive.Root, 'popover');
 
 function PopoverTrigger(props) {
   return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;

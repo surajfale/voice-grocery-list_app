@@ -38,7 +38,7 @@ const ProjectDisclaimer = () => {
                     type="button"
                     aria-label="Dismiss notice"
                     onClick={handleClose}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-background text-muted-foreground hover:text-foreground"
+                    className="touch-target absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-background text-muted-foreground hover:text-foreground"
                 >
                     <X className="size-3.5" />
                 </button>

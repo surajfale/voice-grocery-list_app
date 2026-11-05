@@ -1,12 +1,12 @@
 import * as React from 'react';
 import { AlertDialog as AlertDialogPrimitive } from 'radix-ui';
+import { withBackToClose } from '@/hooks/useBackToClose';
 
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
 
-function AlertDialog(props) {
-  return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />;
-}
+// Android back closes it instead of leaving the app (hooks/useBackToClose)
+const AlertDialog = withBackToClose(AlertDialogPrimitive.Root, 'alert-dialog');
 
 function AlertDialogTrigger(props) {
   return <AlertDialogPrimitive.Trigger data-slot="alert-dialog-trigger" {...props} />;

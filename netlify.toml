@@ -38,7 +38,7 @@
     # index.html by hash (src/securityHeaders.test.js fails if they drift).
     # API calls go to Railway; data:/blob: cover exported images and the
     # receipt image blob. Inline styles are needed by React style props.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-+x2Cf725xncZmNjITIo4yO+aelcBKt4906CpwSEwWHA='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.railway.app data: blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-cILSjtW3tjNyySvscL5YY4kYDkDH3ZHLXVSe7njTRpA='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.railway.app data: blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
 
 # Cache static assets
 [[headers]]

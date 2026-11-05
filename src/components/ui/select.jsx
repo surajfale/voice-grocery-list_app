@@ -1,12 +1,12 @@
 import * as React from 'react';
 import { Select as SelectPrimitive } from 'radix-ui';
+import { withBackToClose } from '@/hooks/useBackToClose';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
-function Select(props) {
-  return <SelectPrimitive.Root data-slot="select" {...props} />;
-}
+// Android back closes it instead of leaving the app (hooks/useBackToClose)
+const Select = withBackToClose(SelectPrimitive.Root, 'select');
 
 function SelectGroup(props) {
   return <SelectPrimitive.Group data-slot="select-group" {...props} />;

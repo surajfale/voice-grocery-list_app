@@ -113,6 +113,8 @@ pnpm dev
 - **useReceiptChat.js** - RAG chat state (question history, date-range filters, streaming stages), backed by ReceiptRagClient
 - **usePurchasePredictions.js** - Fetches "you'll probably need" predictions for the selected date and filters out items already on the list
 - **usePriceSignals.js** - Loads receipts while the list view is showing and returns a lookup (item text → price rise / cheaper store) used for the ▲ price hints on grocery list items
+- **useBackToClose.jsx** - Android back gesture closes the top in-app layer instead of leaving the installed app (`utils/backStack.js` keeps one history entry per open layer). The shared `Dialog`, `Sheet`, `AlertDialog`, `DropdownMenu`, `Popover` and `Select` wrappers in `components/ui/` use it automatically (`withBackToClose`); the Receipts view uses it so back returns to Lists
+- **useWakeLock.js** - "Keep screen on" (list ⋯ menu, remembered in localStorage): Screen Wake Lock while the list view is open, re-acquired when the app becomes visible
 
 ### Utilities (src/utils/)
 - **logger.js** - Centralized logging system with different log levels
@@ -198,6 +200,7 @@ This app was migrated from JSONBin to MongoDB backend. See `MIGRATION_NOTES.md` 
 - Comprehensive deployment documentation available (docs/DEPLOYMENT.md)
 - Both frontend and backend use ESM (type: "module" in package.json)
 - **PWA enabled**: Installable on Android/iOS with offline support (see docs/PWA_SETUP.md)
+- **Mobile / installed Android app** (`useIsMobile`, <900px): Lists/Receipts tab bar at the bottom (hidden while typing in the composer, which then sits on the keyboard; viewport uses `interactive-widget=resizes-content`); receipt details open in a bottom sheet; list rows swipe right = bought, left = remove (with Undo toast, `restoreItem`); haptic tick on check-off (`utils/haptics.js`); small controls get a 48px tap area via the `.touch-target` class; `.web-only` hides website chrome (footer) when installed. Manifest adds app-icon shortcuts (`/?action=voice`, `/?action=receipts`, handled in App.jsx) and a `share_target`: photos shared from other apps are POSTed to `/share-receipt`, caught by `public/share-target-sw.js` (imported into the Workbox SW), stored in Cache Storage and uploaded by ReceiptsPage (`utils/shareTarget.js`)
 
 ### Documentation Structure
 All documentation is organized in the `/docs` folder:

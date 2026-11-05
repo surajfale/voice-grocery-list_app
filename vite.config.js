@@ -36,6 +36,7 @@ export default defineConfig({
           }
         ],
         categories: ['productivity', 'shopping', 'utilities'],
+        // Long-press the app icon (Android). Handled in App.jsx (?action=)
         shortcuts: [
           {
             name: 'Today\'s List',
@@ -43,10 +44,36 @@ export default defineConfig({
             description: 'Open today\'s grocery list',
             url: '/',
             icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }]
+          },
+          {
+            name: 'Add by voice',
+            short_name: 'Voice',
+            description: 'Open today\'s list and start listening',
+            url: '/?action=voice',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }]
+          },
+          {
+            name: 'Scan a receipt',
+            short_name: 'Receipt',
+            description: 'Open Receipts to upload a receipt photo',
+            url: '/?action=receipts',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }]
           }
-        ]
+        ],
+        // Share → Grocery List from Camera/Photos uploads the receipt.
+        // public/share-target-sw.js receives the POST
+        share_target: {
+          action: '/share-receipt',
+          method: 'POST',
+          enctype: 'multipart/form-data',
+          params: {
+            files: [{ name: 'receipts', accept: ['image/*'] }]
+          }
+        }
       },
       workbox: {
+        // Share-target POST handler; must answer before Workbox's routes
+        importScripts: ['share-target-sw.js'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         runtimeCaching: [
