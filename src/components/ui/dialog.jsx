@@ -1,12 +1,12 @@
 import * as React from 'react';
 import { Dialog as DialogPrimitive } from 'radix-ui';
+import { withBackToClose } from '@/hooks/useBackToClose';
 import { X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
-function Dialog(props) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />;
-}
+// Android back closes it instead of leaving the app (hooks/useBackToClose)
+const Dialog = withBackToClose(DialogPrimitive.Root, 'dialog');
 
 function DialogTrigger(props) {
   return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />;

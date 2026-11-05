@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import dayjs from 'dayjs';
-import { CloudUpload, Trash2, Image as ImageIcon, RefreshCw, ChevronLeft, ChevronRight, Loader2, ReceiptText, Pencil, Share2, Download, TriangleAlert } from 'lucide-react';
+import { CloudUpload, Trash2, Image as ImageIcon, RefreshCw, ChevronLeft, ChevronRight, Loader2, ReceiptText, Pencil, Share2, Download, TriangleAlert, Camera, Images } from 'lucide-react';
 import { toast } from 'sonner';
 import useReceipts from '../hooks/useReceipts.js';
+import useIsMobile from '../hooks/useIsMobile.js';
+import { isShareLaunch, clearShareParam, takeSharedFiles } from '../utils/shareTarget.js';
 import ReceiptChatPanel from '../components/receipts/ReceiptChatPanel.jsx';
 import SpendingInsights from '../components/receipts/SpendingInsights.jsx';
 import EditReceiptDialog from '../components/receipts/EditReceiptDialog.jsx';
@@ -16,6 +18,17 @@ import { Badge } from '../components/ui/badge';
 import { Separator } from '../components/ui/separator';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
+import { Sheet, SheetContent, SheetTitle } from '../components/ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '../components/ui/alert-dialog';
 import { hueFromString } from '../utils/categoryStyles';
 import { formatMoney } from '../utils/money';
 import { buildCategoryResolver, getTopStore, getTotalMismatch } from '../utils/receiptInsights';
@@ -107,6 +120,8 @@ const ReceiptsPage = ({ user }) => {
   const [activeTab, setActiveTab] = useState('receipts');
   const [isDragging, setIsDragging] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const isMobile = useIsMobile();
   const exportCardRef = useRef(null);
   const pendingExportRef = useRef(null);
 
@@ -246,20 +261,159 @@ const ReceiptsPage = ({ user }) => {
     uploadReceipt(files);
   };
 
+  // Photos shared into the installed app (Android share sheet → Grocery List)
+  const handleFilesRef = useRef(handleFiles);
+  handleFilesRef.current = handleFiles;
+  useEffect(() => {
+    if (!isShareLaunch()) { return; }
+    clearShareParam();
+    takeSharedFiles()
+      .then((files) => {
+        if (files.length) {
+          toast.success(files.length === 1 ? 'Uploading the shared receipt…' : `Uploading ${files.length} shared photos as one receipt…`);
+          handleFilesRef.current(files);
+        }
+      })
+      .catch(() => setLocalError('Couldn’t read the shared photos. Please upload them here instead.'));
+  }, []);
+
   const handleFileChange = (event) => {
     handleFiles(event.target.files);
     event.target.value = '';
   };
 
+  // Receipt details: a side card on wide screens, a bottom sheet on phones
+  // (inline, it opened two screens below the tapped row, out of sight)
+  const receiptDetail = selectedReceipt ? (
+                <div key={selectedReceipt._id} className="flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-1 duration-300">
+                  <div className="flex items-center gap-3">
+                    <StoreTile name={selectedReceipt.merchant || 'Unknown'} className="size-12 text-lg" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xl font-semibold tracking-tight truncate">{selectedReceipt.merchant || 'Unknown'}</p>
+                      <p className="text-sm text-muted-foreground tabular-nums">{selectedReceipt.purchaseDate || 'No date'}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-semibold tracking-tight tabular-nums">
+                        {formatMoney(selectedReceipt.total, selectedReceipt.currency)}
+                      </p>
+                      {selectedReceipt.status !== 'ready' && (
+                        <Badge variant={statusVariantMap[selectedReceipt.status] || 'outline'} className="capitalize mt-1">
+                          {selectedReceipt.status}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" className={detailActionClass} onClick={() => setEditOpen(true)}>
+                      <Pencil />
+                      Edit
+                    </button>
+                    <button type="button" className={detailActionClass} onClick={handleShareReceipt}>
+                      <Share2 />
+                      Share
+                    </button>
+                    <button type="button" className={detailActionClass} onClick={handleDownloadReceipt}>
+                      <Download />
+                      Download image
+                    </button>
+                    <button
+                      type="button"
+                      className={cn(detailActionClass, 'text-destructive hover:bg-destructive/10')}
+                      onClick={() => setConfirmDeleteId(selectedReceipt._id)}
+                    >
+                      <Trash2 />
+                      Delete
+                    </button>
+                  </div>
+
+                  {selectedMismatch && (
+                    <div role="note" className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-3">
+                      <TriangleAlert className="size-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-300" />
+                      <p className="text-sm flex-1">
+                        Items add up to <span className="font-semibold tabular-nums">{formatMoney(selectedMismatch.itemsSum, selectedReceipt.currency)}</span>, but the total is{' '}
+                        <span className="font-semibold tabular-nums">{formatMoney(selectedMismatch.total, selectedReceipt.currency)}</span>. A price or line may have been misread.
+                      </p>
+                      <button type="button" onClick={() => setEditOpen(true)} className="text-sm font-semibold text-primary hover:underline shrink-0">
+                        Review
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <ReceiptMetadata label="Items" value={selectedReceipt.items?.length || 0} />
+                    <ReceiptMetadata label="Pages" value={selectedReceipt.pageCount || 1} />
+                    <ReceiptMetadata label="Purchased" value={selectedReceipt.purchaseDate ? dayjs(selectedReceipt.purchaseDate).format('MMM D') : '—'} />
+                  </div>
+
+                  {selectedReceipt.items?.length > 0 && (
+                    <div>
+                      <p className="section-label mb-2 px-1">Items</p>
+                      <ul className="rounded-xl border border-border divide-y divide-border md:max-h-52 md:overflow-y-auto">
+                        {selectedReceipt.items.map((item, index) => (
+                          <li key={`${selectedReceipt._id}-${item.name}-${index}`} className="flex justify-between gap-3 px-3.5 py-2.5 text-sm">
+                            <span className="min-w-0 truncate">
+                              {item.name}
+                              {item.quantity > 1 && <span className="text-muted-foreground"> ×{item.quantity}</span>}
+                            </span>
+                            <span className="font-medium tabular-nums">
+                              {typeof item.price === 'number' ? formatMoney(item.price, item.currency || selectedReceipt.currency) : '—'}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {selectedReceipt.sourceImages?.length > 1 && (
+                    <div>
+                      <p className="section-label mb-2 px-1">Uploaded images</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedReceipt.sourceImages.map((image, index) => (
+                          <Badge key={`${selectedReceipt._id}-source-${image.filename || index}`} variant="outline">
+                            {image.filename || `Image ${index + 1}`} {formatBytes(image.size) ? `(${formatBytes(image.size)})` : ''}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  <div className="flex flex-col md:flex-row gap-3">
+                    {selectedReceiptImageUrl && (
+                      <div className="flex-1 rounded-xl border border-border overflow-hidden max-h-80 flex items-center justify-center bg-muted/50">
+                        <img
+                          src={selectedReceiptImageUrl}
+                          alt={`Receipt from ${selectedReceipt.merchant || 'unknown store'}`}
+                          className="w-full h-full object-contain"
+                          // Missing/expired image: drop the box rather than show a broken icon
+                          onError={(event) => { event.currentTarget.parentElement.hidden = true; }}
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 rounded-xl bg-muted/50 p-3 max-h-80 overflow-y-auto">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <ImageIcon className="size-4 text-muted-foreground" />
+                        <p className="text-sm font-medium">Scanned text</p>
+                      </div>
+                      <p className="text-xs font-mono whitespace-pre-wrap text-muted-foreground">
+                        {selectedReceipt.rawText || 'No OCR output yet.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+  ) : null;
+
   return (
     <div className="flex flex-col gap-5">
       {/* Hero: title + live stats on the accent gradient */}
-      <div className="hero-gradient rounded-[28px] px-5 pt-5 pb-5">
+      <div className="hero-gradient rounded-3xl sm:rounded-[28px] p-4 sm:p-5">
         <div className="relative z-10">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-[30px] sm:text-4xl font-semibold tracking-tight leading-tight">Receipts</h1>
-              <p className="text-sm mt-1 opacity-85">Upload receipt photos, then ask about your spending.</p>
+              <h1 className="text-2xl sm:text-4xl font-semibold tracking-tight leading-tight">Receipts</h1>
+              <p className="hidden sm:block text-sm mt-1 opacity-85">Upload receipt photos, then ask about your spending.</p>
             </div>
             <button
               type="button"
@@ -267,13 +421,13 @@ const ReceiptsPage = ({ user }) => {
               disabled={loading}
               aria-label="Refresh receipts"
               title="Refresh"
-              className="size-9 shrink-0 rounded-xl flex items-center justify-center border border-[color-mix(in_oklch,var(--primary-foreground)_25%,transparent)] bg-[color-mix(in_oklch,var(--primary-foreground)_14%,transparent)] hover:bg-[color-mix(in_oklch,var(--primary-foreground)_24%,transparent)] transition-colors disabled:opacity-60"
+              className="touch-target size-9 shrink-0 rounded-xl flex items-center justify-center border border-[color-mix(in_oklch,var(--primary-foreground)_25%,transparent)] bg-[color-mix(in_oklch,var(--primary-foreground)_14%,transparent)] hover:bg-[color-mix(in_oklch,var(--primary-foreground)_24%,transparent)] transition-colors disabled:opacity-60"
             >
               <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
 
-          <dl className="grid grid-cols-3 gap-2 mt-5">
+          <dl className="grid grid-cols-3 gap-2 mt-3 sm:mt-5">
             {[
               { label: 'This month', value: stats.monthTotal },
               { label: 'Receipts', value: stats.count },
@@ -346,19 +500,41 @@ const ReceiptsPage = ({ user }) => {
               <div className="min-w-0">
                 <h2 className="font-semibold">{isDragging ? 'Drop to upload' : 'Add a receipt'}</h2>
                 <p className="text-sm text-muted-foreground mt-0.5 max-w-prose">
-                  Drop up to 10 photos here. For a long receipt, pick them top to bottom and they&rsquo;re stitched into one.
+                  {isMobile ? 'Up to 10 photos.' : 'Drop up to 10 photos here.'} For a long receipt, pick them top to bottom and they&rsquo;re stitched into one.
                 </p>
               </div>
             </div>
+            {isMobile && (
+              <label
+                className={cn(
+                  buttonVariants(),
+                  'w-full h-12 shadow-[0_10px_24px_-10px_color-mix(in_oklch,var(--primary)_80%,transparent)]',
+                  uploading ? 'opacity-50 pointer-events-none cursor-not-allowed' : 'cursor-pointer'
+                )}
+              >
+                {uploading ? <Loader2 className="animate-spin" /> : <Camera />}
+                {uploading ? 'Uploading…' : 'Take photo'}
+                {/* Opens the camera directly; several photos of a long receipt go through Choose photos */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  hidden
+                  onChange={handleFileChange}
+                  disabled={uploading}
+                />
+              </label>
+            )}
             <label
               className={cn(
-                buttonVariants(),
-                'w-full sm:w-auto shrink-0 shadow-[0_10px_24px_-10px_color-mix(in_oklch,var(--primary)_80%,transparent)]',
+                buttonVariants({ variant: isMobile ? 'outline' : 'default' }),
+                'w-full sm:w-auto shrink-0',
+                isMobile ? 'h-12' : 'shadow-[0_10px_24px_-10px_color-mix(in_oklch,var(--primary)_80%,transparent)]',
                 uploading ? 'opacity-50 pointer-events-none cursor-not-allowed' : 'cursor-pointer'
               )}
             >
-              {uploading ? <Loader2 className="animate-spin" /> : <CloudUpload />}
-              {uploading ? 'Uploading…' : 'Upload photos'}
+              {isMobile ? <Images /> : (uploading ? <Loader2 className="animate-spin" /> : <CloudUpload />)}
+              {isMobile ? 'Choose photos' : (uploading ? 'Uploading…' : 'Upload photos')}
               <input
                 type="file"
                 accept="image/*"
@@ -373,7 +549,7 @@ const ReceiptsPage = ({ user }) => {
 
           <div className="grid md:grid-cols-5 gap-5">
             {/* History */}
-            <section aria-labelledby="receipt-history" className="md:col-span-2">
+            <section aria-labelledby="receipt-history" className={isMobile ? 'md:col-span-5' : 'md:col-span-2'}>
               <div className="flex justify-between items-center px-1 mb-2.5">
                 <h2 id="receipt-history" className="section-label">History</h2>
                 {loading && <Loader2 className="size-4 animate-spin text-primary" />}
@@ -445,9 +621,9 @@ const ReceiptsPage = ({ user }) => {
                             aria-label={`Delete receipt from ${name}`}
                             onClick={(event) => {
                               event.stopPropagation();
-                              deleteReceipt(receipt._id);
+                              setConfirmDeleteId(receipt._id);
                             }}
-                            className="p-1.5 -mr-1 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive shrink-0 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100"
+                            className="hidden md:inline-flex p-1.5 -mr-1 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive shrink-0 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100"
                           >
                             <Trash2 className="size-4" />
                           </button>
@@ -483,120 +659,10 @@ const ReceiptsPage = ({ user }) => {
               )}
             </section>
 
-            {/* Details */}
+            {/* Details (wide screens; phones use the sheet below) */}
+            {!isMobile && (
             <Card className="md:col-span-3 p-5 rounded-2xl min-h-[360px] gap-0">
-              {selectedReceipt ? (
-                <div key={selectedReceipt._id} className="flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-1 duration-300">
-                  <div className="flex items-center gap-3">
-                    <StoreTile name={selectedReceipt.merchant || 'Unknown'} className="size-12 text-lg" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xl font-semibold tracking-tight truncate">{selectedReceipt.merchant || 'Unknown'}</p>
-                      <p className="text-sm text-muted-foreground tabular-nums">{selectedReceipt.purchaseDate || 'No date'}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-semibold tracking-tight tabular-nums">
-                        {formatMoney(selectedReceipt.total, selectedReceipt.currency)}
-                      </p>
-                      {selectedReceipt.status !== 'ready' && (
-                        <Badge variant={statusVariantMap[selectedReceipt.status] || 'outline'} className="capitalize mt-1">
-                          {selectedReceipt.status}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" className={detailActionClass} onClick={() => setEditOpen(true)}>
-                      <Pencil />
-                      Edit
-                    </button>
-                    <button type="button" className={detailActionClass} onClick={handleShareReceipt}>
-                      <Share2 />
-                      Share
-                    </button>
-                    <button type="button" className={detailActionClass} onClick={handleDownloadReceipt}>
-                      <Download />
-                      Download image
-                    </button>
-                  </div>
-
-                  {selectedMismatch && (
-                    <div role="note" className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-3">
-                      <TriangleAlert className="size-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-300" />
-                      <p className="text-sm flex-1">
-                        Items add up to <span className="font-semibold tabular-nums">{formatMoney(selectedMismatch.itemsSum, selectedReceipt.currency)}</span>, but the total is{' '}
-                        <span className="font-semibold tabular-nums">{formatMoney(selectedMismatch.total, selectedReceipt.currency)}</span>. A price or line may have been misread.
-                      </p>
-                      <button type="button" onClick={() => setEditOpen(true)} className="text-sm font-semibold text-primary hover:underline shrink-0">
-                        Review
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <ReceiptMetadata label="Items" value={selectedReceipt.items?.length || 0} />
-                    <ReceiptMetadata label="Pages" value={selectedReceipt.pageCount || 1} />
-                    <ReceiptMetadata label="Purchased" value={selectedReceipt.purchaseDate ? dayjs(selectedReceipt.purchaseDate).format('MMM D') : '—'} />
-                  </div>
-
-                  {selectedReceipt.items?.length > 0 && (
-                    <div>
-                      <p className="section-label mb-2 px-1">Items</p>
-                      <ul className="rounded-xl border border-border divide-y divide-border max-h-52 overflow-y-auto">
-                        {selectedReceipt.items.map((item, index) => (
-                          <li key={`${selectedReceipt._id}-${item.name}-${index}`} className="flex justify-between gap-3 px-3.5 py-2.5 text-sm">
-                            <span className="min-w-0 truncate">
-                              {item.name}
-                              {item.quantity > 1 && <span className="text-muted-foreground"> ×{item.quantity}</span>}
-                            </span>
-                            <span className="font-medium tabular-nums">
-                              {typeof item.price === 'number' ? formatMoney(item.price, item.currency || selectedReceipt.currency) : '—'}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {selectedReceipt.sourceImages?.length > 1 && (
-                    <div>
-                      <p className="section-label mb-2 px-1">Uploaded images</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedReceipt.sourceImages.map((image, index) => (
-                          <Badge key={`${selectedReceipt._id}-source-${image.filename || index}`} variant="outline">
-                            {image.filename || `Image ${index + 1}`} {formatBytes(image.size) ? `(${formatBytes(image.size)})` : ''}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <Separator />
-
-                  <div className="flex flex-col md:flex-row gap-3">
-                    {selectedReceiptImageUrl && (
-                      <div className="flex-1 rounded-xl border border-border overflow-hidden max-h-80 flex items-center justify-center bg-muted/50">
-                        <img
-                          src={selectedReceiptImageUrl}
-                          alt={`Receipt from ${selectedReceipt.merchant || 'unknown store'}`}
-                          className="w-full h-full object-contain"
-                          // Missing/expired image: drop the box rather than show a broken icon
-                          onError={(event) => { event.currentTarget.parentElement.hidden = true; }}
-                        />
-                      </div>
-                    )}
-                    <div className="flex-1 rounded-xl bg-muted/50 p-3 max-h-80 overflow-y-auto">
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <ImageIcon className="size-4 text-muted-foreground" />
-                        <p className="text-sm font-medium">Scanned text</p>
-                      </div>
-                      <p className="text-xs font-mono whitespace-pre-wrap text-muted-foreground">
-                        {selectedReceipt.rawText || 'No OCR output yet.'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
+              {selectedReceipt ? receiptDetail : (
                 <div className="h-full flex flex-col items-center justify-center text-center py-10">
                   <div className="size-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-3">
                     <ReceiptText className="size-7" />
@@ -608,7 +674,29 @@ const ReceiptsPage = ({ user }) => {
                 </div>
               )}
             </Card>
+            )}
           </div>
+
+          {isMobile && (
+            <Sheet
+              open={Boolean(selectedReceiptId)}
+              onOpenChange={(open) => { if (!open) { selectReceipt(null); } }}
+            >
+              <SheetContent
+                side="bottom"
+                aria-describedby={undefined}
+                className="max-h-[88dvh] overflow-y-auto rounded-t-3xl gap-0 px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))]"
+              >
+                <div aria-hidden="true" className="mx-auto mb-4 h-1.5 w-10 shrink-0 rounded-full bg-muted-foreground/30" />
+                <SheetTitle className="sr-only">Receipt details</SheetTitle>
+                {receiptDetail || (
+                  <div className="flex justify-center py-16" aria-busy="true">
+                    <Loader2 className="size-6 animate-spin text-primary" />
+                  </div>
+                )}
+              </SheetContent>
+            </Sheet>
+          )}
 
           <ReceiptChatPanel
             userId={user._id}
@@ -617,6 +705,26 @@ const ReceiptsPage = ({ user }) => {
           />
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={Boolean(confirmDeleteId)} onOpenChange={(open) => { if (!open) { setConfirmDeleteId(null); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this receipt?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Its photo, line items and spending history are removed. This can&rsquo;t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={buttonVariants({ variant: 'destructive' })}
+              onClick={() => { deleteReceipt(confirmDeleteId); setConfirmDeleteId(null); }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <EditReceiptDialog
         open={editOpen && Boolean(selectedReceipt)}

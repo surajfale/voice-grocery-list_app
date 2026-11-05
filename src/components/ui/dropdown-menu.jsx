@@ -1,12 +1,12 @@
 import * as React from 'react';
 import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
+import { withBackToClose } from '@/hooks/useBackToClose';
 import { Check, ChevronRight, Circle } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
-function DropdownMenu(props) {
-  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
-}
+// Android back closes it instead of leaving the app (hooks/useBackToClose)
+const DropdownMenu = withBackToClose(DropdownMenuPrimitive.Root, 'dropdown-menu');
 
 function DropdownMenuTrigger(props) {
   return <DropdownMenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />;

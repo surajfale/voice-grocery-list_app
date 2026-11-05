@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛒</text></svg>" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="theme-color" content="#fafafa" />
     <meta name="description" content="AI-powered voice grocery list with smart categorization and auto-correction" />
 
@@ -25,7 +25,13 @@
         try {
           var mode = localStorage.getItem('themeMode');
           var dark = mode === 'dark' || ((!mode || mode === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches);
-          if (dark) { document.documentElement.classList.add('dark'); document.documentElement.style.colorScheme = 'dark'; }
+          if (dark) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
+            // Dark status bar before React loads (ThemeContext keeps it in sync after)
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) { meta.setAttribute('content', 'oklch(0.155 0.003 270)'); }
+          }
         } catch (e) { /* storage blocked: stay light */ }
       })();
     </script>

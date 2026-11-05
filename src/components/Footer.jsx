@@ -10,7 +10,7 @@ const GitHubMark = () => (
 
 const Footer = () => {
   return (
-    <footer className="mt-auto pt-14 pb-3">
+    <footer className="web-only mt-auto pt-14 pb-3">
       {/* Accent hairline, matching the header */}
       <div
         aria-hidden="true"

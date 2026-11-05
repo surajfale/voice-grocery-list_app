@@ -1,4 +1,4 @@
-import React, { useState, memo, useMemo } from 'react';
+import React, { useState, useRef, memo, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { ChevronDown, MoreHorizontal, Pencil, Trash2, Check, X, Tag, Hash, ArrowUp, BadgeDollarSign } from 'lucide-react';
 import dayjs from 'dayjs';
@@ -19,6 +19,114 @@ import {
 import { getCategoryStyle } from '../utils/categoryStyles';
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
 import { formatMoney } from '../utils/money';
+import { haptic } from '../utils/haptics';
+
+const SWIPE_TRIGGER_PX = 80; // release beyond this to act
+const SWIPE_MAX_PX = 120;
+
+/**
+ * List row with touch swipe actions: right = mark bought / not bought,
+ * left = remove. Only touch pointers swipe; vertical drags stay page
+ * scrolls (touch-action: pan-y) and the tap after a swipe is swallowed so
+ * it doesn't also toggle the item.
+ */
+const SwipeRow = ({ completed, disabled, onSwipeRight, onSwipeLeft, outerClassName, className, children }) => {
+  const [offset, setOffset] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const gesture = useRef(null); // { x, y, id, axis: null | 'x' | 'y' }
+  const swallowClick = useRef(false);
+
+  const reset = () => {
+    gesture.current = null;
+    setDragging(false);
+    setOffset(0);
+  };
+
+  const onPointerDown = (event) => {
+    if (disabled || event.pointerType !== 'touch') { return; }
+    gesture.current = { x: event.clientX, y: event.clientY, id: event.pointerId, axis: null };
+  };
+
+  const onPointerMove = (event) => {
+    const g = gesture.current;
+    if (!g || event.pointerId !== g.id) { return; }
+    const dx = event.clientX - g.x;
+    const dy = event.clientY - g.y;
+    if (!g.axis) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) { return; }
+      g.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      if (g.axis === 'x') {
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        setDragging(true);
+      }
+    }
+    if (g.axis === 'x') {
+      setOffset(Math.max(-SWIPE_MAX_PX, Math.min(SWIPE_MAX_PX, dx)));
+    }
+  };
+
+  const onPointerUp = () => {
+    const g = gesture.current;
+    if (!g || g.axis !== 'x') { gesture.current = null; return; }
+    swallowClick.current = true;
+    setTimeout(() => { swallowClick.current = false; }, 400);
+    if (offset >= SWIPE_TRIGGER_PX) {
+      onSwipeRight();
+    } else if (offset <= -SWIPE_TRIGGER_PX) {
+      haptic(15);
+      onSwipeLeft();
+    }
+    reset();
+  };
+
+  const armed = Math.abs(offset) >= SWIPE_TRIGGER_PX;
+
+  return (
+    <li className={`relative overflow-hidden ${outerClassName}`}>
+      {offset !== 0 && (
+        <div
+          aria-hidden="true"
+          className={`absolute inset-0 flex items-center gap-2 px-5 text-sm font-semibold transition-opacity ${
+            offset > 0
+              ? 'justify-start bg-primary text-primary-foreground'
+              : 'justify-end bg-destructive text-white'
+          } ${armed ? 'opacity-100' : 'opacity-70'}`}
+        >
+          {offset > 0
+            ? <><Check className="size-4" />{completed ? 'Not bought' : 'Bought'}</>
+            : <>Remove<Trash2 className="size-4" /></>}
+        </div>
+      )}
+      <div
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={reset}
+        onClickCapture={(event) => {
+          if (swallowClick.current) {
+            event.stopPropagation();
+            event.preventDefault();
+            swallowClick.current = false;
+          }
+        }}
+        style={{ transform: offset ? `translateX(${offset}px)` : undefined }}
+        className={`relative bg-card touch-pan-y ${dragging ? '' : 'transition-transform duration-200'} ${className}`}
+      >
+        {children}
+      </div>
+    </li>
+  );
+};
+
+SwipeRow.propTypes = {
+  completed: PropTypes.bool,
+  disabled: PropTypes.bool,
+  onSwipeRight: PropTypes.func.isRequired,
+  onSwipeLeft: PropTypes.func.isRequired,
+  outerClassName: PropTypes.string,
+  className: PropTypes.string,
+  children: PropTypes.node
+};
 
 const COUNT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
@@ -201,11 +309,16 @@ const GroceryListDisplay = memo(({
                     const count = item.count || 1;
 
                     return (
-                      <li
+                      <SwipeRow
                         key={item.id}
-                        className={`group flex items-center gap-3 min-h-13 pl-3.5 pr-1.5 py-1.5 transition-[opacity,transform,background-color] duration-200 animate-in fade-in first:rounded-t-2xl last:rounded-b-2xl hover:bg-accent/50 ${
+                        completed={item.completed}
+                        disabled={loading || isEditingThis}
+                        onSwipeRight={() => onToggleItem(item.id)}
+                        onSwipeLeft={() => requestRemoveItem(item.id)}
+                        outerClassName={`transition-[opacity,transform] duration-200 animate-in fade-in first:rounded-t-2xl last:rounded-b-2xl ${
                           isRemoving ? 'opacity-0 -translate-x-2' : 'opacity-100'
                         }`}
+                        className="group flex items-center gap-3 min-h-13 pl-3.5 pr-1.5 py-1.5 hover:bg-accent/50"
                       >
                         <Checkbox
                           checked={item.completed}
@@ -213,7 +326,7 @@ const GroceryListDisplay = memo(({
                           onClick={(e) => e.stopPropagation()}
                           disabled={loading || isEditingThis}
                           aria-label={`Mark ${item.text} as ${item.completed ? 'not bought' : 'bought'}`}
-                          className="cat-check pop-on-check size-5 rounded-full border-2 data-[state=checked]:border-primary transition-colors"
+                          className="touch-target cat-check pop-on-check size-5 rounded-full border-2 data-[state=checked]:border-primary transition-colors"
                         />
 
                         <div className="flex-1 min-w-0">
@@ -255,7 +368,7 @@ const GroceryListDisplay = memo(({
                               onClick={() => handleSaveText(item.id, item.text)}
                               disabled={loading || !editedTextValue.trim()}
                               aria-label="Save name"
-                              className="size-9 rounded-lg flex items-center justify-center text-primary hover:bg-accent disabled:opacity-40"
+                              className="touch-target size-9 rounded-lg flex items-center justify-center text-primary hover:bg-accent disabled:opacity-40"
                             >
                               <Check className="size-4" />
                             </button>
@@ -264,7 +377,7 @@ const GroceryListDisplay = memo(({
                               onClick={handleCancelEditText}
                               disabled={loading}
                               aria-label="Cancel editing"
-                              className="size-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-accent disabled:opacity-40"
+                              className="touch-target size-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-accent disabled:opacity-40"
                             >
                               <X className="size-4" />
                             </button>
@@ -286,7 +399,7 @@ const GroceryListDisplay = memo(({
                                   type="button"
                                   disabled={loading}
                                   aria-label={`Options for ${item.text}`}
-                                  className="size-9 shrink-0 rounded-lg flex items-center justify-center text-muted-foreground/70 hover:text-foreground hover:bg-accent data-[state=open]:bg-accent data-[state=open]:text-foreground disabled:opacity-40 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 md:data-[state=open]:opacity-100"
+                                  className="touch-target size-9 shrink-0 rounded-lg flex items-center justify-center text-muted-foreground/70 hover:text-foreground hover:bg-accent data-[state=open]:bg-accent data-[state=open]:text-foreground disabled:opacity-40 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 md:data-[state=open]:opacity-100"
                                 >
                                   <MoreHorizontal className="size-4" />
                                 </button>
@@ -342,7 +455,7 @@ const GroceryListDisplay = memo(({
                             </DropdownMenu>
                           </>
                         )}
-                      </li>
+                      </SwipeRow>
                     );
                   })}
                 </ul>

@@ -536,20 +536,23 @@ const ReceiptChatPanel = ({ userId, receipts, onSelectReceipt }) => {
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
             onKeyDown={handleKeyDown}
+            // Phone keyboards show a Send key (Enter sends, see handleKeyDown)
+            enterKeyHint="send"
             disabled={isLoading || !isOnline}
-            className="min-h-9 max-h-32 flex-1 resize-none border-0 bg-transparent shadow-none px-0 py-2 focus-visible:ring-0 focus-visible:border-0"
+            className="text-base md:text-sm min-h-9 max-h-32 flex-1 resize-none border-0 bg-transparent shadow-none px-0 py-2 focus-visible:ring-0 focus-visible:border-0"
           />
           <button
             type="button"
             onClick={handleAsk}
             disabled={!canSubmit}
             aria-label="Send question"
-            className="btn-gradient size-9 shrink-0 rounded-xl flex items-center justify-center transition-[opacity,transform] active:scale-95 disabled:opacity-40 disabled:shadow-none"
+            className="touch-target btn-gradient size-9 shrink-0 rounded-xl flex items-center justify-center transition-[opacity,transform] active:scale-95 disabled:opacity-40 disabled:shadow-none"
           >
             <ArrowUp className="size-4" />
           </button>
         </div>
-        <p className="text-[11px] text-muted-foreground mt-1.5 px-1">Enter to send · Shift+Enter for a new line</p>
+        {/* Keyboard hint: only where there's a physical keyboard */}
+        <p className="pointer-fine-only text-[11px] text-muted-foreground mt-1.5 px-1">Enter to send · Shift+Enter for a new line</p>
       </div>
     </section>
   );

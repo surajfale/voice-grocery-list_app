@@ -1,12 +1,12 @@
 import * as React from 'react';
 import { Dialog as SheetPrimitive } from 'radix-ui';
+import { withBackToClose } from '@/hooks/useBackToClose';
 import { X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
-function Sheet(props) {
-  return <SheetPrimitive.Root data-slot="sheet" {...props} />;
-}
+// Android back closes it instead of leaving the app (hooks/useBackToClose)
+const Sheet = withBackToClose(SheetPrimitive.Root, 'sheet');
 
 function SheetTrigger(props) {
   return <SheetPrimitive.Trigger data-slot="sheet-trigger" {...props} />;
